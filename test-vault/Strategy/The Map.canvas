@@ -1,0 +1,431 @@
+{
+	"nodes": [
+		{
+			"id": "g-visa",
+			"type": "group",
+			"label": "Visa route",
+			"x": -100,
+			"y": -100,
+			"width": 1800,
+			"height": 900
+		},
+		{
+			"id": "g-studio",
+			"type": "group",
+			"label": "Studio route",
+			"x": -100,
+			"y": 1000,
+			"width": 1800,
+			"height": 1300
+		},
+		{
+			"id": "cp",
+			"type": "file",
+			"file": "Strategy/Current Position.md",
+			"x": -700,
+			"y": 600,
+			"width": 400,
+			"height": 300
+		},
+		{
+			"id": "b1",
+			"type": "file",
+			"file": "Strategy/Bets/B-1 Get a D7 visa.md",
+			"x": 300,
+			"y": 0,
+			"width": 400,
+			"height": 300,
+			"color": "4"
+		},
+		{
+			"id": "b2",
+			"type": "file",
+			"file": "Strategy/Bets/B-2 Apply for a digital nomad visa.md",
+			"x": 300,
+			"y": 400,
+			"width": 400,
+			"height": 300
+		},
+		{
+			"id": "b3",
+			"type": "file",
+			"file": "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+			"x": 300,
+			"y": 1100,
+			"width": 400,
+			"height": 300,
+			"color": "4"
+		},
+		{
+			"id": "b4",
+			"type": "file",
+			"file": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+			"x": 900,
+			"y": 1100,
+			"width": 400,
+			"height": 300,
+			"color": "4"
+		},
+		{
+			"id": "b5",
+			"type": "file",
+			"file": "Strategy/Bets/B-5 Learn Portuguese to B1.md",
+			"x": 300,
+			"y": 1500,
+			"width": 400,
+			"height": 300,
+			"color": "4"
+		},
+		{
+			"id": "b6",
+			"type": "file",
+			"file": "Strategy/Bets/B-6 Online ceramics course.md",
+			"x": 300,
+			"y": 1900,
+			"width": 400,
+			"height": 300,
+			"color": "1"
+		},
+		{
+			"id": "b7",
+			"type": "file",
+			"file": "Strategy/Bets/B-7  Part-time barista job.md",
+			"x": 900,
+			"y": 1500,
+			"width": 400,
+			"height": 300,
+			"color": "4"
+		},
+		{
+			"id": "b8",
+			"type": "file",
+			"file": "Strategy/Bets/B-8 Teach pottery workshops.md",
+			"x": 900,
+			"y": 1900,
+			"width": 400,
+			"height": 300
+		},
+		{
+			"id": "a1",
+			"type": "file",
+			"file": "Strategy/Assumptions/A-1 D7 accepts freelance income.md",
+			"x": -50,
+			"y": -50,
+			"width": 400,
+			"height": 300,
+			"color": "4"
+		},
+		{
+			"id": "a2",
+			"type": "file",
+			"file": "Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md",
+			"x": -50,
+			"y": 300,
+			"width": 400,
+			"height": 300,
+			"color": "2"
+		},
+		{
+			"id": "a3",
+			"type": "file",
+			"file": "Strategy/Assumptions/A-3 Weekend market stalls are available.md",
+			"x": -50,
+			"y": 1100,
+			"width": 400,
+			"height": 300,
+			"color": "1"
+		},
+		{
+			"id": "a4",
+			"type": "file",
+			"file": "Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md",
+			"x": -50,
+			"y": 1400,
+			"width": 400,
+			"height": 300,
+			"color": "2"
+		},
+		{
+			"id": "a5",
+			"type": "file",
+			"file": "Strategy/Assumptions/A-5 I can study one hour a day.md",
+			"x": -50,
+			"y": 1700,
+			"width": 400,
+			"height": 300,
+			"color": "2"
+		},
+		{
+			"id": "a6",
+			"type": "file",
+			"file": "Strategy/Assumptions/A-6 Portugal stays open to non-EU residents.md",
+			"x": 1300,
+			"y": 300,
+			"width": 400,
+			"height": 300,
+			"color": "2"
+		},
+		{
+			"id": "a7",
+			"type": "file",
+			"file": "Strategy/Assumptions/A-7 Workshops can fill eight seats.md",
+			"x": 1300,
+			"y": 1900,
+			"width": 400,
+			"height": 300,
+			"color": "2"
+		},
+		{
+			"id": "fp1",
+			"type": "file",
+			"file": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+			"x": 2200,
+			"y": 200,
+			"width": 400,
+			"height": 300,
+			"color": "6"
+		},
+		{
+			"id": "fp2",
+			"type": "file",
+			"file": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
+			"x": 2200,
+			"y": 1300,
+			"width": 400,
+			"height": 300,
+			"color": "6"
+		},
+		{
+			"id": "note",
+			"type": "file",
+			"file": "lisbon-neighbourhoods-research.md",
+			"x": -700,
+			"y": 0,
+			"width": 400,
+			"height": 300,
+			"color": "2"
+		},
+		{
+			"id": "t-route",
+			"type": "text",
+			"text": "Visa Route",
+			"x": 0,
+			"y": -200,
+			"width": 250,
+			"height": 60,
+			"styleAttributes": {}
+		},
+		{
+			"id": "t-ghost",
+			"type": "text",
+			"text": "Golden visa path?",
+			"x": 300,
+			"y": 800,
+			"width": 250,
+			"height": 60,
+			"color": "2",
+			"styleAttributes": {
+				"textAlign": "center"
+			}
+		},
+		{
+			"id": "t-routec",
+			"type": "text",
+			"text": "Route C - Freelance visa (suspended)",
+			"x": 900,
+			"y": 400,
+			"width": 250,
+			"height": 60,
+			"styleAttributes": {
+				"border": "dashed"
+			}
+		},
+		{
+			"id": "t-and",
+			"type": "text",
+			"text": "AND",
+			"x": 700,
+			"y": 1350,
+			"width": 80,
+			"height": 80,
+			"color": "5",
+			"styleAttributes": {
+				"shape": "diamond",
+				"textAlign": "center"
+			}
+		},
+		{
+			"id": "t-elab",
+			"type": "text",
+			"text": "Needs elaboration",
+			"x": 900,
+			"y": 2200,
+			"width": 250,
+			"height": 60,
+			"color": "3",
+			"styleAttributes": {}
+		}
+	],
+	"edges": [
+		{
+			"id": "e1",
+			"fromNode": "b1",
+			"fromSide": "right",
+			"toNode": "fp1",
+			"toSide": "left",
+			"color": "4",
+			"styleAttributes": {
+				"pathfindingMethod": "square"
+			}
+		},
+		{
+			"id": "e2",
+			"fromNode": "b1",
+			"fromSide": "right",
+			"toNode": "b2",
+			"toSide": "left",
+			"label": "On kill",
+			"styleAttributes": {
+				"path": "dotted"
+			}
+		},
+		{
+			"id": "e3",
+			"fromNode": "a1",
+			"fromSide": "right",
+			"toNode": "b1",
+			"toSide": "left",
+			"styleAttributes": {
+				"path": "short-dashed"
+			},
+			"toEnd": "none"
+		},
+		{
+			"id": "e4",
+			"fromNode": "a2",
+			"fromSide": "right",
+			"toNode": "b1",
+			"toSide": "left",
+			"styleAttributes": {
+				"path": "short-dashed"
+			},
+			"toEnd": "none"
+		},
+		{
+			"id": "e5",
+			"fromNode": "b3",
+			"fromSide": "right",
+			"toNode": "t-and",
+			"toSide": "left"
+		},
+		{
+			"id": "e6",
+			"fromNode": "b5",
+			"fromSide": "right",
+			"toNode": "t-and",
+			"toSide": "left"
+		},
+		{
+			"id": "e7",
+			"fromNode": "t-and",
+			"fromSide": "right",
+			"toNode": "b4",
+			"toSide": "left"
+		},
+		{
+			"id": "e8",
+			"fromNode": "b8",
+			"fromSide": "right",
+			"toNode": "b4",
+			"toSide": "left",
+			"label": "indirectly serves",
+			"styleAttributes": {
+				"path": "dotted"
+			}
+		},
+		{
+			"id": "e9",
+			"fromNode": "a6",
+			"fromSide": "right",
+			"toNode": "fp1",
+			"toSide": "left",
+			"styleAttributes": {
+				"path": "short-dashed"
+			},
+			"toEnd": "none"
+		},
+		{
+			"id": "e10",
+			"fromNode": "t-ghost",
+			"fromSide": "right",
+			"toNode": "b2",
+			"toSide": "left",
+			"label": "Only A-6",
+			"styleAttributes": {
+				"pathfindingMethod": "square"
+			}
+		},
+		{
+			"id": "e11",
+			"fromNode": "note",
+			"fromSide": "right",
+			"toNode": "b1",
+			"toSide": "left",
+			"label": "Non significant relationship",
+			"styleAttributes": {
+				"path": "short-dashed"
+			}
+		},
+		{
+			"id": "e12",
+			"fromNode": "b6",
+			"fromSide": "right",
+			"toNode": "fp2",
+			"toSide": "left",
+			"label": "Killed",
+			"color": "4"
+		},
+		{
+			"id": "e13",
+			"fromNode": "b7",
+			"fromSide": "right",
+			"toNode": "b4",
+			"toSide": "left",
+			"label": "Serves",
+			"styleAttributes": {
+				"path": "long-dashed"
+			}
+		},
+		{
+			"id": "e14",
+			"fromNode": "b4",
+			"fromSide": "right",
+			"toNode": "fp2",
+			"toSide": "left"
+		},
+		{
+			"id": "e15",
+			"fromNode": "b2",
+			"fromSide": "right",
+			"toNode": "fp1",
+			"toSide": "left"
+		},
+		{
+			"id": "e16",
+			"fromNode": "cp",
+			"fromSide": "right",
+			"toNode": "b1",
+			"toSide": "left"
+		},
+		{
+			"id": "e17",
+			"fromNode": "t-routec",
+			"fromSide": "right",
+			"toNode": "fp1",
+			"toSide": "left",
+			"styleAttributes": {
+				"path": "long-dashed"
+			}
+		}
+	]
+}

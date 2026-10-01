@@ -1,0 +1,9 @@
+{
+  "id": "strategy-bet-creator",
+  "name": "Strategy Bet Creator",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Capture a Grand Strategy bet and its assumptions in one form, auto-linked.",
+  "author": "wiam",
+  "isDesktopOnly": false
+}

@@ -1,0 +1,17 @@
+node_modules/
+dist/
+data.json
+
+# Obsidian per-machine state in the test vault
+test-vault/.obsidian/*
+!test-vault/.obsidian/app.json
+!test-vault/.obsidian/community-plugins.json
+!test-vault/.obsidian/plugins/
+test-vault/.obsidian/plugins/*
+!test-vault/.obsidian/plugins/strategy-bet-creator
+
+# Real-vault migration outputs contain private strategy content — never commit
+migration-report.md
+resolutions.yaml
+legacy-edges.json
+*.migration-report.md
