@@ -1,0 +1,35 @@
+{
+  "ribbonIcons": [
+    {
+      "icon": "target",
+      "title": "New strategy bet",
+      "opens": [
+        "BetModal"
+      ]
+    },
+    {
+      "icon": "link",
+      "title": "New strategy assumption",
+      "opens": [
+        "AssumptionModal"
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "id": "create-bet",
+      "name": "Create new Bet",
+      "opens": [
+        "BetModal"
+      ]
+    },
+    {
+      "id": "create-assumption",
+      "name": "Create new Assumption",
+      "opens": [
+        "AssumptionModal"
+      ]
+    }
+  ],
+  "notices": 0
+}

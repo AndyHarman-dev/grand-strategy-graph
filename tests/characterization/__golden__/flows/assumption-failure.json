@@ -1,0 +1,18 @@
+{
+  "ops": [
+    {
+      "op": "create",
+      "path": "Strategy/Assumptions/A-8 S.md"
+    }
+  ],
+  "notices": [
+    {
+      "message": "Assumption creation failed: Simulated write failure.",
+      "timeout": 20000
+    }
+  ],
+  "console": [
+    "error: strategy-bet-creator: failed part-way through assumption creation Error: Simulated write failure."
+  ],
+  "changed": []
+}

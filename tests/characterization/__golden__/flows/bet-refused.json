@@ -1,0 +1,13 @@
+{
+  "ops": [],
+  "notices": [
+    {
+      "message": "Duplicate bet ids in Strategy/Bets: B-1. Nothing was created.",
+      "timeout": 15000
+    }
+  ],
+  "console": [
+    "error: strategy-bet-creator: aborted before writing — Duplicate bet ids in Strategy/Bets: B-1. Nothing was created."
+  ],
+  "changed": []
+}

@@ -1,0 +1,18 @@
+{
+  "ops": [
+    {
+      "op": "create",
+      "path": "Strategy/Bets/B-9 Will fail.md"
+    }
+  ],
+  "notices": [
+    {
+      "message": "Bet creation failed: Simulated write failure.\nNothing was created.",
+      "timeout": 20000
+    }
+  ],
+  "console": [
+    "error: strategy-bet-creator: failed part-way through creation Error: Simulated write failure."
+  ],
+  "changed": []
+}

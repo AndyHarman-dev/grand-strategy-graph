@@ -1,0 +1,399 @@
+{
+  "sanitizeTitle": [
+    [
+      "Plain title",
+      "Plain title"
+    ],
+    [
+      "  leading and trailing  ",
+      "leading and trailing"
+    ],
+    [
+      "SaaS/PLG focus",
+      "SaaS PLG focus"
+    ],
+    [
+      "a#b[c]d^e|f/g\\h:i*j",
+      "a b c d e f g h i j"
+    ],
+    [
+      "tabs\tand\nnewlines\r\nhere",
+      "tabs and newlines here"
+    ],
+    [
+      "control\u0000\u001fchars",
+      "control chars"
+    ],
+    [
+      "multiple     spaces",
+      "multiple spaces"
+    ],
+    [
+      "ação — “smart quotes” 🚀",
+      "ação — “smart quotes” 🚀"
+    ],
+    [
+      "###",
+      ""
+    ],
+    [
+      "",
+      ""
+    ],
+    [
+      "null",
+      ""
+    ],
+    [
+      "undefined",
+      ""
+    ],
+    [
+      42,
+      "42"
+    ]
+  ],
+  "trimTrailingPunctuation": [
+    [
+      "a.",
+      "a"
+    ],
+    [
+      "a ,;",
+      "a"
+    ],
+    [
+      "a - – —",
+      "a"
+    ],
+    [
+      "a!?",
+      "a"
+    ],
+    [
+      "...",
+      ""
+    ],
+    [
+      "a.b",
+      "a.b"
+    ]
+  ],
+  "deriveAssumptionTitle": [
+    [
+      "Short statement.",
+      "Short statement"
+    ],
+    [
+      "Ends with punctuation ...!?",
+      "Ends with punctuation"
+    ],
+    [
+      "Ends with dashes – —",
+      "Ends with dashes"
+    ],
+    [
+      "A statement that is exactly sixty characters long, padding x",
+      "A statement that is exactly sixty characters long, padding x"
+    ],
+    [
+      "A rather long statement that goes well beyond the sixty character budget for titles",
+      "A rather long statement that goes well beyond the sixty"
+    ],
+    [
+      "Averyveryverylongfirstwordthatexceedshalfthebudget and then more words follow it",
+      "Averyveryverylongfirstwordthatexceedshalfthebudget and then"
+    ],
+    [
+      "Short then Averyveryverylongsecondwordthatrunspastthebudgetlimitforsure",
+      "Short then Averyveryverylongsecondwordthatrunspastthebudgetl"
+    ],
+    [
+      "Slash/separated:words*with#forbidden[chars] that also run past the limit, surely",
+      "Slash separated words with forbidden chars that also run"
+    ],
+    [
+      "...",
+      "..."
+    ],
+    [
+      "###",
+      ""
+    ],
+    [
+      "",
+      ""
+    ],
+    [
+      "null",
+      ""
+    ]
+  ],
+  "deriveAssumptionTitleCustomLimit": [
+    [
+      "one two three four",
+      10,
+      "one two"
+    ],
+    [
+      "one two three four",
+      8,
+      "one two"
+    ],
+    [
+      "abcdefghijkl",
+      5,
+      "abcde"
+    ]
+  ],
+  "parseIds": [
+    {
+      "basenames": [],
+      "prefix": "B",
+      "ids": [],
+      "used": [],
+      "invalid": [],
+      "duplicates": [],
+      "max": 0
+    },
+    {
+      "basenames": [
+        "B-1 One",
+        "B-2 Two",
+        "B-10  byTalent backend engineer"
+      ],
+      "prefix": "B",
+      "ids": [
+        1,
+        2,
+        10
+      ],
+      "used": [
+        1,
+        2,
+        10
+      ],
+      "invalid": [],
+      "duplicates": [],
+      "max": 10
+    },
+    {
+      "basenames": [
+        "B-3 x",
+        "B-3 y",
+        "B-1 z",
+        "B-1 w",
+        "B-2"
+      ],
+      "prefix": "B",
+      "ids": [
+        3,
+        3,
+        1,
+        1,
+        2
+      ],
+      "used": [
+        3,
+        1,
+        2
+      ],
+      "invalid": [],
+      "duplicates": [
+        1,
+        3
+      ],
+      "max": 3
+    },
+    {
+      "basenames": [
+        "FP-1 Fixed",
+        "A-1 Assumption",
+        "Current Position",
+        "b-4 lowercase",
+        " B-5 leading space"
+      ],
+      "prefix": "B",
+      "ids": [],
+      "used": [],
+      "invalid": [],
+      "duplicates": [],
+      "max": 0
+    },
+    {
+      "basenames": [
+        "B-007 Leading zeros",
+        "B-7 Seven"
+      ],
+      "prefix": "B",
+      "ids": [
+        7,
+        7
+      ],
+      "used": [
+        7
+      ],
+      "invalid": [],
+      "duplicates": [
+        7
+      ],
+      "max": 7
+    },
+    {
+      "basenames": [
+        "B-99999999999999999999 Too big",
+        "B-1 ok"
+      ],
+      "prefix": "B",
+      "ids": [
+        1
+      ],
+      "used": [
+        1
+      ],
+      "invalid": [
+        "B-99999999999999999999 Too big"
+      ],
+      "duplicates": [],
+      "max": 1
+    },
+    {
+      "basenames": [
+        "A-1 one",
+        "A-12two",
+        "A-x nope",
+        "A- empty"
+      ],
+      "prefix": "A",
+      "ids": [
+        1,
+        12
+      ],
+      "used": [
+        1,
+        12
+      ],
+      "invalid": [],
+      "duplicates": [],
+      "max": 12
+    }
+  ],
+  "insertIntoSection": [
+    {
+      "name": "already linked (bullet-less backlink counts)",
+      "result": "## Depended On By\n[[B-1 x]]\n"
+    },
+    {
+      "name": "appends after placeholder and existing links, before next h2",
+      "result": "# T\n## Depended On By\n*placeholder*\n- [[B-1 a]]\n- [[B-2 b]]\n\n\n## Log\n- entry\n"
+    },
+    {
+      "name": "empty section directly under heading",
+      "result": "## Depended On By\n- [[B-2 b]]\n\n## Log\n"
+    },
+    {
+      "name": "h3 subsection stays inside the section",
+      "result": "## Depended On By\n- [[B-1 a]]\n### Notes\nsub text\n- [[B-2 b]]\n\n# Next h1\n"
+    },
+    {
+      "name": "section is last in the file without trailing newline",
+      "result": "intro\n## Depended On By\n- [[B-1 a]]\n- [[B-2 b]]"
+    },
+    {
+      "name": "heading matched after trimming surrounding whitespace",
+      "result": "  ## Depended On By  \n- [[B-1 a]]\n- [[B-2 b]]\n"
+    },
+    {
+      "name": "only the first matching heading is used",
+      "result": "## Depended On By\n- [[B-1 a]]\n- [[B-2 b]]\n## Log\n## Depended On By\n"
+    },
+    {
+      "name": "missing section, content without newline",
+      "result": "body text\n\n## Assumptions This Bet Depends On\n- [[A-1 a]]\n"
+    },
+    {
+      "name": "missing section, content ending in one newline",
+      "result": "body text\n\n## Assumptions This Bet Depends On\n- [[A-1 a]]\n"
+    },
+    {
+      "name": "missing section, content ending in a blank line",
+      "result": "body text\n\n## Assumptions This Bet Depends On\n- [[A-1 a]]\n"
+    },
+    {
+      "name": "missing section, empty content",
+      "result": "## Assumptions This Bet Depends On\n- [[A-1 a]]\n"
+    },
+    {
+      "name": "CRLF content",
+      "result": "## Depended On By\r\n- [[B-1 a]]\r\n- [[B-2 b]]\n\r\n## Log\r\n"
+    }
+  ],
+  "yamlString": [
+    [
+      "plain",
+      "\"plain\""
+    ],
+    [
+      "with \"quotes\" and \\ backslash",
+      "\"with \\\"quotes\\\" and \\\\ backslash\""
+    ],
+    [
+      "line\nbreak\ttab",
+      "\"line\\nbreak\\ttab\""
+    ],
+    [
+      "ação 🚀",
+      "\"ação 🚀\""
+    ],
+    [
+      "",
+      "\"\""
+    ],
+    [
+      "null",
+      "\"\""
+    ],
+    [
+      "undefined",
+      "\"\""
+    ],
+    [
+      7,
+      "\"7\""
+    ]
+  ],
+  "stripTrailingColon": [
+    [
+      "no colon",
+      "no colon"
+    ],
+    [
+      "trailing:",
+      "trailing"
+    ],
+    [
+      "trailing :  ",
+      "trailing"
+    ],
+    [
+      "mid: colon",
+      "mid: colon"
+    ],
+    [
+      "::",
+      ":"
+    ],
+    [
+      "",
+      ""
+    ],
+    [
+      "null",
+      ""
+    ],
+    [
+      "undefined",
+      ""
+    ]
+  ]
+}

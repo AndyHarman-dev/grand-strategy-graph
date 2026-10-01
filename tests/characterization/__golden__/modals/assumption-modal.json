@@ -1,0 +1,33 @@
+{
+  "initial": {
+    "statement": "",
+    "falsifier": "",
+    "verifyBy": "",
+    "betFiles": []
+  },
+  "missingStatement": {
+    "submitted": [],
+    "closed": false,
+    "notices": [
+      {
+        "message": "A statement is required."
+      }
+    ]
+  },
+  "valid": {
+    "submitted": [
+      {
+        "statement": "S",
+        "falsifier": "F",
+        "verifyBy": "",
+        "betFiles": [
+          {
+            "file": "Strategy/Bets/B-1 Get a D7 visa.md"
+          }
+        ]
+      }
+    ],
+    "closed": true,
+    "notices": []
+  }
+}

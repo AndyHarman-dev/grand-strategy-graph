@@ -1,0 +1,14 @@
+{
+  "betId": 1,
+  "betTitle": "First bet ever",
+  "betPath": "Strategy/Bets/B-1 First bet ever.md",
+  "betLink": "[[B-1 First bet ever]]",
+  "betContent": "---\ntype: bet\nstatus: active\nstarted: 2026-10-01\ndeadline:\nexpected-result: \"b\"\nserves:\nnext sequel:\n---\n## The Bet\nI believe continuing **a:** `[action/effort]`\nwill produce **b:** `[concrete, observable result]`\nwithin **c:** `[timeframe — must match the deadline above]`\n\n## Serves\nWhich fixed point / direction does this bet serve?\n\n## Kill Condition (decided NOW, before the deadline)\nWhen the deadline arrives and Y has not materialized, this bet is:\n- [ ] **Killed** — X stops entirely\n- [ ] **Modified** — X changes to: \n- [ ] **Extended once** — new deadline: `____` — written justification required below\n\n> Extension justification (fill only if extending; one extension maximum):\n\n## Assumptions This Bet Depends On\n- [[A-1 First assumption]]\n\n## Log\n*Weekly check-ins go here. Date + one line: on track / off track / signal observed.*\n\n- 2026-10-01: created\n\n## Resolution\n*Fill when the bet closes.*\n- **Outcome:** \n- **What I learned:** \n- **Status updated in frontmatter?** (active → won / killed / extended)\n",
+  "newAssumptions": [
+    {
+      "path": "Strategy/Assumptions/A-1 First assumption.md",
+      "content": "---\ntype: assumption\nstatus: unverified\ncreated: 2026-10-01\nverify-by:\n---\n## The Assumption\nFirst assumption\n\n## How I'd Know It's False\n*What observable evidence would falsify this? If nothing could, it's a belief, not an assumption — rewrite it.*\n\n## Verify By\n*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*\n\n## Depended On By\n*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*\n- [[B-1 First bet ever]]\n\n## Log\n- 2026-10-01: Created\n"
+    }
+  ],
+  "reused": []
+}

@@ -1,0 +1,94 @@
+{
+  "missingTitle": {
+    "submitted": [],
+    "closed": false,
+    "notices": [
+      {
+        "message": "Title, X, Y and Z are all required."
+      }
+    ]
+  },
+  "missingX": {
+    "submitted": [],
+    "closed": false,
+    "notices": [
+      {
+        "message": "Title, X, Y and Z are all required."
+      }
+    ]
+  },
+  "missingY": {
+    "submitted": [],
+    "closed": false,
+    "notices": [
+      {
+        "message": "Title, X, Y and Z are all required."
+      }
+    ]
+  },
+  "missingZ": {
+    "submitted": [],
+    "closed": false,
+    "notices": [
+      {
+        "message": "Title, X, Y and Z are all required."
+      }
+    ]
+  },
+  "blankNewStatement": {
+    "submitted": [],
+    "closed": false,
+    "notices": [
+      {
+        "message": "Every new assumption needs a statement, or remove the row."
+      }
+    ]
+  },
+  "existingWithoutFile": {
+    "submitted": [],
+    "closed": false,
+    "notices": [
+      {
+        "message": "Pick an existing assumption for every \"Existing\" row, or remove it."
+      }
+    ]
+  },
+  "valid": {
+    "submitted": [
+      {
+        "title": "T",
+        "x": "x",
+        "y": "y",
+        "z": "z",
+        "deadline": "2027-01-01",
+        "servesFiles": [
+          {
+            "file": "Strategy/Fixed Points/FP-1 Live in Portugal.md"
+          }
+        ],
+        "assumptionRows": [
+          {
+            "id": 1,
+            "mode": "new",
+            "statement": " S ",
+            "falsifier": " F ",
+            "verifyBy": "2026-12-01",
+            "existingFile": null
+          },
+          {
+            "id": 2,
+            "mode": "existing",
+            "statement": "",
+            "falsifier": "",
+            "verifyBy": "",
+            "existingFile": {
+              "file": "Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md"
+            }
+          }
+        ]
+      }
+    ],
+    "closed": true,
+    "notices": []
+  }
+}

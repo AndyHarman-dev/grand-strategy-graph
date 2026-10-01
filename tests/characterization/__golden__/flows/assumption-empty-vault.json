@@ -1,0 +1,25 @@
+{
+  "ops": [
+    {
+      "op": "createFolder",
+      "path": "Strategy/Assumptions"
+    },
+    {
+      "op": "create",
+      "path": "Strategy/Assumptions/A-1 Lonely.md"
+    },
+    {
+      "op": "openFile",
+      "path": "Strategy/Assumptions/A-1 Lonely.md"
+    }
+  ],
+  "notices": [
+    {
+      "message": "Created A-1 Lonely — linked to 0 bet(s)."
+    }
+  ],
+  "console": [],
+  "changed": [
+    "Strategy/Assumptions/A-1 Lonely.md"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "duplicateBetIds": {
+    "error": "Duplicate bet ids in Strategy/Bets: B-1, B-3. Nothing was created."
+  },
+  "duplicateAssumptionIds": {
+    "error": "Duplicate assumption ids in Strategy/Assumptions: A-2. Nothing was created."
+  },
+  "invalidIds": {
+    "error": "Unparseable bet/assumption ids — nothing was created. Offending notes: B-99999999999999999999 Huge, A-99999999999999999999 Huge"
+  },
+  "emptyTitleAfterSanitize": {
+    "error": "The bet title is empty after removing illegal filename characters. Nothing was created."
+  },
+  "betPathTaken": {
+    "error": "A note already exists at \"Strategy/Bets/B-9 Taken.md\". Nothing was created."
+  },
+  "assumptionPathTaken": {
+    "error": "A note already exists at \"Strategy/Assumptions/A-8 Taken.md\". Nothing was created."
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "ops": [
+    {
+      "op": "create",
+      "path": "Strategy/Assumptions/A-8 Footfall on weekends is high enough.md"
+    },
+    {
+      "op": "create",
+      "path": "Strategy/Assumptions/A-9 Permits take under a month.md"
+    },
+    {
+      "op": "create",
+      "path": "Strategy/Bets/B-9 Open a pop-up shop.md"
+    },
+    {
+      "op": "process",
+      "path": "Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md",
+      "changed": true
+    },
+    {
+      "op": "process",
+      "path": "Strategy/Assumptions/A-1 D7 accepts freelance income.md",
+      "changed": true
+    },
+    {
+      "op": "process",
+      "path": "Strategy/Assumptions/A-7 Workshops can fill eight seats.md",
+      "changed": true
+    },
+    {
+      "op": "openFile",
+      "path": "Strategy/Bets/B-9 Open a pop-up shop.md"
+    }
+  ],
+  "notices": [
+    {
+      "message": "Created B-9 Open a pop-up shop — 2 new assumption(s), 3 reused."
+    }
+  ],
+  "console": [],
+  "changed": [
+    "Strategy/Assumptions/A-1 D7 accepts freelance income.md",
+    "Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md",
+    "Strategy/Assumptions/A-7 Workshops can fill eight seats.md",
+    "Strategy/Assumptions/A-8 Footfall on weekends is high enough.md",
+    "Strategy/Assumptions/A-9 Permits take under a month.md",
+    "Strategy/Bets/B-9 Open a pop-up shop.md"
+  ]
+}

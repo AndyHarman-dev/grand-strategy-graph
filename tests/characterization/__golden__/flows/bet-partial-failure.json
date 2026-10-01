@@ -1,0 +1,24 @@
+{
+  "ops": [
+    {
+      "op": "create",
+      "path": "Strategy/Assumptions/A-8 Gets written.md"
+    },
+    {
+      "op": "create",
+      "path": "Strategy/Bets/B-9 Will fail.md"
+    }
+  ],
+  "notices": [
+    {
+      "message": "Bet creation failed: Simulated write failure.\nAlready created (not rolled back): Strategy/Assumptions/A-8 Gets written.md",
+      "timeout": 20000
+    }
+  ],
+  "console": [
+    "error: strategy-bet-creator: failed part-way through creation Error: Simulated write failure."
+  ],
+  "changed": [
+    "Strategy/Assumptions/A-8 Gets written.md"
+  ]
+}

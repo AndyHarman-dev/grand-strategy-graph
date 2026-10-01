@@ -1,0 +1,14 @@
+{
+  "noBetsFallbackTitle": {
+    "file": "Strategy/Assumptions/A-8 Assumption 8.md"
+  },
+  "duplicateIds": {
+    "error": "Duplicate assumption ids in Strategy/Assumptions: A-1. Nothing was created."
+  },
+  "invalidIds": {
+    "error": "Unparseable assumption ids — nothing was created. Offending notes: A-99999999999999999999 Huge"
+  },
+  "pathTaken": {
+    "error": "A note already exists at \"Strategy/Assumptions/A-8 S.md\". Nothing was created."
+  }
+}
