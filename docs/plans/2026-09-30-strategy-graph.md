@@ -1,5 +1,5 @@
 ---
-status: Pending
+status: In Progress
 ---
 
 # Strategy Graph — data-driven, Obsidian-native graph for the Grand Strategy
@@ -362,6 +362,21 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
     - Seeded `test-vault/` with `ANOMALIES.md`, the `dist/` symlink and `.gitignore`.
   - **Decisions:** the real vault gets only tagged releases via BRAT, and the test vault runs `dist/` through a symlink (D10/D11 rewritten).
   - **Verification:** all test-vault frontmatter and the canvas parse (PyYAML/JSON). `git add -n` shows the symlink and test vault are tracked and `dist/` is ignored. Unverified: test vault not yet opened in Obsidian (needs user action).
+
+- **2026-10-01**:
+  - **Context:** Phase 0 (repo bootstrap, TS port with byte parity), run as a Claude Code on the web session.
+  - **Actions:**
+    - Moved the shipped `main.js` byte-for-byte to `tests/legacy/main.js` as the oracle, `styles.css` to `src/`; `manifest.json` stays at the root.
+    - Wrote characterization tests *before* porting (separate commit) over `test-vault/`: pure helpers, content builders, write plans, full create flows (write order, notices, console, bytes of every touched file), modal validation and plugin registrations. 41 goldens in `tests/characterization/__golden__/`.
+    - Ported to TS: `src/core/` (pure; planners take a structural `VaultLike`), `src/obsidian/` (modals, create flows), `src/main.ts`. Toolchain: TypeScript 7, esbuild, Vitest 5, React 19 installed for Phase 5.
+    - Added `ci.yml` (typecheck, test, build on PRs and `main`), `release.yml` (tag → checks → GitHub Release with the three BRAT files; fails if the tag doesn't match `manifest.json`/`package.json`), and a repo `CLAUDE.md`.
+  - **Decisions:**
+    - Work was pushed to the session branch `claude/busy-heisenberg-og8u70` rather than `main` (cloud-session setting; D10 still describes the user's local flow).
+    - `tests/legacy/main.js` stays until Phase 4 deliberately changes output.
+    - Bundle is not minified, like the legacy plugin, so dev-console errors stay readable. Revisit in 5a when React Flow and ELK are bundled.
+    - TS 7 always enables `esModuleInterop`, which makes `obsidian.d.ts`'s `moment` non-callable at the type level. The cast is isolated in `src/obsidian/today.ts`.
+    - `src/ui/` and `tools/` are created by the phases that first need them.
+  - **Verification:** `npm run typecheck`, `npm test` (68 tests: each case runs on legacy and port against the same goldens, plus an end-to-end test that builds the real bundle in memory and drives it through its commands) and `npm run build` all pass. Two deliberate mutations of the port (bet log line, section insertion) each failed the suite. Unverified (needs the user): the built plugin in Obsidian, the real-vault byte-identity check from Phase 0's **Verify**, and the first CI/release run on GitHub.
 
 ## Decisions Log
 
