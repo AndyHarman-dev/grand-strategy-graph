@@ -376,7 +376,12 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
     - Bundle is not minified, like the legacy plugin, so dev-console errors stay readable. Revisit in 5a when React Flow and ELK are bundled.
     - TS 7 always enables `esModuleInterop`, which makes `obsidian.d.ts`'s `moment` non-callable at the type level. The cast is isolated in `src/obsidian/today.ts`.
     - `src/ui/` and `tools/` are created by the phases that first need them.
-  - **Verification:** `npm run typecheck`, `npm test` (68 tests: each case runs on legacy and port against the same goldens, plus an end-to-end test that builds the real bundle in memory and drives it through its commands) and `npm run build` all pass. Two deliberate mutations of the port (bet log line, section insertion) each failed the suite. Unverified (needs the user): the built plugin in Obsidian, the real-vault byte-identity check from Phase 0's **Verify**, and the first CI/release run on GitHub.
+  - **Verification:** `npm run typecheck`, `npm test` (68 tests: each case runs on legacy and port against the same goldens, plus an end-to-end test that builds the real bundle in memory and drives it through its commands) and `npm run build` all pass. Two deliberate mutations of the port (bet log line, section insertion) each failed the suite. Unverified: the first CI/release run on GitHub.
+- **2026-10-01**:
+  - **Context:** Phase 0's manual **Verify**: real-vault byte identity.
+  - **Actions:** the user ran the old plugin and the new `dist/` build in Obsidian on a throwaway copy of the real vault (outside the vault, git-snapshotted, Sync off). Same inputs in both runs, compared with `git diff` excluding `.obsidian`.
+  - **Decisions:** none.
+  - **Verification:** **Create new Bet**: identical. The first attempt differed only in dates (run A and run B were done on different days) and in an `[[A-28 …]]` backlink from an assumption step that was skipped in run B. **Create new Assumption**: re-run with both runs on the same day, no differences. Phase 0 manual check passed.
 
 ## Decisions Log
 
