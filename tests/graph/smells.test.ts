@@ -59,6 +59,16 @@ describe('orphan-bet', () => {
     expect(brief(smells)).toEqual(['orphan-bet B-1', 'orphan-bet B-2', 'orphan-bet B-3', 'unreached-fixed-point FP-1']);
   });
 
+  it('flags a bet whose chain dead-ends at a route or milestone that serves nothing', async () => {
+    const smells = await smellsOf(vault({
+      'Strategy/R-1.md': md({ id: 'R-1', type: 'route', status: 'active' }),
+      'Strategy/M-1.md': md({ id: 'M-1', type: 'milestone' }),
+      ...bet('B-1', { serves: ['[[R-1]]'] }),
+      ...bet('B-2', { serves: ['[[M-1]]'] }),
+    }));
+    expect(brief(smells)).toEqual(['orphan-bet B-1', 'orphan-bet B-2', 'unreached-fixed-point FP-1']);
+  });
+
   it('terminates on a serves cycle', async () => {
     const smells = await smellsOf(vault({
       ...bet('B-1', { serves: ['[[B-2]]'] }),
