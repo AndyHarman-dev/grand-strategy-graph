@@ -1,3 +1,11 @@
+import * as content from '../../src/core/content';
+import * as ids from '../../src/core/ids';
+import * as plan from '../../src/core/plan';
+import * as sections from '../../src/core/sections';
+import * as text from '../../src/core/text';
+import StrategyBetCreator from '../../src/main';
+import * as create from '../../src/obsidian/create';
+import * as modals from '../../src/obsidian/modals';
 import type { FakeApp, FakeFile } from './fake-app';
 import { legacy, LegacyPlugin } from './legacy';
 
@@ -39,4 +47,21 @@ export const legacyImpl: Impl = {
   Plugin: LegacyPlugin,
 };
 
-export const implementations: Impl[] = [legacyImpl];
+/** The TypeScript port. Core planners take the vault; the legacy ones took the app. */
+export const portImpl: Impl = {
+  name: 'port',
+  ...text,
+  ...ids,
+  ...sections,
+  ...content,
+  getFilesInFolders: (app, folders) => plan.getFilesInFolders(app.vault, folders),
+  buildWritePlan: (app, data, today) => plan.buildWritePlan(app.vault, data, today),
+  buildAssumptionWritePlan: (app, data, today) => plan.buildAssumptionWritePlan(app.vault, data, today),
+  createBetFromForm: (app, data) => create.createBetFromForm(app as any, data),
+  createAssumptionFromForm: (app, data) => create.createAssumptionFromForm(app as any, data),
+  BetModal: modals.BetModal as any,
+  AssumptionModal: modals.AssumptionModal as any,
+  Plugin: StrategyBetCreator as any,
+};
+
+export const implementations: Impl[] = [legacyImpl, portImpl];
