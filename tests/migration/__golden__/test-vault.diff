@@ -1,0 +1,882 @@
+diff --migrate a/Strategy/Assumptions/A-1 D7 accepts freelance income.md b/Strategy/Assumptions/A-1 D7 accepts freelance income.md
+--- a/Strategy/Assumptions/A-1 D7 accepts freelance income.md
++++ b/Strategy/Assumptions/A-1 D7 accepts freelance income.md
+@@ -1,4 +1,5 @@
+ ---
++id: A-1
+ type: assumption
+ status: confirmed
+ created: 2026-07-05T10:00:00
+@@ -14,7 +15,12 @@
+ *If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*
+ 
+ ## Depended On By
+-- [[B-1 Get a D7 visa]]
++```dataview
++LIST
++FROM "Strategy"
++WHERE contains(assumptions, this.file.link)
++SORT file.name ASC
++```
+ 
+ ## Log
+ - 2026-08-01: Created
+
+diff --migrate a/Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md b/Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md
+--- a/Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md
++++ b/Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md
+@@ -1,4 +1,5 @@
+ ---
++id: A-2
+ type: assumption
+ status: unverified
+ created: 2026-07-05
+@@ -14,9 +15,12 @@
+ *If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*
+ 
+ ## Depended On By
+-*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*
+-- [[B-1 Get a D7 visa]]
+-- [[B-4 Save 20000 for kiln and lease]]
++```dataview
++LIST
++FROM "Strategy"
++WHERE contains(assumptions, this.file.link)
++SORT file.name ASC
++```
+ 
+ ## Log
+ - 2026-08-01: Created
+
+diff --migrate a/Strategy/Assumptions/A-3 Weekend market stalls are available.md b/Strategy/Assumptions/A-3 Weekend market stalls are available.md
+--- a/Strategy/Assumptions/A-3 Weekend market stalls are available.md
++++ b/Strategy/Assumptions/A-3 Weekend market stalls are available.md
+@@ -1,4 +1,5 @@
+ ---
++id: A-3
+ type: assumption
+ status: falsified
+ created: 2026-08-01
+@@ -14,7 +15,12 @@
+ *If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*
+ 
+ ## Depended On By
+-*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*
++```dataview
++LIST
++FROM "Strategy"
++WHERE contains(assumptions, this.file.link)
++SORT file.name ASC
++```
+ 
+ ## Log
+ - 2026-08-01: Created
+
+diff --migrate a/Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md b/Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md
+--- a/Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md
++++ b/Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md
+@@ -1,4 +1,5 @@
+ ---
++id: A-4
+ type: assumption
+ status: undeterminable
+ created: 2026-08-01
+@@ -14,8 +15,12 @@
+ *If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*
+ 
+ ## Depended On By
+-*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*
+-[[B-3 Sell pottery at weekend markets]]
++```dataview
++LIST
++FROM "Strategy"
++WHERE contains(assumptions, this.file.link)
++SORT file.name ASC
++```
+ 
+ ## Log
+ - 2026-08-01: Created
+
+diff --migrate a/Strategy/Assumptions/A-5 I can study one hour a day.md b/Strategy/Assumptions/A-5 I can study one hour a day.md
+--- a/Strategy/Assumptions/A-5 I can study one hour a day.md
++++ b/Strategy/Assumptions/A-5 I can study one hour a day.md
+@@ -1,4 +1,5 @@
+ ---
++id: A-5
+ type: assumption
+ status: unverified
+ created: 2026-07-10
+@@ -14,8 +15,12 @@
+ *If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*
+ 
+ ## Depended On By
+-*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*
+-- [[B-5 Learn Portuguese to B1]]
++```dataview
++LIST
++FROM "Strategy"
++WHERE contains(assumptions, this.file.link)
++SORT file.name ASC
++```
+ 
+ ## Log
+ - 2026-08-01: Created
+
+diff --migrate a/Strategy/Assumptions/A-6 Portugal stays open to non-EU residents.md b/Strategy/Assumptions/A-6 Portugal stays open to non-EU residents.md
+--- a/Strategy/Assumptions/A-6 Portugal stays open to non-EU residents.md
++++ b/Strategy/Assumptions/A-6 Portugal stays open to non-EU residents.md
+@@ -1,4 +1,5 @@
+ ---
++id: A-6
+ type: assumption
+ status: unverified
+ created: 2026-07-01
+@@ -14,8 +15,12 @@
+ *If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*
+ 
+ ## Depended On By
+-*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*
+-[[FP-1 Live in Portugal]]
++```dataview
++LIST
++FROM "Strategy"
++WHERE contains(assumptions, this.file.link)
++SORT file.name ASC
++```
+ 
+ ## Log
+ - 2026-08-01: Created
+
+diff --migrate a/Strategy/Assumptions/A-7 Workshops can fill eight seats.md b/Strategy/Assumptions/A-7 Workshops can fill eight seats.md
+--- a/Strategy/Assumptions/A-7 Workshops can fill eight seats.md
++++ b/Strategy/Assumptions/A-7 Workshops can fill eight seats.md
+@@ -1,4 +1,5 @@
+ ---
++id: A-7
+ type: assumption
+ status: unverified
+ created: 2026-08-20
+@@ -14,8 +15,12 @@
+ *If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*
+ 
+ ## Depended On By
+-*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*
+-- [[B-8 Teach pottery workshops]]
++```dataview
++LIST
++FROM "Strategy"
++WHERE contains(assumptions, this.file.link)
++SORT file.name ASC
++```
+ 
+ ## Log
+ - 2026-08-01: Created
+
+diff --migrate a/Strategy/Bets/B-1 Get a D7 visa.md b/Strategy/Bets/B-1 Get a D7 visa.md
+--- a/Strategy/Bets/B-1 Get a D7 visa.md
++++ b/Strategy/Bets/B-1 Get a D7 visa.md
+@@ -1,11 +1,16 @@
+ ---
++id: B-1
+ type: bet
+ status: active
+ started: 2026-07-05
+ deadline: 2026-12-01
+ expected-result: D7 visa approved
+-serves: "[[FP-1 Live in Portugal]]"
+-next sequel: "[[B-2 Apply for a digital nomad visa]]"
++serves:
++  - "[[FP-1 Live in Portugal]]"
++next: "[[B-2 Apply for a digital nomad visa]]"
++assumptions:
++  - "[[A-1 D7 accepts freelance income]]"
++  - "[[A-2 Rent in Lisbon stays under 1200]]"
+ ---
+ ## The Bet
+ I believe continuing **applying for the D7 visa:** `[action/effort]`
+@@ -12,10 +17,6 @@
+ will produce **an approved visa:** `[concrete, observable result]`
+ within **five months:** `[timeframe — must match the deadline above]`
+ 
+-## Serves
+-Which fixed point / direction does this bet serve?
+-- [[FP-1 Live in Portugal]]
+-
+ ## Kill Condition (decided NOW, before the deadline)
+ When the deadline arrives and Y has not materialized, this bet is:
+ - [ ] **Killed** — X stops entirely
+@@ -24,11 +25,6 @@
+ 
+ > Extension justification (fill only if extending; one extension maximum):
+ 
+-## Assumptions This Bet Depends On
+-- [[A-1 D7 accepts freelance income]]
+-- [[A-2 Rent in Lisbon stays under 1200]]
+-- [[A-9 Testing new assumption]]
+-
+ ## Log
+ *Weekly check-ins go here. Date + one line: on track / off track / signal observed.*
+ 
+
+diff --migrate a/Strategy/Bets/B-2 Apply for a digital nomad visa.md b/Strategy/Bets/B-2 Apply for a digital nomad visa.md
+--- a/Strategy/Bets/B-2 Apply for a digital nomad visa.md
++++ b/Strategy/Bets/B-2 Apply for a digital nomad visa.md
+@@ -1,12 +1,13 @@
+ ---
++id: B-2
+ type: bet
+-status: asleep
++status: dormant
+ started: 2026-07-05
+ deadline:
+ expected-result: Digital nomad visa approved
+ serves:
+   - "[[FP-1 Live in Portugal]]"
+-next sequel:
++next:
+ ---
+ ## The Bet
+ I believe continuing **applying for the nomad visa:** `[action/effort]`
+@@ -13,10 +14,6 @@
+ will produce **an approved visa:** `[concrete, observable result]`
+ within **four months:** `[timeframe — must match the deadline above]`
+ 
+-## Serves
+-Which fixed point / direction does this bet serve?
+-- [[FP-1 Live in Portugal]]
+-
+ ## Kill Condition (decided NOW, before the deadline)
+ When the deadline arrives and Y has not materialized, this bet is:
+ - [ ] **Killed** — X stops entirely
+@@ -25,8 +22,6 @@
+ 
+ > Extension justification (fill only if extending; one extension maximum):
+ 
+-## Assumptions This Bet Depends On
+-
+ ## Log
+ *Weekly check-ins go here. Date + one line: on track / off track / signal observed.*
+ 
+
+diff --migrate a/Strategy/Bets/B-3 Sell pottery at weekend markets.md b/Strategy/Bets/B-3 Sell pottery at weekend markets.md
+--- a/Strategy/Bets/B-3 Sell pottery at weekend markets.md
++++ b/Strategy/Bets/B-3 Sell pottery at weekend markets.md
+@@ -1,4 +1,5 @@
+ ---
++id: B-3
+ type: bet
+ status: active
+ started: 2026-08-01
+@@ -6,7 +7,10 @@
+ expected-result: 500 EUR a month from market sales
+ serves:
+   - "[[B-4 Save 20000 for kiln and lease]]"
+-next sequel:
++next:
++assumptions:
++  - "[[A-3 Weekend market stalls are available]]"
++  - "[[A-4 Tourists buy handmade ceramics]]"
+ ---
+ ## The Bet
+ I believe continuing **selling at weekend markets:** `[action/effort]`
+@@ -13,10 +17,6 @@
+ will produce **500 EUR a month:** `[concrete, observable result]`
+ within **ten weeks:** `[timeframe — must match the deadline above]`
+ 
+-## Serves
+-Which fixed point / direction does this bet serve?
+-- [[FP-2 Own a profitable ceramics studio]]
+-
+ ## Kill Condition (decided NOW, before the deadline)
+ When the deadline arrives and Y has not materialized, this bet is:
+ - [ ] **Killed** — X stops entirely
+@@ -25,10 +25,6 @@
+ 
+ > Extension justification (fill only if extending; one extension maximum):
+ 
+-## Assumptions This Bet Depends On
+-- [[A-3 Weekend market stalls are available]]
+-- [[A-4 Tourists buy handmade ceramics]]
+-
+ ## Log
+ *Weekly check-ins go here. Date + one line: on track / off track / signal observed.*
+ 
+
+diff --migrate a/Strategy/Bets/B-4 Save 20000 for kiln and lease.md b/Strategy/Bets/B-4 Save 20000 for kiln and lease.md
+--- a/Strategy/Bets/B-4 Save 20000 for kiln and lease.md
++++ b/Strategy/Bets/B-4 Save 20000 for kiln and lease.md
+@@ -1,4 +1,5 @@
+ ---
++id: B-4
+ type: bet
+ status: active
+ started: 2026-08-01
+@@ -9,7 +10,12 @@
+   2) first lease deposit
+ serves:
+   - "[[FP-2 Own a profitable ceramics studio]]"
+-next sequel:
++requires:
++  - "[[B-3 Sell pottery at weekend markets]]"
++  - "[[B-5 Learn Portuguese to B1]]"
++next:
++assumptions:
++  - "[[A-2 Rent in Lisbon stays under 1200]]"
+ ---
+ ## The Bet
+ I believe continuing **saving from both incomes:** `[action/effort]`
+@@ -16,10 +22,6 @@
+ will produce **20000 EUR saved:** `[concrete, observable result]`
+ within **ten months:** `[timeframe — must match the deadline above]`
+ 
+-## Serves
+-Which fixed point / direction does this bet serve?
+-- [[FP-2 Own a profitable ceramics studio]]
+-
+ ## Kill Condition (decided NOW, before the deadline)
+ When the deadline arrives and Y has not materialized, this bet is:
+ - [ ] **Killed** — X stops entirely
+@@ -28,10 +30,6 @@
+ 
+ > Extension justification (fill only if extending; one extension maximum):
+ 
+-## Assumptions This Bet Depends On
+-- [[B-3 Sell pottery at weekend markets]]
+-- [[B-5 Learn Portuguese to B1]]
+-
+ ## Log
+ *Weekly check-ins go here. Date + one line: on track / off track / signal observed.*
+ 
+
+diff --migrate a/Strategy/Bets/B-5 Learn Portuguese to B1.md b/Strategy/Bets/B-5 Learn Portuguese to B1.md
+--- a/Strategy/Bets/B-5 Learn Portuguese to B1.md
++++ b/Strategy/Bets/B-5 Learn Portuguese to B1.md
+@@ -1,4 +1,5 @@
+ ---
++id: B-5
+ type: bet
+ status: won
+ started: 2026-07-10
+@@ -6,8 +7,9 @@
+ expected-result: Passed a B1 exam
+ serves:
+   - "[[FP-1 Live in Portugal]]"
+-  - "[[B-5 Learn Portuguese to B1]]"
+-next sequel:
++next:
++assumptions:
++  - "[[A-5 I can study one hour a day]]"
+ ---
+ ## The Bet
+ I believe continuing **studying Portuguese daily:** `[action/effort]`
+@@ -14,10 +16,6 @@
+ will produce **a B1 certificate:** `[concrete, observable result]`
+ within **two months:** `[timeframe — must match the deadline above]`
+ 
+-## Serves
+-Which fixed point / direction does this bet serve?
+-- [[FP-1 Live in Portugal]]
+-
+ ## Kill Condition (decided NOW, before the deadline)
+ When the deadline arrives and Y has not materialized, this bet is:
+ - [ ] **Killed** — X stops entirely
+@@ -26,9 +24,6 @@
+ 
+ > Extension justification (fill only if extending; one extension maximum):
+ 
+-## Assumptions This Bet Depends On
+-- [[A-5 I can study one hour a day]]
+-
+ ## Log
+ *Weekly check-ins go here. Date + one line: on track / off track / signal observed.*
+ 
+
+diff --migrate a/Strategy/Bets/B-6 Online ceramics course.md b/Strategy/Bets/B-6 Online ceramics course.md
+--- a/Strategy/Bets/B-6 Online ceramics course.md
++++ b/Strategy/Bets/B-6 Online ceramics course.md
+@@ -1,13 +1,15 @@
+ ---
++id: B-6
+ categories:
+   - "[[Learning]]"
+ type: bet
+-status: cancelled
++status: killed
+ started: 2026-07-01
+ deadline: 2026-08-01
+ expected-result:
+-serves: "[[FP-2 Profitable pottery business]]"
+-next sequel:
++serves:
++  - "[[FP-2 Profitable pottery business]]"
++next:
+ ---
+ ## The Bet
+ I believe continuing **taking an online course:** `[action/effort]`
+@@ -14,9 +16,6 @@
+ will produce **throwing skills:** `[concrete, observable result]`
+ within **one month:** `[timeframe — must match the deadline above]`
+ 
+-## Serves
+-Which fixed point / direction does this bet serve?
+-
+ ## Kill Condition (decided NOW, before the deadline)
+ When the deadline arrives and Y has not materialized, this bet is:
+ - [ ] **Killed** — X stops entirely
+@@ -25,8 +24,6 @@
+ 
+ > Extension justification (fill only if extending; one extension maximum):
+ 
+-## Assumptions This Bet Depends On
+-
+ ## Log
+ *Weekly check-ins go here. Date + one line: on track / off track / signal observed.*
+ 
+
+diff --migrate a/Strategy/Bets/B-7  Part-time barista job.md b/Strategy/Bets/B-7  Part-time barista job.md
+--- a/Strategy/Bets/B-7  Part-time barista job.md
++++ b/Strategy/Bets/B-7  Part-time barista job.md
+@@ -1,11 +1,15 @@
+ ---
++id: B-7
+ type: bet
+ status: active
+ started: 2026-08-15
+ deadline:
+ expected-result: Steady side income
+-serves: "[[...]]"
+-next sequel:
++serves:
++  - "[[B-4 Save 20000 for kiln and lease]]"
++next:
++assumptions:
++  - "[[A-7 Workshops can fill eight seats]]"
+ ---
+ ## The Bet
+ I believe continuing **working part-time:** `[action/effort]`
+@@ -12,10 +16,6 @@
+ will produce **a side income:** `[concrete, observable result]`
+ within **ongoing:** `[timeframe — must match the deadline above]`
+ 
+-## Serves
+-Which fixed point / direction does this bet serve?
+-- [[FP-]]
+-
+ ## Kill Condition (decided NOW, before the deadline)
+ When the deadline arrives and Y has not materialized, this bet is:
+ - [ ] **Killed** — X stops entirely
+@@ -24,9 +24,6 @@
+ 
+ > Extension justification (fill only if extending; one extension maximum):
+ 
+-## Assumptions This Bet Depends On
+-- [[A-]]
+-
+ ## Log
+ *Weekly check-ins go here. Date + one line: on track / off track / signal observed.*
+ 
+
+diff --migrate a/Strategy/Bets/B-8 Teach pottery workshops.md b/Strategy/Bets/B-8 Teach pottery workshops.md
+--- a/Strategy/Bets/B-8 Teach pottery workshops.md
++++ b/Strategy/Bets/B-8 Teach pottery workshops.md
+@@ -1,12 +1,15 @@
+ ---
++id: B-8
+ type: bet
+-status: asleep
++status: dormant
+ started: 2026-08-20
+ deadline:
+ expected-result: Workshops cover studio rent
+ serves:
+   - "[[B-4 Save 20000 for kiln and lease]]"
+-next sequel:
++next:
++assumptions:
++  - "[[A-7 Workshops can fill eight seats]]"
+ ---
+ ## The Bet
+ I believe continuing **teaching workshops:** `[action/effort]`
+@@ -13,10 +16,6 @@
+ will produce **rent covered:** `[concrete, observable result]`
+ within **three months:** `[timeframe — must match the deadline above]`
+ 
+-## Serves
+-Which fixed point / direction does this bet serve?
+-- [[FP-2 Own a profitable ceramics studio]]
+-
+ ## Kill Condition (decided NOW, before the deadline)
+ When the deadline arrives and Y has not materialized, this bet is:
+ - [ ] **Killed** — X stops entirely
+@@ -25,9 +24,6 @@
+ 
+ > Extension justification (fill only if extending; one extension maximum):
+ 
+-## Assumptions This Bet Depends On
+-- [[A-7 Workshops can fill eight seats]]
+-
+ ## Log
+ *Weekly check-ins go here. Date + one line: on track / off track / signal observed.*
+ 
+
+diff --migrate a/Strategy/Current Position.md b/Strategy/Current Position.md
+--- a/Strategy/Current Position.md
++++ b/Strategy/Current Position.md
+@@ -1,4 +1,6 @@
+ ---
++id: CP
++type: current-position
+ date: 2026-08-01
+ ---
+ # Situation
+
+diff --migrate a/Strategy/Fixed Points/FP-1 Live in Portugal.md b/Strategy/Fixed Points/FP-1 Live in Portugal.md
+--- a/Strategy/Fixed Points/FP-1 Live in Portugal.md
++++ b/Strategy/Fixed Points/FP-1 Live in Portugal.md
+@@ -1,7 +1,10 @@
+ ---
++id: FP-1
+ type: fixed-point
+ established: 2026-07-01
+ last-touched: 2026-07-01T10:00:00
++assumptions:
++  - "[[A-6 Portugal stays open to non-EU residents]]"
+ ---
+ ## Statement
+ I live in Portugal long-term with legal residency.
+
+diff --migrate a/Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md b/Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md
+--- a/Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md
++++ b/Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md
+@@ -1,4 +1,5 @@
+ ---
++id: FP-2
+ type: fixed-point
+ established: 2026-07-01
+ last-touched: 2026-07-01T10:00:00
+
+diff --migrate a/Templates/Assumption Template.md b/Templates/Assumption Template.md
+--- a/Templates/Assumption Template.md
++++ b/Templates/Assumption Template.md
+@@ -1,4 +1,5 @@
+ ---
++id:
+ type: assumption
+ status: unverified
+ created:
+@@ -11,6 +12,11 @@
+ ## Verify By
+ 
+ ## Depended On By
+-*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*
++```dataview
++LIST
++FROM "Strategy"
++WHERE contains(assumptions, this.file.link)
++SORT file.name ASC
++```
+ 
+ ## Log
+
+diff --migrate a/Templates/Bet Template.md b/Templates/Bet Template.md
+--- a/Templates/Bet Template.md
++++ b/Templates/Bet Template.md
+@@ -1,4 +1,5 @@
+ ---
++id:
+ type: bet
+ status: active
+ started:
+@@ -5,16 +6,14 @@
+ deadline:
+ expected-result:
+ serves:
+-next sequel:
++requires:
++next:
++assumptions:
+ ---
+ ## The Bet
+ 
+-## Serves
+-
+ ## Kill Condition (decided NOW, before the deadline)
+ 
+-## Assumptions This Bet Depends On
+-
+ ## Log
+ 
+ ## Resolution
+
+diff --migrate a/Strategy/Strategy.gsmap b/Strategy/Strategy.gsmap
+--- /dev/null
++++ b/Strategy/Strategy.gsmap
+@@ -0,0 +1,268 @@
++{
++	"version": 1,
++	"positions": {
++		"CP": {
++			"x": -700,
++			"y": 600
++		},
++		"B-1": {
++			"x": 300,
++			"y": 0
++		},
++		"B-2": {
++			"x": 300,
++			"y": 400
++		},
++		"B-3": {
++			"x": 300,
++			"y": 1100
++		},
++		"B-4": {
++			"x": 900,
++			"y": 1100
++		},
++		"B-5": {
++			"x": 300,
++			"y": 1500
++		},
++		"B-6": {
++			"x": 300,
++			"y": 1900
++		},
++		"B-7": {
++			"x": 900,
++			"y": 1500
++		},
++		"B-8": {
++			"x": 900,
++			"y": 1900
++		},
++		"A-1": {
++			"x": -50,
++			"y": -50
++		},
++		"A-2": {
++			"x": -50,
++			"y": 300
++		},
++		"A-3": {
++			"x": -50,
++			"y": 1100
++		},
++		"A-4": {
++			"x": -50,
++			"y": 1400
++		},
++		"A-5": {
++			"x": -50,
++			"y": 1700
++		},
++		"A-6": {
++			"x": 1300,
++			"y": 300
++		},
++		"A-7": {
++			"x": 1300,
++			"y": 1900
++		},
++		"FP-1": {
++			"x": 2200,
++			"y": 200
++		},
++		"FP-2": {
++			"x": 2200,
++			"y": 1300
++		}
++	},
++	"cards": [
++		{
++			"id": "note",
++			"kind": "note-ref",
++			"file": "lisbon-neighbourhoods-research.md",
++			"x": -700,
++			"y": 0,
++			"width": 400,
++			"height": 300,
++			"color": "2"
++		},
++		{
++			"id": "t-route",
++			"kind": "text",
++			"text": "Visa Route",
++			"x": 0,
++			"y": -200,
++			"width": 250,
++			"height": 60
++		},
++		{
++			"id": "t-ghost",
++			"kind": "text",
++			"text": "Golden visa path?",
++			"x": 300,
++			"y": 800,
++			"width": 250,
++			"height": 60,
++			"color": "2",
++			"style": {
++				"textAlign": "center"
++			}
++		},
++		{
++			"id": "t-routec",
++			"kind": "text",
++			"text": "Route C - Freelance visa (suspended)",
++			"x": 900,
++			"y": 400,
++			"width": 250,
++			"height": 60,
++			"style": {
++				"border": "dashed"
++			}
++		},
++		{
++			"id": "t-and",
++			"kind": "text",
++			"text": "AND",
++			"x": 700,
++			"y": 1350,
++			"width": 80,
++			"height": 80,
++			"color": "5",
++			"style": {
++				"shape": "diamond",
++				"textAlign": "center"
++			}
++		},
++		{
++			"id": "t-elab",
++			"kind": "text",
++			"text": "Needs elaboration",
++			"x": 900,
++			"y": 2200,
++			"width": 250,
++			"height": 60,
++			"color": "3"
++		}
++	],
++	"frames": [
++		{
++			"id": "g-visa",
++			"label": "Visa route",
++			"x": -100,
++			"y": -100,
++			"width": 1800,
++			"height": 900
++		},
++		{
++			"id": "g-studio",
++			"label": "Studio route",
++			"x": -100,
++			"y": 1000,
++			"width": 1800,
++			"height": 1300
++		}
++	],
++	"links": [
++		{
++			"id": "e5",
++			"from": {
++				"note": "B-3"
++			},
++			"to": {
++				"card": "t-and"
++			},
++			"fromSide": "right",
++			"toSide": "left"
++		},
++		{
++			"id": "e6",
++			"from": {
++				"note": "B-5"
++			},
++			"to": {
++				"card": "t-and"
++			},
++			"fromSide": "right",
++			"toSide": "left"
++		},
++		{
++			"id": "e7",
++			"from": {
++				"card": "t-and"
++			},
++			"to": {
++				"note": "B-4"
++			},
++			"fromSide": "right",
++			"toSide": "left"
++		},
++		{
++			"id": "e10",
++			"from": {
++				"card": "t-ghost"
++			},
++			"to": {
++				"note": "B-2"
++			},
++			"label": "Only A-6",
++			"style": {
++				"pathfindingMethod": "square"
++			},
++			"fromSide": "right",
++			"toSide": "left"
++		},
++		{
++			"id": "e11",
++			"from": {
++				"card": "note"
++			},
++			"to": {
++				"note": "B-1"
++			},
++			"label": "Non significant relationship",
++			"style": {
++				"path": "short-dashed"
++			},
++			"fromSide": "right",
++			"toSide": "left"
++		},
++		{
++			"id": "e17",
++			"from": {
++				"card": "t-routec"
++			},
++			"to": {
++				"note": "FP-1"
++			},
++			"style": {
++				"path": "long-dashed"
++			},
++			"fromSide": "right",
++			"toSide": "left"
++		},
++		{
++			"id": "e12",
++			"from": {
++				"note": "B-6"
++			},
++			"to": {
++				"note": "FP-2"
++			},
++			"label": "Killed",
++			"color": "4",
++			"fromSide": "right",
++			"toSide": "left"
++		},
++		{
++			"id": "e16",
++			"from": {
++				"note": "CP"
++			},
++			"to": {
++				"note": "B-1"
++			},
++			"fromSide": "right",
++			"toSide": "left"
++		}
++	]
++}

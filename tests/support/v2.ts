@@ -10,8 +10,11 @@ export function md(frontmatter: Record<string, unknown>, body = ''): string {
 const link = (name: string) => `[[${name}]]`;
 
 /**
- * The synthetic test vault as Phase 2 is meant to migrate it (schema v2, canonical
- * statuses, relations in frontmatter). Hand-written until the planner produces it.
+ * The synthetic test vault in schema v2 (canonical statuses, relations in frontmatter),
+ * hand-written for the smell tests. `tests/migration/test-vault.test.ts` checks that the
+ * Phase 2 planner builds the same graph from the legacy vault, except one deliberate
+ * difference: here B-6 serves the real FP-2, while the planner keeps B-6's link to the
+ * phantom root note as it is (D13).
  */
 export function migratedTestVault(): Record<string, string> {
   const fp1 = 'FP-1 Live in Portugal';

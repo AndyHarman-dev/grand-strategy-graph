@@ -1,0 +1,434 @@
+[
+  {
+    "id": "fm:serves|Strategy/Bets/B-1 Get a D7 visa.md|1",
+    "source": "fm:serves",
+    "from": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "to": "[[FP-1 Live in Portugal]]",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null
+  },
+  {
+    "id": "fm:next sequel|Strategy/Bets/B-1 Get a D7 visa.md|1",
+    "source": "fm:next sequel",
+    "from": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "to": "[[B-2 Apply for a digital nomad visa]]",
+    "toPath": "Strategy/Bets/B-2 Apply for a digital nomad visa.md",
+    "label": null
+  },
+  {
+    "id": "fm:serves|Strategy/Bets/B-2 Apply for a digital nomad visa.md|1",
+    "source": "fm:serves",
+    "from": "Strategy/Bets/B-2 Apply for a digital nomad visa.md",
+    "to": "[[FP-1 Live in Portugal]]",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null
+  },
+  {
+    "id": "fm:serves|Strategy/Bets/B-3 Sell pottery at weekend markets.md|1",
+    "source": "fm:serves",
+    "from": "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+    "to": "[[B-4 Save 20000 for kiln and lease]]",
+    "toPath": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "label": null
+  },
+  {
+    "id": "fm:serves|Strategy/Bets/B-4 Save 20000 for kiln and lease.md|1",
+    "source": "fm:serves",
+    "from": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "to": "[[FP-2 Own a profitable ceramics studio]]",
+    "toPath": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
+    "label": null
+  },
+  {
+    "id": "fm:serves|Strategy/Bets/B-5 Learn Portuguese to B1.md|1",
+    "source": "fm:serves",
+    "from": "Strategy/Bets/B-5 Learn Portuguese to B1.md",
+    "to": "[[FP-1 Live in Portugal]]",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null
+  },
+  {
+    "id": "fm:serves|Strategy/Bets/B-5 Learn Portuguese to B1.md|2",
+    "source": "fm:serves",
+    "from": "Strategy/Bets/B-5 Learn Portuguese to B1.md",
+    "to": "[[B-5 Learn Portuguese to B1]]",
+    "toPath": null,
+    "label": null
+  },
+  {
+    "id": "fm:serves|Strategy/Bets/B-6 Online ceramics course.md|1",
+    "source": "fm:serves",
+    "from": "Strategy/Bets/B-6 Online ceramics course.md",
+    "to": "[[FP-2 Profitable pottery business]]",
+    "toPath": "FP-2 Profitable pottery business.md",
+    "label": null
+  },
+  {
+    "id": "fm:serves|Strategy/Bets/B-7  Part-time barista job.md|1",
+    "source": "fm:serves",
+    "from": "Strategy/Bets/B-7  Part-time barista job.md",
+    "to": "[[...]]",
+    "toPath": null,
+    "label": null
+  },
+  {
+    "id": "fm:serves|Strategy/Bets/B-8 Teach pottery workshops.md|1",
+    "source": "fm:serves",
+    "from": "Strategy/Bets/B-8 Teach pottery workshops.md",
+    "to": "[[B-4 Save 20000 for kiln and lease]]",
+    "toPath": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "label": null
+  },
+  {
+    "id": "body:serves|Strategy/Bets/B-1 Get a D7 visa.md|1",
+    "source": "body:serves",
+    "from": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "to": "[[FP-1 Live in Portugal]]",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null,
+    "line": 17
+  },
+  {
+    "id": "body:assumptions|Strategy/Bets/B-1 Get a D7 visa.md|1",
+    "source": "body:assumptions",
+    "from": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "to": "[[A-1 D7 accepts freelance income]]",
+    "toPath": "Strategy/Assumptions/A-1 D7 accepts freelance income.md",
+    "label": null,
+    "line": 28
+  },
+  {
+    "id": "body:assumptions|Strategy/Bets/B-1 Get a D7 visa.md|2",
+    "source": "body:assumptions",
+    "from": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "to": "[[A-2 Rent in Lisbon stays under 1200]]",
+    "toPath": "Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md",
+    "label": null,
+    "line": 29
+  },
+  {
+    "id": "body:assumptions|Strategy/Bets/B-1 Get a D7 visa.md|3",
+    "source": "body:assumptions",
+    "from": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "to": "[[A-9 Testing new assumption]]",
+    "toPath": null,
+    "label": null,
+    "line": 30
+  },
+  {
+    "id": "body:serves|Strategy/Bets/B-2 Apply for a digital nomad visa.md|1",
+    "source": "body:serves",
+    "from": "Strategy/Bets/B-2 Apply for a digital nomad visa.md",
+    "to": "[[FP-1 Live in Portugal]]",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null,
+    "line": 18
+  },
+  {
+    "id": "body:serves|Strategy/Bets/B-3 Sell pottery at weekend markets.md|1",
+    "source": "body:serves",
+    "from": "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+    "to": "[[FP-2 Own a profitable ceramics studio]]",
+    "toPath": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
+    "label": null,
+    "line": 18
+  },
+  {
+    "id": "body:assumptions|Strategy/Bets/B-3 Sell pottery at weekend markets.md|1",
+    "source": "body:assumptions",
+    "from": "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+    "to": "[[A-3 Weekend market stalls are available]]",
+    "toPath": "Strategy/Assumptions/A-3 Weekend market stalls are available.md",
+    "label": null,
+    "line": 29
+  },
+  {
+    "id": "body:assumptions|Strategy/Bets/B-3 Sell pottery at weekend markets.md|2",
+    "source": "body:assumptions",
+    "from": "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+    "to": "[[A-4 Tourists buy handmade ceramics]]",
+    "toPath": "Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md",
+    "label": null,
+    "line": 30
+  },
+  {
+    "id": "body:serves|Strategy/Bets/B-4 Save 20000 for kiln and lease.md|1",
+    "source": "body:serves",
+    "from": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "to": "[[FP-2 Own a profitable ceramics studio]]",
+    "toPath": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
+    "label": null,
+    "line": 21
+  },
+  {
+    "id": "body:assumptions|Strategy/Bets/B-4 Save 20000 for kiln and lease.md|1",
+    "source": "body:assumptions",
+    "from": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "to": "[[B-3 Sell pottery at weekend markets]]",
+    "toPath": "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+    "label": null,
+    "line": 32
+  },
+  {
+    "id": "body:assumptions|Strategy/Bets/B-4 Save 20000 for kiln and lease.md|2",
+    "source": "body:assumptions",
+    "from": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "to": "[[B-5 Learn Portuguese to B1]]",
+    "toPath": "Strategy/Bets/B-5 Learn Portuguese to B1.md",
+    "label": null,
+    "line": 33
+  },
+  {
+    "id": "body:serves|Strategy/Bets/B-5 Learn Portuguese to B1.md|1",
+    "source": "body:serves",
+    "from": "Strategy/Bets/B-5 Learn Portuguese to B1.md",
+    "to": "[[FP-1 Live in Portugal]]",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null,
+    "line": 19
+  },
+  {
+    "id": "body:assumptions|Strategy/Bets/B-5 Learn Portuguese to B1.md|1",
+    "source": "body:assumptions",
+    "from": "Strategy/Bets/B-5 Learn Portuguese to B1.md",
+    "to": "[[A-5 I can study one hour a day]]",
+    "toPath": "Strategy/Assumptions/A-5 I can study one hour a day.md",
+    "label": null,
+    "line": 30
+  },
+  {
+    "id": "body:serves|Strategy/Bets/B-7  Part-time barista job.md|1",
+    "source": "body:serves",
+    "from": "Strategy/Bets/B-7  Part-time barista job.md",
+    "to": "[[FP-]]",
+    "toPath": null,
+    "label": null,
+    "line": 17
+  },
+  {
+    "id": "body:assumptions|Strategy/Bets/B-7  Part-time barista job.md|1",
+    "source": "body:assumptions",
+    "from": "Strategy/Bets/B-7  Part-time barista job.md",
+    "to": "[[A-]]",
+    "toPath": null,
+    "label": null,
+    "line": 28
+  },
+  {
+    "id": "body:serves|Strategy/Bets/B-8 Teach pottery workshops.md|1",
+    "source": "body:serves",
+    "from": "Strategy/Bets/B-8 Teach pottery workshops.md",
+    "to": "[[FP-2 Own a profitable ceramics studio]]",
+    "toPath": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
+    "label": null,
+    "line": 18
+  },
+  {
+    "id": "body:assumptions|Strategy/Bets/B-8 Teach pottery workshops.md|1",
+    "source": "body:assumptions",
+    "from": "Strategy/Bets/B-8 Teach pottery workshops.md",
+    "to": "[[A-7 Workshops can fill eight seats]]",
+    "toPath": "Strategy/Assumptions/A-7 Workshops can fill eight seats.md",
+    "label": null,
+    "line": 29
+  },
+  {
+    "id": "body:depended-on-by|Strategy/Assumptions/A-1 D7 accepts freelance income.md|1",
+    "source": "body:depended-on-by",
+    "from": "Strategy/Assumptions/A-1 D7 accepts freelance income.md",
+    "to": "[[B-1 Get a D7 visa]]",
+    "toPath": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "label": null,
+    "line": 17
+  },
+  {
+    "id": "body:depended-on-by|Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md|1",
+    "source": "body:depended-on-by",
+    "from": "Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md",
+    "to": "[[B-1 Get a D7 visa]]",
+    "toPath": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "label": null,
+    "line": 18
+  },
+  {
+    "id": "body:depended-on-by|Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md|2",
+    "source": "body:depended-on-by",
+    "from": "Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md",
+    "to": "[[B-4 Save 20000 for kiln and lease]]",
+    "toPath": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "label": null,
+    "line": 19
+  },
+  {
+    "id": "body:depended-on-by|Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md|1",
+    "source": "body:depended-on-by",
+    "from": "Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md",
+    "to": "[[B-3 Sell pottery at weekend markets]]",
+    "toPath": "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+    "label": null,
+    "line": 18
+  },
+  {
+    "id": "body:depended-on-by|Strategy/Assumptions/A-5 I can study one hour a day.md|1",
+    "source": "body:depended-on-by",
+    "from": "Strategy/Assumptions/A-5 I can study one hour a day.md",
+    "to": "[[B-5 Learn Portuguese to B1]]",
+    "toPath": "Strategy/Bets/B-5 Learn Portuguese to B1.md",
+    "label": null,
+    "line": 18
+  },
+  {
+    "id": "body:depended-on-by|Strategy/Assumptions/A-6 Portugal stays open to non-EU residents.md|1",
+    "source": "body:depended-on-by",
+    "from": "Strategy/Assumptions/A-6 Portugal stays open to non-EU residents.md",
+    "to": "[[FP-1 Live in Portugal]]",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null,
+    "line": 18
+  },
+  {
+    "id": "body:depended-on-by|Strategy/Assumptions/A-7 Workshops can fill eight seats.md|1",
+    "source": "body:depended-on-by",
+    "from": "Strategy/Assumptions/A-7 Workshops can fill eight seats.md",
+    "to": "[[B-8 Teach pottery workshops]]",
+    "toPath": "Strategy/Bets/B-8 Teach pottery workshops.md",
+    "label": null,
+    "line": 18
+  },
+  {
+    "id": "canvas|e5",
+    "source": "canvas",
+    "from": "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+    "to": "card:t-and",
+    "toPath": null,
+    "label": null
+  },
+  {
+    "id": "canvas|e6",
+    "source": "canvas",
+    "from": "Strategy/Bets/B-5 Learn Portuguese to B1.md",
+    "to": "card:t-and",
+    "toPath": null,
+    "label": null
+  },
+  {
+    "id": "canvas|e7",
+    "source": "canvas",
+    "from": "card:t-and",
+    "to": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "toPath": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "label": null
+  },
+  {
+    "id": "canvas|e10",
+    "source": "canvas",
+    "from": "card:t-ghost",
+    "to": "Strategy/Bets/B-2 Apply for a digital nomad visa.md",
+    "toPath": "Strategy/Bets/B-2 Apply for a digital nomad visa.md",
+    "label": "Only A-6"
+  },
+  {
+    "id": "canvas|e11",
+    "source": "canvas",
+    "from": "lisbon-neighbourhoods-research.md",
+    "to": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "toPath": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "label": "Non significant relationship"
+  },
+  {
+    "id": "canvas|e17",
+    "source": "canvas",
+    "from": "card:t-routec",
+    "to": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null
+  },
+  {
+    "id": "canvas|e2",
+    "source": "canvas",
+    "from": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "to": "Strategy/Bets/B-2 Apply for a digital nomad visa.md",
+    "toPath": "Strategy/Bets/B-2 Apply for a digital nomad visa.md",
+    "label": "On kill"
+  },
+  {
+    "id": "canvas|e1",
+    "source": "canvas",
+    "from": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "to": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null
+  },
+  {
+    "id": "canvas|e3",
+    "source": "canvas",
+    "from": "Strategy/Assumptions/A-1 D7 accepts freelance income.md",
+    "to": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "toPath": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "label": null
+  },
+  {
+    "id": "canvas|e4",
+    "source": "canvas",
+    "from": "Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md",
+    "to": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "toPath": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "label": null
+  },
+  {
+    "id": "canvas|e8",
+    "source": "canvas",
+    "from": "Strategy/Bets/B-8 Teach pottery workshops.md",
+    "to": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "toPath": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "label": "indirectly serves"
+  },
+  {
+    "id": "canvas|e9",
+    "source": "canvas",
+    "from": "Strategy/Assumptions/A-6 Portugal stays open to non-EU residents.md",
+    "to": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null
+  },
+  {
+    "id": "canvas|e12",
+    "source": "canvas",
+    "from": "Strategy/Bets/B-6 Online ceramics course.md",
+    "to": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
+    "toPath": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
+    "label": "Killed"
+  },
+  {
+    "id": "canvas|e13",
+    "source": "canvas",
+    "from": "Strategy/Bets/B-7  Part-time barista job.md",
+    "to": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "toPath": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "label": "Serves"
+  },
+  {
+    "id": "canvas|e14",
+    "source": "canvas",
+    "from": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "to": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
+    "toPath": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
+    "label": null
+  },
+  {
+    "id": "canvas|e15",
+    "source": "canvas",
+    "from": "Strategy/Bets/B-2 Apply for a digital nomad visa.md",
+    "to": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null
+  },
+  {
+    "id": "canvas|e16",
+    "source": "canvas",
+    "from": "Strategy/Current Position.md",
+    "to": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "toPath": "Strategy/Bets/B-1 Get a D7 visa.md",
+    "label": null
+  }
+]

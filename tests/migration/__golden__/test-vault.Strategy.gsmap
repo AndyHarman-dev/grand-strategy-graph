@@ -1,0 +1,268 @@
+{
+	"version": 1,
+	"positions": {
+		"CP": {
+			"x": -700,
+			"y": 600
+		},
+		"B-1": {
+			"x": 300,
+			"y": 0
+		},
+		"B-2": {
+			"x": 300,
+			"y": 400
+		},
+		"B-3": {
+			"x": 300,
+			"y": 1100
+		},
+		"B-4": {
+			"x": 900,
+			"y": 1100
+		},
+		"B-5": {
+			"x": 300,
+			"y": 1500
+		},
+		"B-6": {
+			"x": 300,
+			"y": 1900
+		},
+		"B-7": {
+			"x": 900,
+			"y": 1500
+		},
+		"B-8": {
+			"x": 900,
+			"y": 1900
+		},
+		"A-1": {
+			"x": -50,
+			"y": -50
+		},
+		"A-2": {
+			"x": -50,
+			"y": 300
+		},
+		"A-3": {
+			"x": -50,
+			"y": 1100
+		},
+		"A-4": {
+			"x": -50,
+			"y": 1400
+		},
+		"A-5": {
+			"x": -50,
+			"y": 1700
+		},
+		"A-6": {
+			"x": 1300,
+			"y": 300
+		},
+		"A-7": {
+			"x": 1300,
+			"y": 1900
+		},
+		"FP-1": {
+			"x": 2200,
+			"y": 200
+		},
+		"FP-2": {
+			"x": 2200,
+			"y": 1300
+		}
+	},
+	"cards": [
+		{
+			"id": "note",
+			"kind": "note-ref",
+			"file": "lisbon-neighbourhoods-research.md",
+			"x": -700,
+			"y": 0,
+			"width": 400,
+			"height": 300,
+			"color": "2"
+		},
+		{
+			"id": "t-route",
+			"kind": "text",
+			"text": "Visa Route",
+			"x": 0,
+			"y": -200,
+			"width": 250,
+			"height": 60
+		},
+		{
+			"id": "t-ghost",
+			"kind": "text",
+			"text": "Golden visa path?",
+			"x": 300,
+			"y": 800,
+			"width": 250,
+			"height": 60,
+			"color": "2",
+			"style": {
+				"textAlign": "center"
+			}
+		},
+		{
+			"id": "t-routec",
+			"kind": "text",
+			"text": "Route C - Freelance visa (suspended)",
+			"x": 900,
+			"y": 400,
+			"width": 250,
+			"height": 60,
+			"style": {
+				"border": "dashed"
+			}
+		},
+		{
+			"id": "t-and",
+			"kind": "text",
+			"text": "AND",
+			"x": 700,
+			"y": 1350,
+			"width": 80,
+			"height": 80,
+			"color": "5",
+			"style": {
+				"shape": "diamond",
+				"textAlign": "center"
+			}
+		},
+		{
+			"id": "t-elab",
+			"kind": "text",
+			"text": "Needs elaboration",
+			"x": 900,
+			"y": 2200,
+			"width": 250,
+			"height": 60,
+			"color": "3"
+		}
+	],
+	"frames": [
+		{
+			"id": "g-visa",
+			"label": "Visa route",
+			"x": -100,
+			"y": -100,
+			"width": 1800,
+			"height": 900
+		},
+		{
+			"id": "g-studio",
+			"label": "Studio route",
+			"x": -100,
+			"y": 1000,
+			"width": 1800,
+			"height": 1300
+		}
+	],
+	"links": [
+		{
+			"id": "e5",
+			"from": {
+				"note": "B-3"
+			},
+			"to": {
+				"card": "t-and"
+			},
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "e6",
+			"from": {
+				"note": "B-5"
+			},
+			"to": {
+				"card": "t-and"
+			},
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "e7",
+			"from": {
+				"card": "t-and"
+			},
+			"to": {
+				"note": "B-4"
+			},
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "e10",
+			"from": {
+				"card": "t-ghost"
+			},
+			"to": {
+				"note": "B-2"
+			},
+			"label": "Only A-6",
+			"style": {
+				"pathfindingMethod": "square"
+			},
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "e11",
+			"from": {
+				"card": "note"
+			},
+			"to": {
+				"note": "B-1"
+			},
+			"label": "Non significant relationship",
+			"style": {
+				"path": "short-dashed"
+			},
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "e17",
+			"from": {
+				"card": "t-routec"
+			},
+			"to": {
+				"note": "FP-1"
+			},
+			"style": {
+				"path": "long-dashed"
+			},
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "e12",
+			"from": {
+				"note": "B-6"
+			},
+			"to": {
+				"note": "FP-2"
+			},
+			"label": "Killed",
+			"color": "4",
+			"fromSide": "right",
+			"toSide": "left"
+		},
+		{
+			"id": "e16",
+			"from": {
+				"note": "CP"
+			},
+			"to": {
+				"note": "B-1"
+			},
+			"fromSide": "right",
+			"toSide": "left"
+		}
+	]
+}

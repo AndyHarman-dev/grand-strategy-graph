@@ -4,15 +4,19 @@ import type { VaultAdapter } from '../src/core/adapter';
 import { MemoryAdapter, type MemoryAdapterOptions } from '../src/core/memory-adapter';
 import type { NoteRecord } from '../src/core/schema';
 
-/** Every file under `dir` as vault-relative path → text, skipping Obsidian's config folder. */
-export function readVaultFiles(dir: string): Record<string, string> {
+/**
+ * Every file under `dir` as vault-relative path → text, skipping Obsidian's config folder.
+ * With `readContent`, other files are listed with empty content (links still resolve to them).
+ */
+export function readVaultFiles(dir: string, readContent: (path: string) => boolean = () => true): Record<string, string> {
   const files: Record<string, string> = {};
   const walk = (current: string) => {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       if (entry.name === '.obsidian') continue;
       const full = join(current, entry.name);
+      const path = relative(dir, full).split(sep).join('/');
       if (entry.isDirectory()) walk(full);
-      else if (entry.isFile()) files[relative(dir, full).split(sep).join('/')] = readFileSync(full, 'utf8');
+      else if (entry.isFile()) files[path] = readContent(path) ? readFileSync(full, 'utf8') : '';
     }
   };
   walk(dir);

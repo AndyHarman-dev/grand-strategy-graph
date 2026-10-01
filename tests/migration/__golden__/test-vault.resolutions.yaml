@@ -1,0 +1,51 @@
+# Migration resolutions, generated 2026-10-01T00:00:00.000Z by tools/migrate.ts.
+# Fill in each `answer` with one of its `options`, then re-run with --resolutions <this file>.
+# Do not edit `key`. Answers are carried over between runs; `stale` keeps answers to questions
+# that are no longer asked. This file holds real strategy content: never commit it.
+version: 1
+items:
+  - key: "link: B-5 Learn Portuguese to B1 / fm:serves / [[B-5 Learn Portuguese to B1]]"
+    question: "B-5 Learn Portuguese to B1: frontmatter `serves` has [[B-5 Learn Portuguese to B1]], which is a self-loop."
+    options:
+      - drop
+      - '{ retarget: "[[<note>]]" }'
+    answer:
+  - key: "link: B-7  Part-time barista job / fm:serves / [[...]]"
+    question: "B-7  Part-time barista job: frontmatter `serves` has [[...]], which is malformed (placeholder link)."
+    options:
+      - drop
+      - '{ retarget: "[[<note>]]" }'
+    answer:
+  - key: "link: B-1 Get a D7 visa / body:assumptions / [[A-9 Testing new assumption]]"
+    question: "B-1 Get a D7 visa: `## Assumptions This Bet Depends On` has [[A-9 Testing new assumption]], which is dangling (resolves to no note)."
+    options:
+      - drop
+      - '{ retarget: "[[<note>]]" }'
+    answer:
+  - key: "link: B-7  Part-time barista job / body:assumptions / [[A-]]"
+    question: "B-7  Part-time barista job: `## Assumptions This Bet Depends On` has [[A-]], which is malformed (id prefix with no number)."
+    options:
+      - drop
+      - '{ retarget: "[[<note>]]" }'
+    answer:
+  - key: "canvas-edge: e12"
+    question: 'Canvas edge e12: B-6 Online ceramics course → FP-2 Own a profitable ceramics studio labelled "Killed" — no relation connects these notes (candidate relation).'
+    options:
+      - drop
+      - annotate
+      - "{ relation: serves | requires | next | assumptions | ultimately-serves, reversed: false }"
+    answer:
+  - key: "canvas-edge: e13"
+    question: 'Canvas edge e13: B-7  Part-time barista job → B-4 Save 20000 for kiln and lease labelled "Serves" — no relation connects these notes (candidate relation).'
+    options:
+      - drop
+      - annotate
+      - "{ relation: serves | requires | next | assumptions | ultimately-serves, reversed: false }"
+    answer:
+  - key: "canvas-edge: e16"
+    question: "Canvas edge e16: Current Position → B-1 Get a D7 visa — no relation connects these notes (candidate relation)."
+    options:
+      - drop
+      - annotate
+      - "{ relation: serves | requires | next | assumptions | ultimately-serves, reversed: false }"
+    answer:
