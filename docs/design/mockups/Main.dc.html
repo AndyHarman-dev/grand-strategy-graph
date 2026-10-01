@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Strategy graph tab</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a993f7}a:hover{color:#c3b4fa}
+.gs{--font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,ui-sans-serif,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-family:var(--font-ui);font-size:13px;color:var(--text-normal);background:var(--background-primary);-webkit-font-smoothing:antialiased}
+.theme-dark{color-scheme:dark;--background-primary:#1e1e1e;--background-primary-alt:#232323;--background-secondary:#262626;--background-secondary-alt:#2e2e2e;--background-modifier-border:#363636;--background-modifier-border-hover:#4d4d4d;--background-modifier-hover:rgba(255,255,255,.06);--background-modifier-form-field:#1b1b1b;--text-normal:#dadada;--text-muted:#a8a8a8;--text-faint:#8f8f8f;--text-accent:#a993f7;--interactive-accent:#7c5ce6;--text-on-accent:#ffffff;--node-bg:#272727;--node-bg-alt:#222222;--edge:#8c8c8c;--canvas-dot:#383838;--frame-bg:rgba(255,255,255,.022);--frame-border:#333333;--shadow:0 10px 28px rgba(0,0,0,.5);--red-rgb:251,70,76;--orange-rgb:233,151,63;--yellow-rgb:224,222,113;--green-rgb:68,207,110;--cyan-rgb:83,223,221;--blue-rgb:2,122,255;--purple-rgb:168,130,255;--gray-rgb:150,150,150;--red-text:#fb6b70;--orange-text:#eda15a;--yellow-text:#e0de71;--green-text:#5ad47f;--cyan-text:#53dfdd;--blue-text:#5aa5ff;--purple-text:#b597ff;--gray-text:#b0b0b0}
+.theme-light{color-scheme:light;--background-primary:#ffffff;--background-primary-alt:#fafafa;--background-secondary:#f6f6f6;--background-secondary-alt:#eeeeee;--background-modifier-border:#e0e0e0;--background-modifier-border-hover:#c8c8c8;--background-modifier-hover:rgba(0,0,0,.05);--background-modifier-form-field:#ffffff;--text-normal:#222222;--text-muted:#5c5c5c;--text-faint:#767676;--text-accent:#6240d8;--interactive-accent:#6c4ee0;--text-on-accent:#ffffff;--node-bg:#ffffff;--node-bg-alt:#fbfbfb;--edge:#8f8f8f;--canvas-dot:#d4d4d4;--frame-bg:rgba(0,0,0,.022);--frame-border:#e3e3e3;--shadow:0 10px 28px rgba(0,0,0,.14);--red-rgb:233,49,71;--orange-rgb:236,117,0;--yellow-rgb:224,172,0;--green-rgb:8,185,78;--cyan-rgb:0,191,188;--blue-rgb:8,109,221;--purple-rgb:120,82,238;--gray-rgb:130,130,130;--red-text:#b8202f;--orange-text:#9c4f00;--yellow-text:#7d6100;--green-text:#0a7535;--cyan-text:#00706e;--blue-text:#0a5cb8;--purple-text:#5b3bd1;--gray-text:#5c5c5c}
+.st-red{--st-rgb:var(--red-rgb);--st-text:var(--red-text)}.st-orange{--st-rgb:var(--orange-rgb);--st-text:var(--orange-text)}.st-yellow{--st-rgb:var(--yellow-rgb);--st-text:var(--yellow-text)}.st-green{--st-rgb:var(--green-rgb);--st-text:var(--green-text)}.st-cyan{--st-rgb:var(--cyan-rgb);--st-text:var(--cyan-text)}.st-blue{--st-rgb:var(--blue-rgb);--st-text:var(--blue-text)}.st-purple{--st-rgb:var(--purple-rgb);--st-text:var(--purple-text)}.st-gray{--st-rgb:var(--gray-rgb);--st-text:var(--gray-text)}
+.mono{font-family:var(--font-mono)}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic-sm{width:13px;height:13px}
+.btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-family:var(--font-ui);font-size:12.5px;color:var(--text-muted);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--background-modifier-hover);color:var(--text-normal)}
+.btn:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:1px}
+.btn[aria-pressed="true"]{background:rgba(var(--purple-rgb),.16);color:var(--text-accent)}
+.btn-icon{width:30px;padding:0;justify-content:center}
+.btn-primary{background:var(--interactive-accent);color:var(--text-on-accent);font-weight:600}
+.btn-primary:hover{background:var(--interactive-accent);color:var(--text-on-accent);filter:brightness(1.08)}
+.btn-line{border:1px solid var(--background-modifier-border);color:var(--text-normal)}
+.btn-danger{border:1px solid rgba(var(--red-rgb),.5);color:var(--red-text)}
+.btn-danger:hover{background:rgba(var(--red-rgb),.1);color:var(--red-text)}
+.btn-xs{height:24px;padding:0 8px;font-size:11.5px}
+.count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:9px;background:rgb(var(--orange-rgb));color:#1e1e1e;font-size:11px;font-weight:700}
+.pill{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:9px;font-size:10.5px;font-weight:600;letter-spacing:.02em;color:var(--st-text);background:rgba(var(--st-rgb),.15);white-space:nowrap;flex:none}
+.canvas-bg{background-color:var(--background-primary);background-image:radial-gradient(var(--canvas-dot) 1.1px,transparent 1.3px);background-size:18px 18px}
+.frame{position:absolute;box-sizing:border-box;border:1px solid var(--frame-border);background:var(--frame-bg);border-radius:14px}
+.frame-label{position:absolute;top:12px;left:16px;font-size:15px;font-weight:600;color:var(--text-muted)}
+.node{all:unset;box-sizing:border-box;position:absolute;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:10px 12px;background:var(--node-bg);border:1px solid rgba(var(--st-rgb),.5);border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.18);color:var(--text-normal);font-family:var(--font-ui);transition:box-shadow .12s,border-color .12s,opacity .12s}
+.node:hover{border-color:rgba(var(--st-rgb),.95)}
+.node:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:3px}
+.node.sel{box-shadow:0 0 0 2px var(--background-primary),0 0 0 4px var(--interactive-accent)}
+.row1{display:flex;align-items:center;gap:6px;height:18px;min-width:0}
+.nid{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-muted);flex:none}
+.ndate{flex:1;min-width:0;font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ndate.warn{color:var(--orange-text);font-weight:600}
+.ntitle{font-size:13px;line-height:16px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.k-asm{border-radius:4px;padding:7px 10px;gap:3px;background:var(--node-bg-alt)}
+.k-asm .ntitle{font-size:12px;line-height:15px;font-weight:500;-webkit-line-clamp:1;white-space:nowrap;text-overflow:ellipsis;display:block}
+.k-asm .pill{height:16px;font-size:10px;padding:0 6px}
+.k-fp{border:2px solid rgb(var(--purple-rgb));border-radius:20px;background:rgba(var(--purple-rgb),.1);box-shadow:0 0 0 4px var(--background-primary),0 0 0 5px rgba(var(--purple-rgb),.45);padding:12px 16px;gap:4px;justify-content:center}
+.k-fp:hover{border-color:rgb(var(--purple-rgb))}
+.k-fp.sel{box-shadow:0 0 0 4px var(--background-primary),0 0 0 6px var(--interactive-accent)}
+.k-fp .ntitle{font-size:14.5px;line-height:18px}
+.fp-tag{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--purple-text)}
+.k-cp{background:var(--background-secondary);border:1px solid var(--background-modifier-border-hover);gap:4px}
+.cp-tag{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text-muted)}
+.cp-sum{font-size:11.5px;line-height:15px;color:var(--text-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.k-card{background:rgba(var(--st-rgb),.12);border-color:rgba(var(--st-rgb),.55);border-radius:6px;align-items:center;justify-content:center;text-align:center;padding:6px 12px;font-size:12.5px;font-weight:500}
+.k-card.dashed{border-style:dashed;border-width:1.5px}
+.k-note{background:var(--background-secondary);border-color:var(--background-modifier-border);flex-direction:row;align-items:center;gap:9px;padding:8px 10px}
+.note-t{font-size:12px;line-height:15px;font-weight:500;word-break:break-all}
+.note-s{font-size:10.5px;color:var(--text-faint)}
+.s-dormant{opacity:.66}.s-dormant .ntitle{color:var(--text-muted)}
+.s-killed{opacity:.55}.s-killed .ntitle{text-decoration:line-through;text-decoration-color:rgba(var(--red-rgb),.8)}
+.badge{position:absolute;top:-9px;right:-9px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:10px;background:rgb(var(--orange-rgb));color:#1e1e1e;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--background-primary)}
+.badge.issue{background:var(--text-faint);color:var(--background-primary)}
+.badge.issue.two{right:15px}
+.e{fill:none;stroke-width:1.6;transition:opacity .12s}
+.e-serves{stroke:var(--edge)}
+.e-next{stroke:rgb(var(--orange-rgb));stroke-dasharray:7 5}
+.e-leader{stroke:var(--text-faint);stroke-width:1.1;stroke-dasharray:3 4}
+.e-requires{stroke:rgb(var(--purple-rgb));stroke-width:2.2;stroke-dasharray:.1 5;stroke-linecap:round}
+.e-ult{stroke:rgb(var(--purple-rgb));stroke-opacity:.75;stroke-width:1.3;stroke-dasharray:12 6}
+.e-free{stroke:var(--text-faint);stroke-width:1.3;stroke-dasharray:6 4}
+.ah{stroke:none}
+.ah-serves{fill:var(--edge)}.ah-next{fill:rgb(var(--orange-rgb))}.ah-requires{fill:rgb(var(--purple-rgb))}.ah-ult{fill:rgb(var(--purple-rgb));opacity:.75}.ah-free{fill:var(--text-faint)}
+.e-dim{opacity:.38}
+.e-hl{stroke-width:2.6;opacity:1}
+.e-hl.e-serves{stroke:var(--text-accent)}.ah-hl.ah-serves{fill:var(--text-accent)}
+.e-hl.e-leader{stroke:var(--text-muted);stroke-width:1.6}
+.elabel{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:11px;font-weight:600;padding:1px 7px;border-radius:9px;background:var(--background-primary);border:1px solid var(--background-modifier-border);color:var(--text-muted)}
+.elabel.next{color:var(--orange-text);border-color:rgba(var(--orange-rgb),.5)}
+.elabel.ult{color:var(--purple-text);border-color:rgba(var(--purple-rgb),.45)}
+.tbar{position:absolute;top:12px;left:12px;display:flex;align-items:center;gap:2px;padding:3px;border-radius:8px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.tsep{width:1px;height:18px;background:var(--background-modifier-border);margin:0 4px}
+.ctrl{position:absolute;left:12px;bottom:12px;display:flex;flex-direction:column;border-radius:8px;overflow:hidden;background:var(--background-secondary);border:1px solid var(--background-modifier-border)}
+.ctrl .btn{border-radius:0;height:32px;width:32px}
+.mm{position:absolute;right:12px;bottom:12px;width:168px;height:136px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:8px;overflow:hidden}
+.mm-n{position:absolute;border-radius:2px;background:rgba(var(--st-rgb),.55)}
+.mm-v{position:absolute;left:3px;top:3px;right:3px;bottom:3px;border:1.5px solid var(--text-accent);border-radius:4px;background:rgba(var(--purple-rgb),.06)}
+.panel{position:absolute;box-sizing:border-box;background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:10px;box-shadow:var(--shadow)}
+.smell{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:3px;width:100%;padding:9px 12px;border-radius:7px;cursor:pointer}
+.smell:hover{background:var(--background-modifier-hover)}
+.smell:focus-visible{outline:2px solid var(--interactive-accent)}
+.smell-k{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.03em;color:var(--orange-text)}
+.smell-k.issue{color:var(--text-muted)}
+.smell-t{font-size:12.5px;font-weight:600;color:var(--text-normal)}
+.smell-d{font-size:12px;line-height:16px;color:var(--text-muted)}
+.ins{display:flex;flex-direction:column;background:var(--background-secondary);border-left:1px solid var(--background-modifier-border);overflow:auto}
+.sec{padding:14px 16px;border-top:1px solid var(--background-modifier-border);display:flex;flex-direction:column;gap:10px}
+.sec-h{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld.full{grid-column:span 2}
+.fld label{font-size:11.5px;color:var(--text-muted)}
+.fld input{box-sizing:border-box;width:100%;height:30px;padding:0 9px;border-radius:5px;border:1px solid var(--background-modifier-border);background:var(--background-modifier-form-field);color:var(--text-normal);font-family:var(--font-ui);font-size:13px}
+.fld input:focus{outline:none;border-color:var(--interactive-accent);box-shadow:0 0 0 2px rgba(var(--purple-rgb),.25)}
+.segs{display:flex;flex-wrap:wrap;gap:6px}
+.seg{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;font-size:12px;font-weight:600;color:var(--text-muted);border:1px solid var(--background-modifier-border);cursor:pointer}
+.seg:hover{border-color:rgba(var(--st-rgb),.7)}
+.seg:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:1px}
+.seg .dot{width:7px;height:7px;border-radius:50%;background:rgb(var(--st-rgb))}
+.seg[aria-pressed="true"]{color:var(--st-text);background:rgba(var(--st-rgb),.15);border-color:rgba(var(--st-rgb),.6)}
+.rel{display:flex;flex-direction:column;gap:6px}
+.rel-h{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)}
+.rel-h .grow{flex:1}
+.tag{font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--background-modifier-hover);color:var(--text-faint)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;height:26px;max-width:100%;border-radius:13px;background:var(--background-primary);border:1px solid var(--background-modifier-border);overflow:hidden}
+.chip.unresolved{border-style:dashed;opacity:.85}
+.chip-go{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:0 6px 0 9px;height:100%;font-size:12px;min-width:0}
+.chip-go:hover{background:var(--background-modifier-hover)}
+.chip-go:focus-visible{outline:2px solid var(--interactive-accent)}
+.chip-dot{width:7px;height:7px;border-radius:50%;background:rgb(var(--st-rgb));flex:none}
+.chip-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.chip-x{all:unset;cursor:pointer;width:24px;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-faint)}
+.chip-x:hover{color:var(--text-normal);background:var(--background-modifier-hover)}
+.none{font-size:12px;color:var(--text-faint);font-style:italic}
+.callout{display:flex;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(var(--orange-rgb),.12);color:var(--text-normal)}
+.callout .ic{color:var(--orange-text);margin-top:1px}
+.callout.issue{background:var(--background-modifier-hover)}
+.callout.issue .ic{color:var(--text-muted)}
+.logl{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none}
+.logl li{font-size:12.5px;line-height:17px;color:var(--text-normal)}
+.logl .d{font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted)}
+.logrow{display:flex;gap:6px}
+.logrow input{flex:1;min-width:0;box-sizing:border-box;height:30px;padding:0 9px;border-radius:5px;border:1px solid var(--background-modifier-border);background:var(--background-modifier-form-field);color:var(--text-normal);font-family:var(--font-ui);font-size:13px}
+.logrow input:focus{outline:none;border-color:var(--interactive-accent)}
+.tab{display:flex;align-items:center;gap:7px;height:30px;padding:0 10px 0 12px;border-radius:7px 7px 0 0;font-size:12.5px;color:var(--text-muted);max-width:220px}
+.tab.on{background:var(--background-primary);color:var(--text-normal)}
+.rib{all:unset;box-sizing:border-box;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--text-muted);cursor:pointer}
+.rib:hover{background:var(--background-modifier-hover);color:var(--text-normal)}
+</style>
+</helmet>
+<div class="gs theme-{{theme}}" style="width: 1440px; height: 900px; display: flex; overflow: hidden; position: relative">
+
+  <nav aria-label="Ribbon" style="width: 44px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 8px; background: var(--background-secondary); border-right: 1px solid var(--background-modifier-border)">
+    <button type="button" class="rib" aria-label="Files"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2z"></path></svg></button>
+    <button type="button" class="rib" aria-label="Search"><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg></button>
+    <button type="button" class="rib" aria-label="Open strategy graph" style="color: var(--text-accent); background: rgba(var(--purple-rgb),.14)"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.5"></circle><circle cx="19" cy="5" r="2.5"></circle><circle cx="19" cy="19" r="2.5"></circle><path d="M7.4 11 16.6 6M7.4 13l9.2 5"></path></svg></button>
+    <button type="button" class="rib" aria-label="New bet"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg></button>
+  </nav>
+
+  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+    <div style="height: 36px; flex: none; display: flex; align-items: flex-end; gap: 2px; padding: 0 8px; background: var(--background-secondary)">
+      <div class="tab on">
+        <svg class="ic ic-sm" viewBox="0 0 24 24"><circle cx="5" cy="12" r="2.5"></circle><circle cx="19" cy="5" r="2.5"></circle><circle cx="19" cy="19" r="2.5"></circle><path d="M7.4 11 16.6 6M7.4 13l9.2 5"></path></svg>
+        <span>Strategy</span>
+        <button type="button" class="btn btn-icon" aria-label="Close tab" style="width: 20px; height: 20px; margin-left: 6px"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+      </div>
+      <div class="tab">
+        <svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>
+        <span>B-1 Get a D7 visa</span>
+      </div>
+    </div>
+
+    <header style="height: 40px; flex: none; display: flex; align-items: center; gap: 4px; padding: 0 10px; border-bottom: 1px solid var(--background-modifier-border); background: var(--background-primary)">
+      <button type="button" class="btn btn-icon" aria-label="Navigate back"><svg class="ic" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></button>
+      <button type="button" class="btn btn-icon" aria-label="Navigate forward"><svg class="ic" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></button>
+      <div style="flex: 1; text-align: center; font-size: 13px; color: var(--text-muted)">Strategy <span style="color: var(--text-faint)">/</span> <span style="color: var(--text-normal); font-weight: 600">Strategy.gsmap</span></div>
+      <span style="font-size: 11.5px; color: var(--text-faint); margin-right: 6px">{{summary}}</span>
+      <button type="button" class="btn btn-icon" aria-label="More options"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>
+    </header>
+
+    <div style="flex: 1; min-height: 0; display: flex">
+      <div class="canvas-bg" style="flex: 1; min-width: 0; position: relative; overflow: hidden" onClick="{{clearSel}}">
+
+        <div style="position: absolute; left: 24px; top: 58px; width: 1340px; height: 1080px; transform: scale(.68); transform-origin: 0 0">
+          <div class="frame" style="left: 210px; top: 0px; width: 850px; height: 410px"><span class="frame-label">Visa route</span></div>
+          <div class="frame" style="left: 210px; top: 460px; width: 850px; height: 610px"><span class="frame-label">Studio route</span></div>
+
+          <svg width="1340" height="1080" viewBox="0 0 1340 1080" style="position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none" aria-hidden="true">
+            <sc-for list="{{edges}}" as="e" hint-placeholder-count="20">
+              <path class="{{e.cls}}" d="{{e.d}}"></path>
+              <sc-if value="{{e.hasArrow}}" hint-placeholder-val="{{true}}"><path class="{{e.acls}}" d="{{e.a}}"></path></sc-if>
+            </sc-for>
+          </svg>
+
+          <sc-for list="{{labels}}" as="l" hint-placeholder-count="4">
+            <span class="elabel {{l.cls}}" style="left: {{l.x}}px; top: {{l.y}}px">{{l.text}}</span>
+          </sc-for>
+
+          <sc-for list="{{nodes}}" as="n" hint-placeholder-count="22">
+            <button type="button" class="node {{n.cls}}" style="left: {{n.x}}px; top: {{n.y}}px; width: {{n.w}}px; height: {{n.h}}px" aria-label="{{n.aria}}" aria-pressed="{{n.selected}}" onClick="{{n.select}}">
+              <sc-if value="{{n.isBet}}" hint-placeholder-val="{{true}}">
+                <span class="row1"><span class="nid">{{n.id}}</span><span class="ndate {{n.dateCls}}">{{n.dateText}}</span><span class="pill {{n.tone}}">{{n.status}}</span></span>
+                <span class="ntitle">{{n.title}}</span>
+              </sc-if>
+              <sc-if value="{{n.isAsm}}" hint-placeholder-val="{{false}}">
+                <span class="row1"><span class="nid">{{n.id}}</span><span class="ndate {{n.dateCls}}">{{n.dateText}}</span><span class="pill {{n.tone}}">{{n.status}}</span></span>
+                <span class="ntitle">{{n.title}}</span>
+              </sc-if>
+              <sc-if value="{{n.isFp}}" hint-placeholder-val="{{false}}">
+                <span class="fp-tag"><svg class="ic ic-sm" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>FIXED POINT · {{n.id}}</span>
+                <span class="ntitle">{{n.title}}</span>
+              </sc-if>
+              <sc-if value="{{n.isCp}}" hint-placeholder-val="{{false}}">
+                <span class="cp-tag"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>YOU ARE HERE</span>
+                <span class="ntitle" style="font-size: 13px">Current Position</span>
+                <span class="cp-sum">{{n.summary}}</span>
+              </sc-if>
+              <sc-if value="{{n.isCard}}" hint-placeholder-val="{{false}}">
+                <span>{{n.title}}</span>
+              </sc-if>
+              <sc-if value="{{n.isNote}}" hint-placeholder-val="{{false}}">
+                <svg class="ic" viewBox="0 0 24 24" style="color: var(--text-muted)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M16 13H8M16 17H8"></path></svg>
+                <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="note-t">{{n.title}}</span><span class="note-s">Note reference</span></span>
+              </sc-if>
+              <sc-if value="{{n.smell}}" hint-placeholder-val="{{false}}"><span class="badge" title="{{n.smellText}}">{{n.smellCount}}</span></sc-if>
+              <sc-if value="{{n.issue}}" hint-placeholder-val="{{false}}"><span class="badge issue" title="{{n.issueText}}">?</span></sc-if>
+            </button>
+          </sc-for>
+        </div>
+
+        <div class="tbar">
+          <button type="button" class="btn btn-icon" aria-label="Fit view"><svg class="ic" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg></button>
+          <span class="tsep"></span>
+          <button type="button" class="btn" aria-pressed="{{ult}}" onClick="{{toggleUlt}}"><svg class="ic" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>Ultimately serves</button>
+          <button type="button" class="btn" aria-pressed="{{smellsOpen}}" onClick="{{toggleSmells}}"><svg class="ic" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>Smells <span class="count">{{smellTotal}}</span></button>
+          <span class="tsep"></span>
+          <button type="button" class="btn"><svg class="ic" viewBox="0 0 24 24"><path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"></path><path d="M15 3v6h6"></path></svg>Add card</button>
+          <button type="button" class="btn"><svg class="ic" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"></circle><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"></path><circle cx="18" cy="5" r="3"></circle></svg>Review walk</button>
+        </div>
+
+        <sc-if value="{{smellsOpen}}" hint-placeholder-val="{{false}}">
+          <div class="panel" style="top: 58px; right: 12px; width: 312px; max-height: 560px; display: flex; flex-direction: column; overflow: hidden" onClick="{{stop}}">
+            <div style="display: flex; align-items: center; gap: 8px; padding: 10px 8px 8px 14px; border-bottom: 1px solid var(--background-modifier-border)">
+              <span style="font-size: 13px; font-weight: 700">Smells</span><span class="count">{{smellTotal}}</span>
+              <span style="flex: 1"></span>
+              <button type="button" class="btn btn-icon" aria-label="Close smells panel" onClick="{{toggleSmells}}"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+            </div>
+            <div style="padding: 6px; overflow: auto; display: flex; flex-direction: column; gap: 2px">
+              <sc-for list="{{smellList}}" as="s" hint-placeholder-count="5">
+                <button type="button" class="smell" onClick="{{s.go}}">
+                  <span class="smell-k {{s.kcls}}">{{s.kind}}</span>
+                  <span class="smell-t"><span class="mono" style="font-size: 11.5px; color: var(--text-muted)">{{s.id}}</span> {{s.title}}</span>
+                  <span class="smell-d">{{s.text}}</span>
+                </button>
+              </sc-for>
+              <sc-if value="{{noSmells}}" hint-placeholder-val="{{false}}"><p style="margin: 8px; font-size: 12.5px; color: var(--text-muted)">No smells. Every active bet is anchored and gated.</p></sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <div class="ctrl" onClick="{{stop}}">
+          <button type="button" class="btn btn-icon" aria-label="Zoom in"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg></button>
+          <button type="button" class="btn btn-icon" aria-label="Zoom out"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14"></path></svg></button>
+          <button type="button" class="btn btn-icon" aria-label="Lock positions"><svg class="ic" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0"></path></svg></button>
+        </div>
+
+        <div class="mm" aria-hidden="true">
+          <sc-for list="{{nodes}}" as="n" hint-placeholder-count="22">
+            <span class="mm-n {{n.tone}}" style="left: {{n.mx}}px; top: {{n.my}}px; width: {{n.mw}}px; height: {{n.mh}}px"></span>
+          </sc-for>
+          <span class="mm-v"></span>
+        </div>
+      </div>
+
+      <aside class="ins" aria-label="Inspector" style="width: 360px; flex: none">
+        <sc-if value="{{ins.empty}}" hint-placeholder-val="{{false}}">
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 32px; text-align: center; color: var(--text-muted)">
+            <svg class="ic" viewBox="0 0 24 24" style="width: 28px; height: 28px; color: var(--text-faint)"><path d="M3 3l7.1 17 2.5-7.4L20 10z"></path></svg>
+            <span style="font-size: 13.5px; font-weight: 600; color: var(--text-normal)">Nothing selected</span>
+            <span style="font-size: 12.5px; line-height: 18px">Select a node to edit its fields, relations and log. Drag from a handle to draw a relation.</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ins.full}}" hint-placeholder-val="{{true}}">
+          <div style="padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <span class="pill {{ins.tone}}" style="text-transform: uppercase; letter-spacing: .07em">{{ins.kindLabel}}</span>
+              <span class="mono" style="font-size: 12px; color: var(--text-muted)">{{ins.id}}</span>
+              <span style="flex: 1"></span>
+              <button type="button" class="btn btn-icon" aria-label="Open in split"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M12 3v18"></path></svg></button>
+              <button type="button" class="btn btn-icon" aria-label="Close inspector" onClick="{{clearSel}}"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+            </div>
+            <h2 style="margin: 0; font-size: 19px; line-height: 24px; font-weight: 700">{{ins.title}}</h2>
+            <sc-if value="{{ins.hasStatus}}" hint-placeholder-val="{{true}}">
+              <div class="segs" role="group" aria-label="Status">
+                <sc-for list="{{ins.statuses}}" as="s" hint-placeholder-count="5">
+                  <button type="button" class="seg {{s.tone}}" aria-pressed="{{s.on}}" onClick="{{s.pick}}"><span class="dot"></span>{{s.label}}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-for list="{{ins.smells}}" as="s" hint-placeholder-count="1">
+              <div class="callout {{s.kcls}}">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>
+                <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 700">{{s.kind}}</span><span style="font-size: 12px; line-height: 16px; color: var(--text-muted)">{{s.text}}</span></span>
+              </div>
+            </sc-for>
+            <sc-if value="{{ins.canKill}}" hint-placeholder-val="{{true}}">
+              <button type="button" class="btn btn-danger" style="justify-content: center; height: 32px" onClick="{{ins.kill}}"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg>Kill and activate {{ins.next}}</button>
+            </sc-if>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><span>{{ins.fieldsHeading}}</span></div>
+            <div class="fields">
+              <sc-for list="{{ins.fields}}" as="f" hint-placeholder-count="6">
+                <div class="fld {{f.cls}}">
+                  <label for="{{f.fid}}">{{f.label}}</label>
+                  <input id="{{f.fid}}" type="{{f.type}}" value="{{f.value}}" onChange="{{f.change}}">
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <sc-if value="{{ins.hasRels}}" hint-placeholder-val="{{true}}">
+            <div class="sec">
+              <div class="sec-h"><span>Relations</span><span style="font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-faint)">frontmatter</span></div>
+              <sc-for list="{{ins.rels}}" as="r" hint-placeholder-count="5">
+                <div class="rel">
+                  <div class="rel-h"><span>{{r.label}}</span><sc-if value="{{r.computed}}" hint-placeholder-val="{{false}}"><span class="tag">computed</span></sc-if><span class="grow"></span><sc-if value="{{r.addable}}" hint-placeholder-val="{{true}}"><button type="button" class="btn btn-xs" aria-label="{{r.addAria}}">+ Add</button></sc-if></div>
+                  <div class="chips">
+                    <sc-for list="{{r.chips}}" as="c" hint-placeholder-count="1">
+                      <span class="chip {{c.tone}}">
+                        <button type="button" class="chip-go" onClick="{{c.go}}"><span class="chip-dot"></span><span class="mono" style="font-size: 11px; color: var(--text-muted)">{{c.id}}</span><span class="chip-t">{{c.title}}</span></button>
+                        <sc-if value="{{c.removable}}" hint-placeholder-val="{{true}}"><button type="button" class="chip-x" aria-label="{{c.removeAria}}"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></sc-if>
+                      </span>
+                    </sc-for>
+                    <sc-if value="{{r.empty}}" hint-placeholder-val="{{false}}"><span class="none">None</span></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ins.hasLog}}" hint-placeholder-val="{{true}}">
+            <div class="sec">
+              <div class="sec-h"><span>Log</span></div>
+              <ul class="logl">
+                <sc-for list="{{ins.log}}" as="g" hint-placeholder-count="2">
+                  <li><span class="d">{{g.date}}</span> {{g.text}}</li>
+                </sc-for>
+              </ul>
+              <div class="logrow">
+                <label for="logdraft" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">New log entry</label>
+                <input id="logdraft" type="text" placeholder="On track / off track / signal observed" value="{{draft}}" onChange="{{onDraft}}" onKeyDown="{{onDraftKey}}">
+                <button type="button" class="btn btn-line" onClick="{{addLog}}">+ Log entry</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ins.isCard}}" hint-placeholder-val="{{false}}">
+            <div class="sec">
+              <div class="sec-h"><span>Promote to note</span></div>
+              <span style="font-size: 12.5px; line-height: 18px; color: var(--text-muted)">Turns this free card into a real note. Its position moves to the new note's id.</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 6px">
+                <button type="button" class="btn btn-line btn-xs">Route</button>
+                <button type="button" class="btn btn-line btn-xs">Ghost route</button>
+                <button type="button" class="btn btn-line btn-xs">Milestone</button>
+                <button type="button" class="btn btn-line btn-xs">Bet</button>
+                <button type="button" class="btn btn-line btn-xs">Assumption</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <div class="sec" style="flex-direction: row; gap: 8px">
+            <button type="button" class="btn btn-line" style="flex: 1; justify-content: center"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M12 3v18"></path></svg>Open in split</button>
+            <button type="button" class="btn btn-line" style="flex: 1; justify-content: center"><svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Open note</button>
+          </div>
+        </sc-if>
+      </aside>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":900}}'>
+const TODAY = '2026-10-01';
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmt(d) { if (!d) return ''; const p = d.slice(0, 10).split('-'); return parseInt(p[2], 10) + ' ' + MONTHS[parseInt(p[1], 10) - 1] + ' ' + p[0]; }
+const SIZE = { bet: [220, 84], asm: [200, 60], fp: [200, 96], cp: [170, 84], note: [170, 56], card: [180, 44] };
+const NODES = [
+  { id: 'NOTE', kind: 'note', title: 'lisbon-neighbourhoods-research', x: 0, y: 150 },
+  { id: 'CP', kind: 'cp', title: 'Current Position', x: 0, y: 420 },
+  { id: 'A-1', kind: 'asm', title: 'D7 accepts freelance income', x: 240, y: 60 },
+  { id: 'A-2', kind: 'asm', title: 'Rent in Lisbon stays under 1200', x: 240, y: 200 },
+  { id: 'GHOST', kind: 'card', title: 'Golden visa path?', tone: 'orange', x: 240, y: 330 },
+  { id: 'B-1', kind: 'bet', title: 'Get a D7 visa', x: 520, y: 90 },
+  { id: 'B-2', kind: 'bet', title: 'Apply for a digital nomad visa', x: 520, y: 260 },
+  { id: 'ROUTEC', kind: 'card', title: 'Route C - Freelance visa (suspended)', tone: 'gray', dashed: true, x: 820, y: 36, w: 200 },
+  { id: 'A-6', kind: 'asm', title: 'Portugal stays open to non-EU residents', x: 1130, y: 40 },
+  { id: 'FP-1', kind: 'fp', title: 'Live in Portugal', x: 1130, y: 170 },
+  { id: 'A-3', kind: 'asm', title: 'Weekend market stalls are available', x: 240, y: 500 },
+  { id: 'A-4', kind: 'asm', title: 'Tourists buy handmade ceramics', x: 240, y: 590 },
+  { id: 'B-3', kind: 'bet', title: 'Sell pottery at weekend markets', x: 520, y: 520 },
+  { id: 'A-5', kind: 'asm', title: 'I can study one hour a day', x: 240, y: 720 },
+  { id: 'B-5', kind: 'bet', title: 'Learn Portuguese to B1', x: 520, y: 700 },
+  { id: 'B-4', kind: 'bet', title: 'Save 20000 for kiln and lease', x: 820, y: 600 },
+  { id: 'FP-2', kind: 'fp', title: 'Own a profitable ceramics studio', x: 1130, y: 620 },
+  { id: 'B-8', kind: 'bet', title: 'Teach pottery workshops', x: 820, y: 780 },
+  { id: 'B-6', kind: 'bet', title: 'Online ceramics course', x: 520, y: 860 },
+  { id: 'A-7', kind: 'asm', title: 'Workshops can fill eight seats', x: 1130, y: 880 },
+  { id: 'B-7', kind: 'bet', title: 'Part-time barista job', x: 820, y: 900 },
+  { id: 'ELAB', kind: 'card', title: 'Needs elaboration', tone: 'yellow', x: 820, y: 1010 }
+];
+const BY = {}; NODES.forEach(function (n) { BY[n.id] = n; });
+const D = {
+  'B-1': { status: 'active', x: 'applying for the D7 visa', y: 'an approved visa', z: 'five months', exp: 'D7 visa approved', started: '2026-07-05', deadline: '2026-12-01', serves: ['FP-1'], requires: [], next: 'B-2', asm: ['A-1', 'A-2'], ult: [], log: ['2026-07-05|created'] },
+  'B-2': { status: 'dormant', x: 'applying for the nomad visa', y: 'an approved visa', z: 'four months', exp: 'Digital nomad visa approved', started: '2026-07-05', deadline: '', serves: ['FP-1'], requires: [], next: '', asm: [], ult: [], log: ['2026-07-05|created'] },
+  'B-3': { status: 'active', x: 'selling at weekend markets', y: '500 EUR a month', z: 'ten weeks', exp: '500 EUR a month from market sales', started: '2026-08-01', deadline: '2026-10-15', serves: ['B-4'], requires: [], next: '', asm: ['A-3', 'A-4'], ult: [], log: ['2026-08-01|created'] },
+  'B-4': { status: 'active', x: 'saving from both incomes', y: '20000 EUR saved', z: 'ten months', exp: 'Saved 20000 EUR: 1) kiln fund 2) first lease deposit', started: '2026-08-01', deadline: '2027-06-01', serves: ['FP-2'], requires: ['B-3', 'B-5'], next: '', asm: ['A-2'], ult: [], log: ['2026-08-01|created'] },
+  'B-5': { status: 'won', x: 'studying Portuguese daily', y: 'a B1 certificate', z: 'two months', exp: 'Passed a B1 exam', started: '2026-07-10', deadline: '2026-09-10', serves: ['FP-1'], requires: [], next: '', asm: ['A-5'], ult: [], log: ['2026-07-10|created', '2026-09-10|passed'] },
+  'B-6': { status: 'killed', x: 'taking an online course', y: 'throwing skills', z: 'one month', exp: '', started: '2026-07-01', deadline: '2026-08-01', serves: [], phantom: 'FP-2 Profitable pottery business', requires: [], next: '', asm: [], ult: [], log: ['2026-07-01|created', '2026-07-20|cancelled'] },
+  'B-7': { status: 'active', x: 'working part-time', y: 'a side income', z: 'ongoing', exp: 'Steady side income', started: '2026-08-15', deadline: '', serves: [], requires: [], next: '', asm: [], ult: [], log: ['2026-08-15|created'] },
+  'B-8': { status: 'dormant', x: 'teaching workshops', y: 'rent covered', z: 'three months', exp: 'Workshops cover studio rent', started: '2026-08-20', deadline: '', serves: ['B-4'], requires: [], next: '', asm: ['A-7'], ult: ['FP-2'], log: ['2026-08-20|created'] },
+  'A-1': { status: 'confirmed', stmt: 'The D7 visa accepts freelance income.', fals: 'Consulate rejects freelance income.', created: '2026-07-05', verify: '2026-07-20', log: ['2026-08-01|Created'] },
+  'A-2': { status: 'unverified', stmt: 'Rent in Lisbon stays under 1200 EUR.', fals: 'Listings median above 1200.', created: '2026-07-05', verify: '', log: ['2026-08-01|Created'] },
+  'A-3': { status: 'falsified', stmt: 'Weekend market stalls are available.', fals: 'Waitlist longer than 3 months.', created: '2026-08-01', verify: '2026-08-10', log: ['2026-08-01|Created'] },
+  'A-4': { status: 'undeterminable', stmt: 'Tourists buy handmade ceramics.', fals: 'No sales over 4 weekends.', created: '2026-08-01', verify: '', log: ['2026-08-01|Created'] },
+  'A-5': { status: 'unverified', stmt: 'I can study one hour a day.', fals: 'Fewer than 4 sessions a week.', created: '2026-07-10', verify: '2026-10-01', log: ['2026-08-01|Created'] },
+  'A-6': { status: 'unverified', stmt: 'Portugal stays open to non-EU residents.', fals: 'Policy change announced.', created: '2026-07-01', verify: '', log: ['2026-08-01|Created'] },
+  'A-7': { status: 'unverified', stmt: 'Workshops can fill eight seats.', fals: 'Fewer than 4 sign-ups.', created: '2026-08-20', verify: '2026-11-01', log: ['2026-08-01|Created'] },
+  'FP-1': { stmt: 'I live in Portugal long-term with legal residency.', established: '2026-07-01', asm: ['A-6'] },
+  'FP-2': { stmt: 'I own a ceramics studio that pays for itself and me.', established: '2026-07-01', asm: [] },
+  'CP': { stmt: 'Employed remotely, saving money, hobby potter.', date: '2026-08-01' },
+  'GHOST': { text: 'Golden visa path?', links: ['B-2'] },
+  'ROUTEC': { text: 'Route C - Freelance visa (suspended)', links: ['FP-1'] },
+  'ELAB': { text: 'Needs elaboration', links: [] },
+  'NOTE': { path: 'lisbon-neighbourhoods-research.md', links: ['B-1'] }
+};
+const TONE = { active: 'st-green', dormant: 'st-gray', won: 'st-cyan', killed: 'st-red', extended: 'st-yellow', unverified: 'st-orange', confirmed: 'st-green', falsified: 'st-red', undeterminable: 'st-gray' };
+const BET_ST = ['active', 'dormant', 'won', 'killed', 'extended'];
+const ASM_ST = ['unverified', 'confirmed', 'falsified', 'undeterminable'];
+function R(x, y) { return 'M' + x + ',' + y + ' L' + (x - 9) + ',' + (y - 4.5) + ' L' + (x - 9) + ',' + (y + 4.5) + ' Z'; }
+function U(x, y) { return 'M' + x + ',' + y + ' L' + (x - 4.5) + ',' + (y + 9) + ' L' + (x + 4.5) + ',' + (y + 9) + ' Z'; }
+function Dn(x, y) { return 'M' + x + ',' + y + ' L' + (x - 4.5) + ',' + (y - 9) + ' L' + (x + 4.5) + ',' + (y - 9) + ' Z'; }
+const EDGES = [
+  { f: 'B-1', t: 'FP-1', k: 'serves', d: 'M740,132 C935,132 935,218 1122,218', a: R(1130, 218) },
+  { f: 'B-2', t: 'FP-1', k: 'serves', d: 'M740,302 C935,302 935,236 1122,236', a: R(1130, 236) },
+  { f: 'B-1', t: 'B-2', k: 'next', d: 'M630,174 L630,252', a: Dn(630, 260), label: 'on kill', lx: 630, ly: 214 },
+  { f: 'A-1', t: 'B-1', k: 'leader', d: 'M440,90 C480,90 480,118 520,118' },
+  { f: 'A-2', t: 'B-1', k: 'leader', d: 'M440,226 C480,226 480,146 520,146' },
+  { f: 'A-2', t: 'B-4', k: 'leader', d: 'M440,238 C480,238 480,435 620,435 S780,618 820,618' },
+  { f: 'B-3', t: 'B-4', k: 'serves', d: 'M740,556 C780,556 780,634 812,634', a: R(820, 634) },
+  { f: 'B-3', t: 'B-4', k: 'requires', d: 'M740,574 C785,574 785,650 812,650', a: R(820, 650) },
+  { f: 'B-5', t: 'B-4', k: 'requires', d: 'M740,730 C790,730 790,666 812,666', a: R(820, 666) },
+  { f: 'B-5', t: 'FP-1', k: 'serves', d: 'M740,752 C1080,752 1230,500 1230,274', a: U(1230, 266) },
+  { f: 'B-4', t: 'FP-2', k: 'serves', d: 'M1040,642 C1085,642 1085,668 1122,668', a: R(1130, 668) },
+  { f: 'A-3', t: 'B-3', k: 'leader', d: 'M440,530 C480,530 480,552 520,552' },
+  { f: 'A-4', t: 'B-3', k: 'leader', d: 'M440,620 C480,620 480,574 520,574' },
+  { f: 'A-5', t: 'B-5', k: 'leader', d: 'M440,750 C480,750 480,742 520,742' },
+  { f: 'A-6', t: 'FP-1', k: 'leader', d: 'M1230,100 L1230,170' },
+  { f: 'A-7', t: 'B-8', k: 'leader', d: 'M1130,910 C1085,910 1085,840 1040,840' },
+  { f: 'B-8', t: 'B-4', k: 'serves', d: 'M930,780 L930,692', a: U(930, 684) },
+  { f: 'B-8', t: 'FP-2', k: 'ult', d: 'M1040,800 C1120,800 1180,790 1180,724', a: U(1180, 716), label: 'ultimately serves', lx: 1128, ly: 790 },
+  { f: 'NOTE', t: 'B-1', k: 'free', d: 'M170,178 C345,178 345,108 512,108', a: R(520, 108), label: 'Non significant relationship', lx: 345, ly: 143 },
+  { f: 'GHOST', t: 'B-2', k: 'free', d: 'M420,352 C470,352 470,316 512,316', a: R(520, 316), label: 'Only A-6', lx: 466, ly: 336 },
+  { f: 'ROUTEC', t: 'FP-1', k: 'free', d: 'M1020,58 C1075,58 1075,200 1122,200', a: R(1130, 200) }
+];
+const ISSUES = { 'B-6': { kind: 'Phantom target', text: 'Serves [[FP-2 Profitable pottery business]], an untyped stray note at the vault root. Kept as is and listed in the report (D13).' } };
+const KIND_LABEL = { bet: 'Bet', asm: 'Assumption', fp: 'Fixed point', cp: 'Current position', card: 'Free card', note: 'Note reference' };
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sel: 'B-1', status: {}, edits: {}, logs: {}, draft: '', ult: false, smellsOpen: true };
+  }
+  val(id, f) { const k = id + '.' + f; return this.state.edits[k] !== undefined ? this.state.edits[k] : (D[id] ? D[id][f] : ''); }
+  stat(id) { return this.state.status[id] || (D[id] ? D[id].status : undefined); }
+  logOf(id) { return this.state.logs[id] || (D[id] && D[id].log) || []; }
+  reachesFp(id, seen) {
+    if (seen[id]) return false; seen[id] = true;
+    const s = (D[id] && D[id].serves) || [];
+    for (let i = 0; i < s.length; i++) { const t = BY[s[i]]; if (!t) continue; if (t.kind === 'fp') return true; if (t.kind === 'bet' && this.reachesFp(s[i], seen)) return true; }
+    return false;
+  }
+  smellsOf(id) {
+    const n = BY[id]; const out = [];
+    if (!n || n.kind !== 'bet') return out;
+    const s = this.stat(id);
+    if (s === 'killed' || s === 'won') return out;
+    if (!this.reachesFp(id, {})) out.push({ kind: 'Orphan bet', text: 'No serves chain reaches a fixed point.' + (id === 'B-7' ? ' Its placeholder link [[...]] was not migrated.' : '') });
+    if (s === 'active' || s === 'extended') {
+      D[id].asm.forEach((a) => {
+        const as = this.stat(a);
+        if (as === 'unverified' && !this.val(a, 'verify')) out.push({ kind: 'Gating violation', text: 'Relies on ' + a + ', which is unverified and has no verify-by date.' });
+        if (as === 'falsified') out.push({ kind: 'Falsified dependency', text: 'Relies on ' + a + ', which is falsified. Re-examine at the next review.' });
+      });
+      const dl = this.val(id, 'deadline');
+      if (dl && dl < TODAY) out.push({ kind: 'Overdue', text: 'Deadline ' + fmt(dl) + ' has passed while the bet is still ' + s + '.' });
+    }
+    if (s === 'dormant') {
+      const named = Object.keys(D).some((b) => D[b].next === id);
+      if (!named) out.push({ kind: 'Dormant, not a sequel', text: 'Dormant, but no bet names it as next.' });
+    }
+    return out;
+  }
+  sel(id) { return (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState({ sel: id, draft: '' }); }; }
+  chip(id, removable) {
+    const n = BY[id]; const s = this.stat(id);
+    const tone = n.kind === 'fp' ? 'st-purple' : n.kind === 'card' ? 'st-' + n.tone : n.kind === 'cp' || n.kind === 'note' ? 'st-gray' : TONE[s];
+    return { id: n.kind === 'card' || n.kind === 'note' || n.kind === 'cp' ? '' : id, title: n.title, tone: tone, go: this.sel(id), removable: !!removable, removeAria: 'Remove link to ' + id };
+  }
+  rel(label, ids, opts) {
+    opts = opts || {};
+    const chips = ids.map((i) => this.chip(i, !opts.computed));
+    if (opts.phantom) chips.push({ id: '?', title: opts.phantom, tone: 'st-gray unresolved', go: () => {}, removable: true, removeAria: 'Remove phantom link' });
+    return { label: label, chips: chips, computed: !!opts.computed, addable: !opts.computed, empty: chips.length === 0, addAria: 'Add ' + label.toLowerCase() };
+  }
+  field(id, key, label, type, cls) {
+    return { fid: 'f-' + key, label: label, type: type || 'text', cls: cls || 'full', value: this.val(id, key) || '', change: (e) => { const v = e.target.value; this.setState((st) => ({ edits: Object.assign({}, st.edits, { [id + '.' + key]: v }) })); } };
+  }
+  inspector(id) {
+    if (!id || !BY[id]) return { empty: true, full: false };
+    const n = BY[id]; const s = this.stat(id);
+    const others = Object.keys(D).filter((k) => BY[k] && BY[k].kind === 'bet');
+    const ins = { empty: false, full: true, id: n.kind === 'card' || n.kind === 'note' || n.kind === 'cp' ? '' : id, title: n.title, kindLabel: KIND_LABEL[n.kind], tone: n.kind === 'fp' ? 'st-purple' : n.kind === 'asm' ? 'st-orange' : n.kind === 'bet' ? 'st-green' : 'st-gray', hasStatus: false, statuses: [], canKill: false, fields: [], rels: [], hasRels: false, hasLog: false, log: [], isCard: n.kind === 'card' || n.kind === 'note', fieldsHeading: 'Fields' };
+    const mk = (list) => list.map((v) => ({ label: v, tone: TONE[v], on: v === s, pick: () => this.setState((st) => ({ status: Object.assign({}, st.status, { [id]: v }) })) }));
+    const sm = this.smellsOf(id).map((x) => ({ kind: x.kind, text: x.text, kcls: '' }));
+    if (ISSUES[id]) sm.push({ kind: ISSUES[id].kind, text: ISSUES[id].text, kcls: 'issue' });
+    ins.smells = sm;
+    if (n.kind === 'bet') {
+      const b = D[id];
+      ins.hasStatus = true; ins.statuses = mk(BET_ST); ins.fieldsHeading = 'The bet';
+      ins.fields = [this.field(id, 'x', 'I believe continuing'), this.field(id, 'y', 'will produce'), this.field(id, 'z', 'within'), this.field(id, 'exp', 'Expected result'), this.field(id, 'started', 'Started', 'date', 'half'), this.field(id, 'deadline', 'Deadline', 'date', 'half')];
+      ins.rels = [
+        this.rel('Serves', b.serves, { phantom: b.phantom }),
+        this.rel('Requires', b.requires),
+        this.rel('Next (on kill)', b.next ? [b.next] : []),
+        this.rel('Assumptions', b.asm),
+        this.rel('Ultimately serves', b.ult),
+        this.rel('Served by', others.filter((o) => D[o].serves.indexOf(id) >= 0), { computed: true }),
+        this.rel('Required by', others.filter((o) => D[o].requires.indexOf(id) >= 0), { computed: true }),
+        this.rel('Sequel of', others.filter((o) => D[o].next === id), { computed: true })
+      ];
+      if (b.next && s !== 'killed' && s !== 'won') {
+        ins.canKill = true; ins.next = b.next;
+        ins.kill = () => this.setState((st) => ({
+          status: Object.assign({}, st.status, { [id]: 'killed', [b.next]: 'active' }),
+          logs: Object.assign({}, st.logs, { [id]: this.logOf(id).concat([TODAY + '|killed; activated ' + b.next]), [b.next]: this.logOf(b.next).concat([TODAY + '|activated as the sequel of ' + id]) })
+        }));
+      }
+    } else if (n.kind === 'asm') {
+      ins.hasStatus = true; ins.statuses = mk(ASM_ST); ins.fieldsHeading = 'The assumption';
+      ins.fields = [this.field(id, 'stmt', 'Statement'), this.field(id, 'fals', "How I'd know it's false"), this.field(id, 'created', 'Created', 'date', 'half'), this.field(id, 'verify', 'Verify by', 'date', 'half')];
+      ins.rels = [this.rel('Depended on by', Object.keys(D).filter((o) => D[o].asm && D[o].asm.indexOf(id) >= 0), { computed: true })];
+    } else if (n.kind === 'fp') {
+      ins.fieldsHeading = 'Fixed point'; ins.fields = [this.field(id, 'stmt', 'Statement'), this.field(id, 'established', 'Established', 'date', 'half')];
+      ins.rels = [this.rel('Assumptions', D[id].asm), this.rel('Served by', others.filter((o) => D[o].serves.indexOf(id) >= 0), { computed: true }), this.rel('Ultimately served by', others.filter((o) => D[o].ult.indexOf(id) >= 0), { computed: true })];
+    } else if (n.kind === 'cp') {
+      ins.fieldsHeading = 'Situation'; ins.fields = [this.field(id, 'stmt', 'Summary'), this.field(id, 'date', 'Date', 'date', 'half')];
+    } else if (n.kind === 'card') {
+      ins.fieldsHeading = 'Card'; ins.fields = [this.field(id, 'text', 'Text')];
+      ins.rels = [this.rel('Links', D[id].links)];
+    } else {
+      ins.fieldsHeading = 'Note'; ins.fields = [this.field(id, 'path', 'File')];
+      ins.rels = [this.rel('Links', D[id].links)];
+    }
+    ins.hasRels = ins.rels.length > 0;
+    if (n.kind === 'bet' || n.kind === 'asm') { ins.hasLog = true; ins.log = this.logOf(id).map((l) => { const p = l.split('|'); return { date: p[0], text: p[1] }; }); }
+    return ins;
+  }
+  renderVals() {
+    const theme = this.props.theme ?? 'dark';
+    const sel = this.state.sel;
+    const touched = {};
+    if (sel) EDGES.forEach((e) => { if (e.f === sel || e.t === sel) { touched[e.f] = true; touched[e.t] = true; } });
+    let smellTotal = 0; const smellList = [];
+    const nodes = NODES.map((n) => {
+      const sz = SIZE[n.kind]; const w = n.w || sz[0]; const h = sz[1];
+      const s = this.stat(n.id);
+      const tone = n.kind === 'fp' ? 'st-purple' : n.kind === 'card' ? 'st-' + n.tone : n.kind === 'cp' || n.kind === 'note' ? 'st-gray' : TONE[s];
+      const sm = this.smellsOf(n.id);
+      smellTotal += sm.length;
+      sm.forEach((x) => smellList.push({ id: n.id, title: n.title, kind: x.kind, text: x.text, kcls: '', go: this.sel(n.id) }));
+      if (ISSUES[n.id]) smellList.push({ id: n.id, title: n.title, kind: ISSUES[n.id].kind, text: ISSUES[n.id].text, kcls: 'issue', go: this.sel(n.id) });
+      let dateText = ''; let dateCls = '';
+      if (n.kind === 'bet') {
+        const dl = this.val(n.id, 'deadline');
+        dateText = dl ? 'Due ' + fmt(dl) : 'No deadline';
+        if (dl && dl < TODAY && (s === 'active' || s === 'extended')) { dateText = 'Overdue ' + fmt(dl); dateCls = 'warn'; }
+      } else if (n.kind === 'asm') {
+        const v = this.val(n.id, 'verify');
+        dateText = v ? 'Verify ' + fmt(v) : 'No verify-by';
+        if (s === 'unverified' && v === TODAY) { dateText = 'Verify today'; dateCls = 'warn'; }
+        else if (s === 'unverified' && v && v < TODAY) { dateText = 'Verify-by passed'; dateCls = 'warn'; }
+      }
+      const cls = ['k-' + n.kind, tone, s ? 's-' + s : '', n.dashed ? 'dashed' : '', sel === n.id ? 'sel' : ''].join(' ');
+      return {
+        id: n.id, title: n.title, x: n.x, y: n.y, w: w, h: h, cls: cls, tone: tone, status: s,
+        isBet: n.kind === 'bet', isAsm: n.kind === 'asm', isFp: n.kind === 'fp', isCp: n.kind === 'cp', isCard: n.kind === 'card', isNote: n.kind === 'note',
+        summary: D.CP.stmt, dateText: dateText, dateCls: dateCls,
+        smell: sm.length > 0, smellCount: sm.length, smellText: sm.map((x) => x.kind).join(', '),
+        issue: !!ISSUES[n.id], issueText: ISSUES[n.id] ? ISSUES[n.id].kind : '',
+        selected: sel === n.id, select: this.sel(n.id),
+        aria: KIND_LABEL[n.kind] + ' ' + n.title + (s ? ', ' + s : '') + (sm.length ? ', ' + sm.length + ' smell' + (sm.length > 1 ? 's' : '') : ''),
+        mx: Math.round(n.x * 0.118 + 6), my: Math.round(n.y * 0.118 + 4), mw: Math.max(4, Math.round(w * 0.118)), mh: Math.max(3, Math.round(h * 0.118))
+      };
+    });
+    const dimSrc = (id) => { const s = this.stat(id); return s === 'dormant' || s === 'killed'; };
+    const edges = EDGES.filter((e) => e.k !== 'ult' || this.state.ult).map((e) => {
+      const hl = sel && (e.f === sel || e.t === sel);
+      const dim = (dimSrc(e.f) && !hl) || (sel && !hl);
+      const st = (dim ? ' e-dim' : '') + (hl ? ' e-hl' : '');
+      return { d: e.d, a: e.a || '', hasArrow: !!e.a, cls: 'e e-' + e.k + st, acls: 'ah ah-' + e.k + (dim ? ' e-dim' : '') + (hl ? ' ah-hl' : '') };
+    });
+    const labels = EDGES.filter((e) => e.label && (e.k !== 'ult' || this.state.ult)).map((e) => ({ text: e.label, x: e.lx, y: e.ly, cls: e.k === 'next' ? 'next' : e.k === 'ult' ? 'ult' : '' }));
+    const bets = NODES.filter((n) => n.kind === 'bet');
+    const active = bets.filter((n) => this.stat(n.id) === 'active').length;
+    return {
+      theme: theme, nodes: nodes, edges: edges, labels: labels,
+      ult: this.state.ult, smellsOpen: this.state.smellsOpen, smellTotal: smellTotal, smellList: smellList, noSmells: smellList.length === 0,
+      summary: bets.length + ' bets · ' + active + ' active · 7 assumptions · 2 fixed points',
+      ins: this.inspector(sel), draft: this.state.draft,
+      clearSel: () => this.setState({ sel: null }),
+      stop: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
+      toggleUlt: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState((st) => ({ ult: !st.ult })); },
+      toggleSmells: (e) => { if (e && e.stopPropagation) e.stopPropagation(); this.setState((st) => ({ smellsOpen: !st.smellsOpen })); },
+      onDraft: (e) => this.setState({ draft: e.target.value }),
+      onDraftKey: (e) => { if (e.key === 'Enter') this.addLog(); },
+      addLog: () => this.addLog()
+    };
+  }
+  addLog() {
+    const id = this.state.sel; const t = (this.state.draft || '').trim();
+    if (!id || !t) return;
+    this.setState((st) => ({ logs: Object.assign({}, st.logs, { [id]: this.logOf(id).concat([TODAY + '|' + t]) }), draft: '' }));
+  }
+}
+</script>
+</body>
+</html>

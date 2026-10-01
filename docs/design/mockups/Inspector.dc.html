@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inspector states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a993f7}a:hover{color:#c3b4fa}
+.gs{--font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,ui-sans-serif,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-family:var(--font-ui);font-size:13px;color:var(--text-normal);background:var(--background-primary);-webkit-font-smoothing:antialiased}
+.theme-dark{color-scheme:dark;--background-primary:#1e1e1e;--background-primary-alt:#232323;--background-secondary:#262626;--background-secondary-alt:#2e2e2e;--background-modifier-border:#363636;--background-modifier-border-hover:#4d4d4d;--background-modifier-hover:rgba(255,255,255,.06);--background-modifier-form-field:#1b1b1b;--text-normal:#dadada;--text-muted:#a8a8a8;--text-faint:#8f8f8f;--text-accent:#a993f7;--interactive-accent:#7c5ce6;--text-on-accent:#ffffff;--shadow:0 10px 28px rgba(0,0,0,.5);--red-rgb:251,70,76;--orange-rgb:233,151,63;--yellow-rgb:224,222,113;--green-rgb:68,207,110;--cyan-rgb:83,223,221;--blue-rgb:2,122,255;--purple-rgb:168,130,255;--gray-rgb:150,150,150;--red-text:#fb6b70;--orange-text:#eda15a;--yellow-text:#e0de71;--green-text:#5ad47f;--cyan-text:#53dfdd;--blue-text:#5aa5ff;--purple-text:#b597ff;--gray-text:#b0b0b0}
+.theme-light{color-scheme:light;--background-primary:#ffffff;--background-primary-alt:#fafafa;--background-secondary:#f6f6f6;--background-secondary-alt:#eeeeee;--background-modifier-border:#e0e0e0;--background-modifier-border-hover:#c8c8c8;--background-modifier-hover:rgba(0,0,0,.05);--background-modifier-form-field:#ffffff;--text-normal:#222222;--text-muted:#5c5c5c;--text-faint:#767676;--text-accent:#6240d8;--interactive-accent:#6c4ee0;--text-on-accent:#ffffff;--shadow:0 10px 28px rgba(0,0,0,.14);--red-rgb:233,49,71;--orange-rgb:236,117,0;--yellow-rgb:224,172,0;--green-rgb:8,185,78;--cyan-rgb:0,191,188;--blue-rgb:8,109,221;--purple-rgb:120,82,238;--gray-rgb:130,130,130;--red-text:#b8202f;--orange-text:#9c4f00;--yellow-text:#7d6100;--green-text:#0a7535;--cyan-text:#00706e;--blue-text:#0a5cb8;--purple-text:#5b3bd1;--gray-text:#5c5c5c}
+.st-red{--st-rgb:var(--red-rgb);--st-text:var(--red-text)}.st-orange{--st-rgb:var(--orange-rgb);--st-text:var(--orange-text)}.st-yellow{--st-rgb:var(--yellow-rgb);--st-text:var(--yellow-text)}.st-green{--st-rgb:var(--green-rgb);--st-text:var(--green-text)}.st-cyan{--st-rgb:var(--cyan-rgb);--st-text:var(--cyan-text)}.st-blue{--st-rgb:var(--blue-rgb);--st-text:var(--blue-text)}.st-purple{--st-rgb:var(--purple-rgb);--st-text:var(--purple-text)}.st-gray{--st-rgb:var(--gray-rgb);--st-text:var(--gray-text)}
+.mono{font-family:var(--font-mono)}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic-sm{width:13px;height:13px}
+.btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-family:var(--font-ui);font-size:12.5px;color:var(--text-muted);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--background-modifier-hover);color:var(--text-normal)}
+.btn:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:1px}
+.btn-icon{width:30px;padding:0;justify-content:center}
+.btn-line{border:1px solid var(--background-modifier-border);color:var(--text-normal)}
+.btn-danger{border:1px solid rgba(var(--red-rgb),.5);color:var(--red-text)}
+.btn-danger:hover{background:rgba(var(--red-rgb),.1);color:var(--red-text)}
+.btn-xs{height:24px;padding:0 8px;font-size:11.5px}
+.btn-primary{background:var(--interactive-accent);color:var(--text-on-accent);font-weight:600}
+.btn-primary:hover{background:var(--interactive-accent);color:var(--text-on-accent);filter:brightness(1.08)}
+.pill{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:9px;font-size:10.5px;font-weight:600;letter-spacing:.02em;color:var(--st-text);background:rgba(var(--st-rgb),.15);white-space:nowrap;flex:none}
+.ins{display:flex;flex-direction:column;background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:10px;overflow:auto}
+.sec{padding:14px 16px;border-top:1px solid var(--background-modifier-border);display:flex;flex-direction:column;gap:10px}
+.sec-h{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.fld.full{grid-column:span 2}
+.fld label{font-size:11.5px;color:var(--text-muted)}
+.fld input{box-sizing:border-box;width:100%;height:30px;padding:0 9px;border-radius:5px;border:1px solid var(--background-modifier-border);background:var(--background-modifier-form-field);color:var(--text-normal);font-family:var(--font-ui);font-size:13px}
+.fld input:focus{outline:none;border-color:var(--interactive-accent);box-shadow:0 0 0 2px rgba(var(--purple-rgb),.25)}
+.fld.need input{border-color:rgba(var(--orange-rgb),.7);box-shadow:0 0 0 2px rgba(var(--orange-rgb),.18)}
+.segs{display:flex;flex-wrap:wrap;gap:6px}
+.seg{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;font-size:12px;font-weight:600;color:var(--text-muted);border:1px solid var(--background-modifier-border);cursor:pointer}
+.seg:hover{border-color:rgba(var(--st-rgb),.7)}
+.seg:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:1px}
+.seg .dot{width:7px;height:7px;border-radius:50%;background:rgb(var(--st-rgb))}
+.seg[aria-pressed="true"]{color:var(--st-text);background:rgba(var(--st-rgb),.15);border-color:rgba(var(--st-rgb),.6)}
+.rel{display:flex;flex-direction:column;gap:6px}
+.rel-h{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted)}
+.rel-h .grow{flex:1}
+.tag{font-size:10px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--background-modifier-hover);color:var(--text-faint)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;height:26px;max-width:100%;border-radius:13px;background:var(--background-primary);border:1px solid var(--background-modifier-border);overflow:hidden}
+.chip.unresolved{border-style:dashed;opacity:.85}
+.chip-go{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:0 6px 0 9px;height:100%;font-size:12px;min-width:0}
+.chip-go:hover{background:var(--background-modifier-hover)}
+.chip-dot{width:7px;height:7px;border-radius:50%;background:rgb(var(--st-rgb));flex:none}
+.chip-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px}
+.chip-x{all:unset;cursor:pointer;width:24px;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-faint)}
+.chip-x:hover{color:var(--text-normal);background:var(--background-modifier-hover)}
+.none{font-size:12px;color:var(--text-faint);font-style:italic}
+.callout{display:flex;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(var(--orange-rgb),.12);color:var(--text-normal)}
+.callout .ic{color:var(--orange-text);margin-top:1px}
+.callout.issue{background:var(--background-modifier-hover)}
+.callout.issue .ic{color:var(--text-muted)}
+.logl{display:flex;flex-direction:column;gap:5px;margin:0;padding:0;list-style:none}
+.logl li{font-size:12.5px;line-height:17px}
+.logl .d{font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted)}
+.logrow{display:flex;gap:6px}
+.logrow input{flex:1;min-width:0;box-sizing:border-box;height:30px;padding:0 9px;border-radius:5px;border:1px solid var(--background-modifier-border);background:var(--background-modifier-form-field);color:var(--text-normal);font-family:var(--font-ui);font-size:13px}
+.ptype{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 10px;border-radius:7px;border:1px solid var(--background-modifier-border);cursor:pointer}
+.ptype:hover{background:var(--background-modifier-hover)}
+.ptype[aria-pressed="true"]{border-color:var(--interactive-accent);background:rgba(var(--purple-rgb),.1)}
+.ptype-t{font-size:12.5px;font-weight:600}
+.ptype-d{font-size:11.5px;color:var(--text-muted)}
+.cap{font-size:13px;font-weight:600;color:var(--text-normal)}
+.cap span{font-weight:400;color:var(--text-muted)}
+</style>
+</helmet>
+<div class="gs theme-{{theme}}" style="width: 1240px; height: 1100px; box-sizing: border-box; padding: 44px 40px; display: flex; flex-direction: column; gap: 22px">
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <h1 style="margin: 0; font-size: 28px; font-weight: 700">Inspector</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 21px; color: var(--text-muted); max-width: 820px">Opens beside the graph on select. Every control dispatches a Phase 4 intent: a frontmatter patch, or a dated line under ## Log. Computed lists are read-only. Click a chip to jump to that node.</p>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; flex: 1; min-height: 0">
+    <sc-for list="{{panels}}" as="p" hint-placeholder-count="3">
+      <div style="display: flex; flex-direction: column; gap: 10px; min-height: 0">
+        <div class="cap">{{p.caption}} <span>· {{p.note}}</span></div>
+        <aside class="ins" aria-label="{{p.aria}}" style="flex: 1; min-height: 0">
+          <div style="padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; align-items: center; gap: 8px">
+              <span class="pill {{p.tone}}" style="text-transform: uppercase; letter-spacing: .07em">{{p.kindLabel}}</span>
+              <span class="mono" style="font-size: 12px; color: var(--text-muted)">{{p.id}}</span>
+              <span style="flex: 1"></span>
+              <button type="button" class="btn btn-icon" aria-label="Open in split"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M12 3v18"></path></svg></button>
+              <button type="button" class="btn btn-icon" aria-label="Close inspector"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+            </div>
+            <h2 style="margin: 0; font-size: 19px; line-height: 24px; font-weight: 700">{{p.title}}</h2>
+            <sc-if value="{{p.hasStatus}}" hint-placeholder-val="{{true}}">
+              <div class="segs" role="group" aria-label="Status">
+                <sc-for list="{{p.statuses}}" as="s" hint-placeholder-count="5">
+                  <button type="button" class="seg {{s.tone}}" aria-pressed="{{s.on}}" onClick="{{s.pick}}"><span class="dot"></span>{{s.label}}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-for list="{{p.smells}}" as="s" hint-placeholder-count="1">
+              <div class="callout {{s.kcls}}">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>
+                <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 12px; font-weight: 700">{{s.kind}}</span><span style="font-size: 12px; line-height: 16px; color: var(--text-muted)">{{s.text}}</span></span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><span>{{p.fieldsHeading}}</span></div>
+            <div class="fields">
+              <sc-for list="{{p.fields}}" as="f" hint-placeholder-count="6">
+                <div class="fld {{f.cls}}">
+                  <label for="{{f.fid}}">{{f.label}}</label>
+                  <input id="{{f.fid}}" type="{{f.type}}" value="{{f.value}}" onChange="{{f.change}}">
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><span>Relations</span><span style="font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--text-faint)">frontmatter</span></div>
+            <sc-for list="{{p.rels}}" as="r" hint-placeholder-count="4">
+              <div class="rel">
+                <div class="rel-h"><span>{{r.label}}</span><sc-if value="{{r.computed}}" hint-placeholder-val="{{false}}"><span class="tag">computed</span></sc-if><span class="grow"></span><sc-if value="{{r.addable}}" hint-placeholder-val="{{true}}"><button type="button" class="btn btn-xs" aria-label="{{r.addAria}}">+ Add</button></sc-if></div>
+                <div class="chips">
+                  <sc-for list="{{r.chips}}" as="c" hint-placeholder-count="1">
+                    <span class="chip {{c.tone}}">
+                      <button type="button" class="chip-go"><span class="chip-dot"></span><span class="mono" style="font-size: 11px; color: var(--text-muted)">{{c.id}}</span><span class="chip-t">{{c.title}}</span></button>
+                      <sc-if value="{{c.removable}}" hint-placeholder-val="{{true}}"><button type="button" class="chip-x" aria-label="{{c.removeAria}}"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button></sc-if>
+                    </span>
+                  </sc-for>
+                  <sc-if value="{{r.empty}}" hint-placeholder-val="{{false}}"><span class="none">None</span></sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{p.hasLog}}" hint-placeholder-val="{{true}}">
+            <div class="sec">
+              <div class="sec-h"><span>Log</span></div>
+              <ul class="logl">
+                <sc-for list="{{p.log}}" as="g" hint-placeholder-count="2">
+                  <li><span class="d">{{g.date}}</span> {{g.text}}</li>
+                </sc-for>
+              </ul>
+              <div class="logrow">
+                <label for="{{p.logId}}" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">New log entry</label>
+                <input id="{{p.logId}}" type="text" placeholder="On track / off track / signal observed">
+                <button type="button" class="btn btn-line">+ Log entry</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{p.isCard}}" hint-placeholder-val="{{false}}">
+            <div class="sec">
+              <div class="sec-h"><span>Promote to note</span></div>
+              <span style="font-size: 12.5px; line-height: 18px; color: var(--text-muted)">Creates a real note through the same actions as the New commands. The card's position moves to the new note's id, and its links become relations where they can.</span>
+              <div style="display: flex; flex-direction: column; gap: 6px">
+                <button type="button" class="ptype" aria-pressed="false"><span style="width: 22px; height: 12px; border-radius: 6px; border: 1.5px solid rgb(var(--blue-rgb)); box-sizing: border-box"></span><span><span class="ptype-t" style="display: block">Route</span><span class="ptype-d" style="display: block">An explored path toward a fixed point</span></span></button>
+                <button type="button" class="ptype" aria-pressed="true"><span style="width: 22px; height: 12px; border-radius: 6px; border: 1.5px dashed var(--text-faint); box-sizing: border-box"></span><span><span class="ptype-t" style="display: block">Ghost route</span><span class="ptype-d" style="display: block">Suspected, not yet explored</span></span></button>
+                <button type="button" class="ptype" aria-pressed="false"><span style="width: 12px; height: 12px; margin: 0 5px; transform: rotate(45deg); border-radius: 2px; background: rgb(var(--blue-rgb))"></span><span><span class="ptype-t" style="display: block">Milestone</span></span></button>
+                <button type="button" class="ptype" aria-pressed="false"><span style="width: 22px; height: 12px; border-radius: 3px; border: 1.5px solid rgb(var(--green-rgb)); box-sizing: border-box"></span><span><span class="ptype-t" style="display: block">Bet</span></span></button>
+                <button type="button" class="ptype" aria-pressed="false"><span style="width: 22px; height: 12px; border-radius: 2px; border: 1.5px solid rgb(var(--orange-rgb)); box-sizing: border-box"></span><span><span class="ptype-t" style="display: block">Assumption</span></span></button>
+              </div>
+              <button type="button" class="btn btn-primary" style="justify-content: center; height: 34px">Create ghost route</button>
+            </div>
+          </sc-if>
+
+          <div class="sec" style="flex-direction: row; gap: 8px">
+            <button type="button" class="btn btn-line" style="flex: 1; justify-content: center">Open in split</button>
+            <button type="button" class="btn btn-line" style="flex: 1; justify-content: center">Open note</button>
+          </div>
+        </aside>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1240,"height":1100}}'>
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const N = {
+  'B-3': { kind: 'bet', title: 'Sell pottery at weekend markets', status: 'active' },
+  'B-4': { kind: 'bet', title: 'Save 20000 for kiln and lease', status: 'active' },
+  'B-1': { kind: 'bet', title: 'Get a D7 visa', status: 'active' },
+  'B-2': { kind: 'bet', title: 'Apply for a digital nomad visa', status: 'dormant' },
+  'A-2': { kind: 'asm', title: 'Rent in Lisbon stays under 1200', status: 'unverified' },
+  'A-3': { kind: 'asm', title: 'Weekend market stalls are available', status: 'falsified' },
+  'A-4': { kind: 'asm', title: 'Tourists buy handmade ceramics', status: 'undeterminable' },
+  'GHOST': { kind: 'card', title: 'Golden visa path?' }
+};
+const TONE = { active: 'st-green', dormant: 'st-gray', won: 'st-cyan', killed: 'st-red', extended: 'st-yellow', unverified: 'st-orange', confirmed: 'st-green', falsified: 'st-red', undeterminable: 'st-gray' };
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { status: {}, edits: {} }; }
+  stat(id) { return this.state.status[id] || N[id].status; }
+  chip(id, removable) { return { id: N[id].kind === 'card' ? '' : id, title: N[id].title, tone: TONE[this.stat(id)] || 'st-gray', removable: removable, removeAria: 'Remove link to ' + id }; }
+  rel(label, ids, computed) { const chips = ids.map((i) => this.chip(i, !computed)); return { label: label, chips: chips, computed: !!computed, addable: !computed, empty: chips.length === 0, addAria: 'Add ' + label.toLowerCase() }; }
+  field(pid, key, label, value, type, cls) {
+    const k = pid + '.' + key;
+    return { fid: 'f-' + pid + '-' + key, label: label, type: type || 'text', cls: cls || 'full', value: this.state.edits[k] !== undefined ? this.state.edits[k] : value, change: (e) => { const v = e.target.value; this.setState((st) => ({ edits: Object.assign({}, st.edits, { [k]: v }) })); } };
+  }
+  segs(id, list) { return list.map((v) => ({ label: v, tone: TONE[v], on: v === this.stat(id), pick: () => this.setState((st) => ({ status: Object.assign({}, st.status, { [id]: v }) })) })); }
+  renderVals() {
+    const a2verify = this.state.edits['A-2.verify'];
+    const a2smells = a2verify ? [] : [{ kind: 'Gates 2 active bets', text: 'B-1 and B-4 rely on this and it has no verify-by date. Set one to clear both gating violations.', kcls: '' }];
+    const a2fields = [this.field('A-2', 'stmt', 'Statement', 'Rent in Lisbon stays under 1200 EUR.'), this.field('A-2', 'fals', "How I'd know it's false", 'Listings median above 1200.'), this.field('A-2', 'created', 'Created', '2026-07-05', 'date', 'half'), this.field('A-2', 'verify', 'Verify by', '', 'date', 'half')];
+    if (!a2verify) a2fields[3].cls = 'half need';
+    const panels = [
+      {
+        caption: 'Bet', note: 'B-3, falsified dependency', aria: 'Inspector for bet B-3', kindLabel: 'Bet', tone: 'st-green', id: 'B-3', title: 'Sell pottery at weekend markets',
+        hasStatus: true, statuses: this.segs('B-3', ['active', 'dormant', 'won', 'killed', 'extended']),
+        smells: this.stat('B-3') === 'active' ? [{ kind: 'Falsified dependency', text: 'Relies on A-3, which is falsified. Re-examine at the next review.', kcls: '' }] : [],
+        fieldsHeading: 'The bet',
+        fields: [this.field('B-3', 'x', 'I believe continuing', 'selling at weekend markets'), this.field('B-3', 'y', 'will produce', '500 EUR a month'), this.field('B-3', 'z', 'within', 'ten weeks'), this.field('B-3', 'exp', 'Expected result', '500 EUR a month from market sales'), this.field('B-3', 'started', 'Started', '2026-08-01', 'date', 'half'), this.field('B-3', 'deadline', 'Deadline', '2026-10-15', 'date', 'half')],
+        rels: [this.rel('Serves', ['B-4']), this.rel('Requires', []), this.rel('Next (on kill)', []), this.rel('Assumptions', ['A-3', 'A-4']), this.rel('Required by', ['B-4'], true)],
+        hasLog: true, logId: 'log-b3', log: [{ date: '2026-08-01', text: 'created' }], isCard: false
+      },
+      {
+        caption: 'Assumption', note: 'A-2, missing verify-by', aria: 'Inspector for assumption A-2', kindLabel: 'Assumption', tone: 'st-orange', id: 'A-2', title: 'Rent in Lisbon stays under 1200',
+        hasStatus: true, statuses: this.segs('A-2', ['unverified', 'confirmed', 'falsified', 'undeterminable']),
+        smells: this.stat('A-2') === 'unverified' ? a2smells : [], fieldsHeading: 'The assumption', fields: a2fields,
+        rels: [this.rel('Depended on by', ['B-1', 'B-4'], true)],
+        hasLog: true, logId: 'log-a2', log: [{ date: '2026-08-01', text: 'Created' }], isCard: false
+      },
+      {
+        caption: 'Free card', note: 'promote to note', aria: 'Inspector for a free card', kindLabel: 'Free card', tone: 'st-gray', id: '', title: 'Golden visa path?',
+        hasStatus: false, statuses: [], smells: [], fieldsHeading: 'Card',
+        fields: [this.field('GHOST', 'text', 'Text', 'Golden visa path?')],
+        rels: [{ label: 'Links', chips: [{ id: 'B-2', title: 'Apply for a digital nomad visa · “Only A-6”', tone: 'st-gray', removable: true, removeAria: 'Remove link to B-2' }], computed: false, addable: true, empty: false, addAria: 'Add link' }],
+        hasLog: false, logId: 'log-card', log: [], isCard: true
+      }
+    ];
+    return { theme: this.props.theme ?? 'dark', panels: panels };
+  }
+}
+</script>
+</body>
+</html>

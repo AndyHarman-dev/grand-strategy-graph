@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Edge styles</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a993f7}a:hover{color:#c3b4fa}
+.gs{--font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,ui-sans-serif,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-family:var(--font-ui);font-size:13px;color:var(--text-normal);background:var(--background-primary);-webkit-font-smoothing:antialiased}
+.theme-dark{color-scheme:dark;--background-primary:#1e1e1e;--background-primary-alt:#232323;--background-secondary:#262626;--background-secondary-alt:#2e2e2e;--background-modifier-border:#363636;--background-modifier-border-hover:#4d4d4d;--background-modifier-hover:rgba(255,255,255,.06);--background-modifier-form-field:#1b1b1b;--text-normal:#dadada;--text-muted:#a8a8a8;--text-faint:#8f8f8f;--text-accent:#a993f7;--interactive-accent:#7c5ce6;--text-on-accent:#ffffff;--node-bg:#272727;--node-bg-alt:#222222;--edge:#8c8c8c;--canvas-dot:#383838;--frame-bg:rgba(255,255,255,.022);--frame-border:#333333;--shadow:0 10px 28px rgba(0,0,0,.5);--red-rgb:251,70,76;--orange-rgb:233,151,63;--yellow-rgb:224,222,113;--green-rgb:68,207,110;--cyan-rgb:83,223,221;--blue-rgb:2,122,255;--purple-rgb:168,130,255;--gray-rgb:150,150,150;--red-text:#fb6b70;--orange-text:#eda15a;--yellow-text:#e0de71;--green-text:#5ad47f;--cyan-text:#53dfdd;--blue-text:#5aa5ff;--purple-text:#b597ff;--gray-text:#b0b0b0}
+.theme-light{color-scheme:light;--background-primary:#ffffff;--background-primary-alt:#fafafa;--background-secondary:#f6f6f6;--background-secondary-alt:#eeeeee;--background-modifier-border:#e0e0e0;--background-modifier-border-hover:#c8c8c8;--background-modifier-hover:rgba(0,0,0,.05);--background-modifier-form-field:#ffffff;--text-normal:#222222;--text-muted:#5c5c5c;--text-faint:#767676;--text-accent:#6240d8;--interactive-accent:#6c4ee0;--text-on-accent:#ffffff;--node-bg:#ffffff;--node-bg-alt:#fbfbfb;--edge:#8f8f8f;--canvas-dot:#d4d4d4;--frame-bg:rgba(0,0,0,.022);--frame-border:#e3e3e3;--shadow:0 10px 28px rgba(0,0,0,.14);--red-rgb:233,49,71;--orange-rgb:236,117,0;--yellow-rgb:224,172,0;--green-rgb:8,185,78;--cyan-rgb:0,191,188;--blue-rgb:8,109,221;--purple-rgb:120,82,238;--gray-rgb:130,130,130;--red-text:#b8202f;--orange-text:#9c4f00;--yellow-text:#7d6100;--green-text:#0a7535;--cyan-text:#00706e;--blue-text:#0a5cb8;--purple-text:#5b3bd1;--gray-text:#5c5c5c}
+.st-red{--st-rgb:var(--red-rgb);--st-text:var(--red-text)}.st-orange{--st-rgb:var(--orange-rgb);--st-text:var(--orange-text)}.st-green{--st-rgb:var(--green-rgb);--st-text:var(--green-text)}.st-purple{--st-rgb:var(--purple-rgb);--st-text:var(--purple-text)}.st-gray{--st-rgb:var(--gray-rgb);--st-text:var(--gray-text)}.st-blue{--st-rgb:var(--blue-rgb);--st-text:var(--blue-text)}
+.mono{font-family:var(--font-mono)}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.canvas-bg{background-color:var(--background-primary);background-image:radial-gradient(var(--canvas-dot) 1.1px,transparent 1.3px);background-size:18px 18px}
+.e{fill:none;stroke-width:1.6}
+.e-serves{stroke:var(--edge)}
+.e-ghost{stroke:var(--edge);stroke-dasharray:6 5}
+.e-next{stroke:rgb(var(--orange-rgb));stroke-dasharray:7 5}
+.e-leader{stroke:var(--text-faint);stroke-width:1.1;stroke-dasharray:3 4}
+.e-requires{stroke:rgb(var(--purple-rgb));stroke-width:2.2;stroke-dasharray:.1 5;stroke-linecap:round}
+.e-ult{stroke:rgb(var(--purple-rgb));stroke-opacity:.75;stroke-width:1.3;stroke-dasharray:12 6}
+.e-free{stroke:var(--text-faint);stroke-width:1.3;stroke-dasharray:6 4}
+.e-hl{stroke:var(--text-accent);stroke-width:2.6}
+.e-drag{stroke:var(--interactive-accent);stroke-width:2;stroke-dasharray:5 4}
+.ah{stroke:none}
+.ah-serves{fill:var(--edge)}.ah-next{fill:rgb(var(--orange-rgb))}.ah-requires{fill:rgb(var(--purple-rgb))}.ah-ult{fill:rgb(var(--purple-rgb));opacity:.75}.ah-free{fill:var(--text-faint)}.ah-hl{fill:var(--text-accent)}
+.e-dim{opacity:.38}
+.mini{position:absolute;top:13px;box-sizing:border-box;height:30px;padding:0 9px;display:flex;align-items:center;border-radius:6px;font-family:var(--font-mono);font-size:11px;font-weight:600;background:var(--node-bg);border:1px solid rgba(var(--st-rgb),.55);color:var(--text-muted)}
+.mini.asm{border-radius:3px;background:var(--node-bg-alt)}
+.mini.fp{border:2px solid rgb(var(--purple-rgb));border-radius:15px;background:rgba(var(--purple-rgb),.1);color:var(--purple-text)}
+.mini.card{background:rgba(var(--st-rgb),.12);font-family:var(--font-ui);font-weight:500;color:var(--text-normal)}
+.mini.ghost{border-style:dashed;border-radius:15px;background:transparent;font-style:italic}
+.mini.dim{opacity:.66}
+.elabel{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:9px;background:var(--background-primary);border:1px solid var(--background-modifier-border);color:var(--text-muted)}
+.elabel.next{color:var(--orange-text);border-color:rgba(var(--orange-rgb),.5)}
+.row{display:grid;grid-template-columns:280px 220px minmax(0,1fr);gap:28px;align-items:center;padding:12px 0;border-top:1px solid var(--background-modifier-border)}
+.sample{position:relative;width:280px;height:56px}
+.ename{font-size:14px;font-weight:700}
+.efield{font-family:var(--font-mono);font-size:11.5px;color:var(--text-muted);margin-top:3px}
+.edesc{font-size:13px;line-height:19px;color:var(--text-muted)}
+.node{box-sizing:border-box;position:absolute;display:flex;flex-direction:column;gap:6px;padding:10px 12px;width:220px;height:84px;background:var(--node-bg);border:1px solid rgba(var(--st-rgb),.5);border-radius:8px;color:var(--text-normal)}
+.row1{display:flex;align-items:center;gap:6px;height:18px}
+.nid{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-muted)}
+.ndate{flex:1;font-size:11px;color:var(--text-faint);white-space:nowrap}
+.ntitle{font-size:13px;line-height:16px;font-weight:600}
+.pill{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:9px;font-size:10.5px;font-weight:600;color:var(--st-text);background:rgba(var(--st-rgb),.15)}
+.handle{position:absolute;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--background-primary);border:2px solid var(--interactive-accent);box-sizing:border-box}
+.menu{box-sizing:border-box;padding:6px;border-radius:9px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:1px}
+.mi{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;min-height:44px;padding:6px 10px;border-radius:6px;cursor:pointer}
+.mi:hover,.mi.hot{background:var(--background-modifier-hover)}
+.mi:focus-visible{outline:2px solid var(--interactive-accent)}
+.mi[aria-disabled="true"]{opacity:.5;cursor:default}
+.mi-t{font-size:13px;font-weight:600;color:var(--text-normal)}
+.mi-d{font-size:11.5px;color:var(--text-muted);margin-top:1px}
+.kbd{margin-left:auto;font-family:var(--font-mono);font-size:10.5px;color:var(--text-faint);padding:1px 5px;border:1px solid var(--background-modifier-border);border-radius:4px}
+</style>
+</helmet>
+<div class="gs theme-{{theme}}" style="width: 1100px; height: 960px; box-sizing: border-box; padding: 44px 48px; display: flex; flex-direction: column; gap: 22px">
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <h1 style="margin: 0; font-size: 28px; font-weight: 700">Edge styles</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 21px; color: var(--text-muted); max-width: 760px">Edge kind comes from the frontmatter field and the target's type, never from a name prefix. Arrows point from the note that holds the field to the note it names.</p>
+  </div>
+
+  <div>
+    <div class="row">
+      <div class="sample"><span class="mini st-green">B-1</span><span class="mini fp" style="left: 210px">FP-1</span>
+        <svg width="280" height="56" style="position: absolute; left: 0; top: 0; overflow: visible" aria-hidden="true"><path class="e e-serves" d="M48,28 L196,28"></path><path class="ah ah-serves" d="M204,28 L195,23.5 L195,32.5 Z"></path></svg></div>
+      <div><div class="ename">serves</div><div class="efield">serves: ["[[FP-1 …]]"]</div></div>
+      <div class="edesc">Solid. Bet to its direct parent: a bet, route, milestone or fixed point.</div>
+    </div>
+    <div class="row">
+      <div class="sample"><span class="mini ghost st-gray">Golden visa?</span><span class="mini fp" style="left: 210px">FP-1</span>
+        <svg width="280" height="56" style="position: absolute; left: 0; top: 0; overflow: visible" aria-hidden="true"><path class="e e-ghost" d="M104,28 L196,28"></path><path class="ah ah-serves" d="M204,28 L195,23.5 L195,32.5 Z"></path></svg></div>
+      <div><div class="ename">serves · ghost or unverified</div><div class="efield">route status: ghost</div></div>
+      <div class="edesc">Dashed. The serve comes from a ghost route or hangs on an unverified link.</div>
+    </div>
+    <div class="row">
+      <div class="sample"><span class="mini st-green">B-1</span><span class="mini st-gray dim" style="left: 222px">B-2</span>
+        <svg width="280" height="56" style="position: absolute; left: 0; top: 0; overflow: visible" aria-hidden="true"><path class="e e-next" d="M48,28 L208,28"></path><path class="ah ah-next" d="M216,28 L207,23.5 L207,32.5 Z"></path></svg>
+        <span class="elabel next" style="left: 132px; top: 28px">on kill</span></div>
+      <div><div class="ename">next</div><div class="efield">next: "[[B-2 …]]"</div></div>
+      <div class="edesc">Orange dashes with an "on kill" label. The sequel that becomes active when this bet is killed. Was <span class="mono" style="font-size: 12px">next sequel</span>.</div>
+    </div>
+    <div class="row">
+      <div class="sample"><span class="mini asm st-orange">A-2</span><span class="mini st-green" style="left: 222px">B-1</span>
+        <svg width="280" height="56" style="position: absolute; left: 0; top: 0; overflow: visible" aria-hidden="true"><path class="e e-leader" d="M50,28 L222,28"></path></svg></div>
+      <div><div class="ename">assumption leader</div><div class="efield">assumptions: ["[[A-2 …]]"]</div></div>
+      <div class="edesc">Thin dashes, no arrowhead. Drawn from the assumption to any node that leans on it, fixed points included.</div>
+    </div>
+    <div class="row">
+      <div class="sample"><span class="mini st-green">B-3</span><span class="mini st-green" style="left: 222px">B-4</span>
+        <svg width="280" height="56" style="position: absolute; left: 0; top: 0; overflow: visible" aria-hidden="true"><path class="e e-requires" d="M48,28 L208,28"></path><path class="ah ah-requires" d="M216,28 L207,23.5 L207,32.5 Z"></path></svg></div>
+      <div><div class="ename">requires</div><div class="efield">requires: ["[[B-3 …]]"]</div></div>
+      <div class="edesc">Purple dots. Prerequisite bet, pointing at the bet that needs it. Replaces the canvas "AND" diamond.</div>
+    </div>
+    <div class="row">
+      <div class="sample"><span class="mini st-gray dim">B-8</span><span class="mini fp" style="left: 210px">FP-2</span>
+        <svg width="280" height="56" style="position: absolute; left: 0; top: 0; overflow: visible" aria-hidden="true"><path class="e e-ult" d="M48,28 L196,28"></path><path class="ah ah-ult" d="M204,28 L195,23.5 L195,32.5 Z"></path></svg></div>
+      <div><div class="ename">ultimately-serves</div><div class="efield">ultimately-serves: [...]</div></div>
+      <div class="edesc">Long purple dashes. Hidden by default. Shown with the toolbar toggle, or when a bet has no serves chain to a fixed point.</div>
+    </div>
+    <div class="row">
+      <div class="sample"><span class="mini card st-orange">Golden visa?</span><span class="mini st-gray dim" style="left: 222px">B-2</span>
+        <svg width="280" height="56" style="position: absolute; left: 0; top: 0; overflow: visible" aria-hidden="true"><path class="e e-free" d="M104,28 L208,28"></path><path class="ah ah-free" d="M216,28 L207,23.5 L207,32.5 Z"></path></svg>
+        <span class="elabel" style="left: 160px; top: 28px">Only A-6</span></div>
+      <div><div class="ename">free-card link</div><div class="efield">Strategy.gsmap · links[]</div></div>
+      <div class="edesc">Faint, any style and label. Joins free cards and notes. Has no strategy meaning, so it never touches frontmatter.</div>
+    </div>
+    <div class="row">
+      <div class="sample"><span class="mini st-green" style="box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 4px var(--interactive-accent)">B-1</span><span class="mini fp" style="left: 210px">FP-1</span>
+        <svg width="280" height="56" style="position: absolute; left: 0; top: 0; overflow: visible" aria-hidden="true"><path class="e e-hl" d="M52,20 L196,20"></path><path class="ah ah-hl" d="M204,20 L195,15.5 L195,24.5 Z"></path><path class="e e-serves e-dim" d="M48,38 L196,38"></path><path class="ah ah-serves e-dim" d="M204,38 L195,33.5 L195,42.5 Z"></path></svg></div>
+      <div><div class="ename">selected · dimmed</div><div class="efield">view state only</div></div>
+      <div class="edesc">Edges touching the selection turn accent and thicker. Others fade, as do edges leaving dormant or killed bets.</div>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 6px">
+    <div style="font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted)">Drawing an edge · ambiguous relation</div>
+    <div class="canvas-bg" style="position: relative; height: 250px; border: 1px solid var(--background-modifier-border); border-radius: 12px; overflow: hidden">
+      <div class="node st-green" style="left: 40px; top: 70px"><span class="row1"><span class="nid">B-3</span><span class="ndate">Due 15 Oct 2026</span><span class="pill st-green">active</span></span><span class="ntitle">Sell pottery at weekend markets</span><span class="handle" style="right: -6px"></span></div>
+      <div class="node st-green" style="left: 400px; top: 70px; box-shadow: 0 0 0 2px var(--background-primary), 0 0 0 4px rgba(var(--purple-rgb),.6)"><span class="row1"><span class="nid">B-4</span><span class="ndate">Due 1 Jun 2027</span><span class="pill st-green">active</span></span><span class="ntitle">Save 20000 for kiln and lease</span><span class="handle" style="left: -6px"></span></div>
+      <svg width="1000" height="250" style="position: absolute; left: 0; top: 0" aria-hidden="true"><path class="e e-drag" d="M266,112 C330,112 340,112 400,112"></path></svg>
+      <div class="menu" role="menu" aria-label="Choose relation" style="position: absolute; left: 650px; top: 18px; width: 330px">
+        <div style="padding: 6px 10px 8px; font-size: 12px; color: var(--text-muted)"><span class="mono" style="font-weight: 600; color: var(--text-normal)">B-3 → B-4</span> · bet to bet, pick one</div>
+        <button type="button" class="mi hot" role="menuitem"><svg width="28" height="10" aria-hidden="true"><path class="e e-serves" d="M0,5 L22,5"></path><path class="ah ah-serves" d="M28,5 L21,1.5 L21,8.5 Z"></path></svg><span><span class="mi-t" style="display: block">Serves</span><span class="mi-d" style="display: block">B-3 adds B-4 to serves</span></span><span class="kbd">S</span></button>
+        <button type="button" class="mi" role="menuitem"><svg width="28" height="10" aria-hidden="true"><path class="e e-requires" d="M0,5 L22,5"></path><path class="ah ah-requires" d="M28,5 L21,1.5 L21,8.5 Z"></path></svg><span><span class="mi-t" style="display: block">Requires</span><span class="mi-d" style="display: block">B-4 adds B-3 to requires</span></span><span class="kbd">R</span></button>
+        <button type="button" class="mi" role="menuitem"><svg width="28" height="10" aria-hidden="true"><path class="e e-next" d="M0,5 L22,5"></path><path class="ah ah-next" d="M28,5 L21,1.5 L21,8.5 Z"></path></svg><span><span class="mi-t" style="display: block">Next (on kill)</span><span class="mi-d" style="display: block">B-3 sets next to B-4</span></span><span class="kbd">N</span></button>
+        <button type="button" class="mi" role="menuitem" aria-disabled="true"><svg width="28" height="10" aria-hidden="true"><path class="e e-leader" d="M0,5 L28,5"></path></svg><span><span class="mi-t" style="display: block">Assumption</span><span class="mi-d" style="display: block">Needs an assumption at one end</span></span></button>
+      </div>
+      <p style="position: absolute; left: 40px; bottom: 16px; margin: 0; max-width: 560px; font-size: 12px; line-height: 17px; color: var(--text-muted)">Unambiguous pairs skip the menu: bet to fixed point is always <span class="mono">serves</span>, assumption to anything is always <span class="mono">assumptions</span>.</p>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1100,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'dark' };
+  }
+}
+</script>
+</body>
+</html>

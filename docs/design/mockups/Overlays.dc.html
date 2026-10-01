@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Menus, dialogs and panels</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a993f7}a:hover{color:#c3b4fa}
+.gs{--font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,ui-sans-serif,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-family:var(--font-ui);font-size:13px;color:var(--text-normal);background:var(--background-primary);-webkit-font-smoothing:antialiased}
+.theme-dark{color-scheme:dark;--background-primary:#1e1e1e;--background-primary-alt:#232323;--background-secondary:#262626;--background-secondary-alt:#2e2e2e;--background-modifier-border:#363636;--background-modifier-border-hover:#4d4d4d;--background-modifier-hover:rgba(255,255,255,.06);--text-normal:#dadada;--text-muted:#a8a8a8;--text-faint:#8f8f8f;--text-accent:#a993f7;--interactive-accent:#7c5ce6;--text-on-accent:#ffffff;--node-bg:#272727;--node-bg-alt:#222222;--edge:#8c8c8c;--canvas-dot:#383838;--shadow:0 10px 28px rgba(0,0,0,.5);--danger-fill:#c92a33;--red-rgb:251,70,76;--orange-rgb:233,151,63;--yellow-rgb:224,222,113;--green-rgb:68,207,110;--cyan-rgb:83,223,221;--blue-rgb:2,122,255;--purple-rgb:168,130,255;--gray-rgb:150,150,150;--red-text:#fb6b70;--orange-text:#eda15a;--yellow-text:#e0de71;--green-text:#5ad47f;--cyan-text:#53dfdd;--blue-text:#5aa5ff;--purple-text:#b597ff;--gray-text:#b0b0b0}
+.theme-light{color-scheme:light;--background-primary:#ffffff;--background-primary-alt:#fafafa;--background-secondary:#f6f6f6;--background-secondary-alt:#eeeeee;--background-modifier-border:#e0e0e0;--background-modifier-border-hover:#c8c8c8;--background-modifier-hover:rgba(0,0,0,.05);--text-normal:#222222;--text-muted:#5c5c5c;--text-faint:#767676;--text-accent:#6240d8;--interactive-accent:#6c4ee0;--text-on-accent:#ffffff;--node-bg:#ffffff;--node-bg-alt:#fbfbfb;--edge:#8f8f8f;--canvas-dot:#d4d4d4;--shadow:0 10px 28px rgba(0,0,0,.14);--danger-fill:#c4202f;--red-rgb:233,49,71;--orange-rgb:236,117,0;--yellow-rgb:224,172,0;--green-rgb:8,185,78;--cyan-rgb:0,191,188;--blue-rgb:8,109,221;--purple-rgb:120,82,238;--gray-rgb:130,130,130;--red-text:#b8202f;--orange-text:#9c4f00;--yellow-text:#7d6100;--green-text:#0a7535;--cyan-text:#00706e;--blue-text:#0a5cb8;--purple-text:#5b3bd1;--gray-text:#5c5c5c}
+.st-red{--st-rgb:var(--red-rgb);--st-text:var(--red-text)}.st-orange{--st-rgb:var(--orange-rgb);--st-text:var(--orange-text)}.st-green{--st-rgb:var(--green-rgb);--st-text:var(--green-text)}.st-cyan{--st-rgb:var(--cyan-rgb);--st-text:var(--cyan-text)}.st-purple{--st-rgb:var(--purple-rgb);--st-text:var(--purple-text)}.st-gray{--st-rgb:var(--gray-rgb);--st-text:var(--gray-text)}
+.mono{font-family:var(--font-mono)}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic-sm{width:13px;height:13px}
+.btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:32px;padding:0 14px;border-radius:6px;font-family:var(--font-ui);font-size:13px;color:var(--text-normal);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--background-modifier-hover)}
+.btn:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:1px}
+.btn-line{border:1px solid var(--background-modifier-border)}
+.btn-danger{background:var(--danger-fill);color:#ffffff;font-weight:600}
+.btn-danger:hover{background:var(--danger-fill);filter:brightness(1.1)}
+.btn-icon{width:32px;padding:0}
+.pill{display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:9px;font-size:10.5px;font-weight:600;letter-spacing:.02em;color:var(--st-text);background:rgba(var(--st-rgb),.15);white-space:nowrap;flex:none}
+.canvas-bg{background-color:var(--background-primary);background-image:radial-gradient(var(--canvas-dot) 1.1px,transparent 1.3px);background-size:18px 18px}
+.scene{position:relative;height:400px;border:1px solid var(--background-modifier-border);border-radius:12px;overflow:hidden}
+.cap{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+.node{box-sizing:border-box;position:absolute;display:flex;flex-direction:column;gap:6px;padding:10px 12px;width:220px;height:84px;background:var(--node-bg);border:1px solid rgba(var(--st-rgb),.5);border-radius:8px;color:var(--text-normal)}
+.node.sel{box-shadow:0 0 0 2px var(--background-primary),0 0 0 4px var(--interactive-accent)}
+.node.asm{width:200px;height:60px;border-radius:4px;padding:7px 10px;gap:3px;background:var(--node-bg-alt)}
+.node.asm .ntitle{font-size:12px;line-height:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.node.asm .pill{height:16px;font-size:10px;padding:0 6px}
+.node.fp{width:200px;height:96px;border:2px solid rgb(var(--purple-rgb));border-radius:20px;background:rgba(var(--purple-rgb),.1);box-shadow:0 0 0 4px var(--background-primary),0 0 0 5px rgba(var(--purple-rgb),.45);padding:12px 16px;gap:4px;justify-content:center}
+.node.focus{box-shadow:0 0 0 4px var(--background-primary),0 0 0 7px var(--interactive-accent)}
+.node.dim{opacity:.32}
+.row1{display:flex;align-items:center;gap:6px;height:18px;min-width:0}
+.nid{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-muted);flex:none}
+.ndate{flex:1;min-width:0;font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ntitle{font-size:13px;line-height:16px;font-weight:600}
+.fp-tag{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--purple-text)}
+.badge{position:absolute;top:-9px;right:-9px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:10px;background:rgb(var(--orange-rgb));color:#1e1e1e;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--background-primary)}
+.menu{position:absolute;box-sizing:border-box;padding:5px;border-radius:8px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:1px}
+.mi{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;min-height:30px;padding:4px 10px;border-radius:5px;font-size:12.5px;color:var(--text-normal);cursor:pointer}
+.mi:hover,.mi.hot{background:var(--background-modifier-hover)}
+.mi:focus-visible{outline:2px solid var(--interactive-accent)}
+.mi .ic{color:var(--text-muted)}
+.mi.danger{color:var(--red-text)}.mi.danger .ic{color:var(--red-text)}
+.mi-d{font-size:11px;color:var(--text-muted);display:block;margin-top:1px}
+.msep{height:1px;margin:4px 6px;background:var(--background-modifier-border)}
+.e{fill:none;stroke-width:1.6}
+.e-serves{stroke:var(--edge)}
+.e-leader{stroke:var(--text-faint);stroke-width:1.1;stroke-dasharray:3 4}
+.e-hl{stroke:var(--text-accent);stroke-width:2.6}
+.ah-serves{fill:var(--edge)}.ah-hl{fill:var(--text-accent)}
+.pop{position:absolute;box-sizing:border-box;border-radius:10px;background:var(--background-primary);border:1px solid var(--background-modifier-border-hover);box-shadow:var(--shadow);overflow:hidden}
+.props{display:grid;grid-template-columns:96px minmax(0,1fr);row-gap:4px;font-size:12px}
+.props .k{color:var(--text-muted);display:flex;align-items:center;gap:6px}
+.pop h3{margin:10px 0 3px;font-size:13.5px;font-weight:700}
+.pop p{margin:0;font-size:12.5px;line-height:18px;color:var(--text-normal)}
+.ilink{color:var(--text-accent);text-decoration:none}
+.chg{display:grid;grid-template-columns:minmax(0,1fr) auto 18px auto;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;background:var(--background-secondary)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--text-faint)}
+.dot.on{width:10px;height:10px;background:var(--interactive-accent)}
+.dot.done{background:var(--text-muted)}
+</style>
+</helmet>
+<div class="gs theme-{{theme}}" style="width: 1440px; height: 1060px; box-sizing: border-box; padding: 44px 48px; display: flex; flex-direction: column; gap: 22px">
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <h1 style="margin: 0; font-size: 28px; font-weight: 700">Menus, dialogs and panels</h1>
+    <p style="margin: 0; font-size: 14px; line-height: 21px; color: var(--text-muted); max-width: 860px">Right-click menus run the same create actions as the commands. Kill and activate next is one atomic write across two notes. Hovering a node shows Obsidian's page preview.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span class="cap">Context menu · bet</span>
+      <div class="scene canvas-bg">
+        <div class="node st-green sel" style="left: 36px; top: 36px"><span class="row1"><span class="nid">B-1</span><span class="ndate">Due 1 Dec 2026</span><span class="pill st-green">active</span></span><span class="ntitle">Get a D7 visa</span><span class="badge">1</span></div>
+        <div class="menu" role="menu" aria-label="B-1 actions" style="left: 214px; top: 70px; width: 290px">
+          <button type="button" class="mi" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M12 3v18"></path></svg>Open in split</button>
+          <button type="button" class="mi" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 7.9 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2z"></path></svg>Reveal in file explorer</button>
+          <div class="msep" role="separator"></div>
+          <button type="button" class="mi hot" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg><span>New sequel bet<span class="mi-d">Pre-fills next on B-1</span></span></button>
+          <button type="button" class="mi" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add assumption</button>
+          <button type="button" class="mi" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><path d="M19 12H5M11 18l-6-6 6-6"></path></svg>New bet serving this</button>
+          <button type="button" class="mi" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4l3 2"></path></svg><span style="flex: 1">Set status</span><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></button>
+          <div class="msep" role="separator"></div>
+          <button type="button" class="mi danger" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg><span>Kill and activate B-2<span class="mi-d">Apply for a digital nomad visa</span></span></button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span class="cap">Kill and activate next · confirm</span>
+      <div class="scene canvas-bg">
+        <div class="node st-green" style="left: 40px; top: 40px"><span class="row1"><span class="nid">B-1</span><span class="pill st-green" style="margin-left: auto">active</span></span><span class="ntitle">Get a D7 visa</span></div>
+        <div class="node st-gray" style="left: 40px; top: 230px; opacity: .66"><span class="row1"><span class="nid">B-2</span><span class="pill st-gray" style="margin-left: auto">dormant</span></span><span class="ntitle">Apply for a digital nomad visa</span></div>
+        <div style="position: absolute; inset: 0; background: rgba(0,0,0,.5)"></div>
+        <div role="dialog" aria-modal="true" aria-labelledby="kill-title" style="position: absolute; left: 106px; top: 28px; width: 440px; box-sizing: border-box; padding: 20px; border-radius: 12px; background: var(--background-primary); border: 1px solid var(--background-modifier-border); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; align-items: center">
+            <h2 id="kill-title" style="margin: 0; font-size: 17px; font-weight: 700; flex: 1">Kill B-1 and activate its sequel?</h2>
+            <button type="button" class="btn btn-icon" aria-label="Close" style="width: 28px; height: 28px; color: var(--text-muted)"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+          </div>
+          <div class="chg"><span style="min-width: 0"><span class="mono" style="font-size: 11.5px; color: var(--text-muted)">B-1</span> Get a D7 visa</span><span class="pill st-green">active</span><svg class="ic ic-sm" viewBox="0 0 24 24" style="color: var(--text-faint)"><path d="M5 12h14M13 6l6 6-6 6"></path></svg><span class="pill st-red">killed</span></div>
+          <div class="chg"><span style="min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span class="mono" style="font-size: 11.5px; color: var(--text-muted)">B-2</span> Apply for a digital nomad visa</span><span class="pill st-gray">dormant</span><svg class="ic ic-sm" viewBox="0 0 24 24" style="color: var(--text-faint)"><path d="M5 12h14M13 6l6 6-6 6"></path></svg><span class="pill st-green">active</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; line-height: 17px">
+            <span style="color: var(--text-muted)">Appended under ## Log</span>
+            <span><span class="mono" style="color: var(--text-muted)">B-1</span> · 2026-10-01: killed; activated B-2</span>
+            <span><span class="mono" style="color: var(--text-muted)">B-2</span> · 2026-10-01: activated as the sequel of B-1</span>
+          </div>
+          <span style="font-size: 12px; color: var(--text-muted)">Both notes change together, or neither does.</span>
+          <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px">
+            <button type="button" class="btn btn-line">Cancel</button>
+            <button type="button" class="btn btn-danger">Kill and activate</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span class="cap">Hover preview · context menu on an assumption</span>
+      <div class="scene canvas-bg">
+        <div class="node asm st-orange" style="left: 36px; top: 32px"><span class="row1"><span class="nid">A-2</span><span class="ndate">No verify-by</span><span class="pill st-orange">unverified</span></span><span class="ntitle">Rent in Lisbon stays under 1200</span></div>
+        <div class="pop" role="tooltip" style="left: 36px; top: 104px; width: 330px; height: 284px">
+          <div style="padding: 8px 12px; font-size: 11px; color: var(--text-faint); border-bottom: 1px solid var(--background-modifier-border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Strategy / Assumptions / A-2 Rent in Lisbon stays under 1200</div>
+          <div style="padding: 10px 14px">
+            <div class="props">
+              <span class="k">id</span><span class="mono">A-2</span>
+              <span class="k">type</span><span>assumption</span>
+              <span class="k">status</span><span><span class="pill st-orange">unverified</span></span>
+              <span class="k">verify-by</span><span style="color: var(--orange-text)">Empty</span>
+            </div>
+            <h3>The Assumption</h3>
+            <p>Rent in Lisbon stays under 1200 EUR.</p>
+            <h3>How I'd Know It's False</h3>
+            <p>Listings median above 1200.</p>
+            <h3>Depended On By</h3>
+            <p><a class="ilink" href="#b1">B-1 Get a D7 visa</a> · <a class="ilink" href="#b4">B-4 Save 20000 for kiln and lease</a></p>
+          </div>
+        </div>
+        <div class="menu" role="menu" aria-label="A-2 actions" style="left: 390px; top: 32px; width: 230px">
+          <button type="button" class="mi st-green" role="menuitem"><span style="width: 8px; height: 8px; border-radius: 50%; background: rgb(var(--green-rgb))"></span>Mark confirmed</button>
+          <button type="button" class="mi danger hot" role="menuitem"><span style="width: 8px; height: 8px; border-radius: 50%; background: rgb(var(--red-rgb))"></span><span>Mark falsified<span class="mi-d">Flags B-1 and B-4 for review</span></span></button>
+          <button type="button" class="mi" role="menuitem"><span style="width: 8px; height: 8px; border-radius: 50%; background: rgb(var(--gray-rgb))"></span>Mark undeterminable</button>
+          <div class="msep" role="separator"></div>
+          <button type="button" class="mi" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg>Set verify-by date</button>
+          <button type="button" class="mi" role="menuitem"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M12 3v18"></path></svg>Open in split</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span class="cap">Review walk · replaces canvas presentation</span>
+      <div class="scene canvas-bg">
+        <svg width="652" height="400" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+          <path class="e e-hl" d="M268,142 C310,142 320,160 362,160"></path><path d="M370,160 L361,155.5 L361,164.5 Z" class="ah-hl"></path>
+          <path class="e e-serves" d="M268,248 C300,248 310,170 362,170" style="opacity: .32"></path>
+        </svg>
+        <div class="node st-green dim" style="left: 48px; top: 206px"><span class="row1"><span class="nid">B-3</span><span class="pill st-green" style="margin-left: auto">active</span></span><span class="ntitle">Sell pottery at weekend markets</span></div>
+        <div class="node st-green" style="left: 48px; top: 100px"><span class="row1"><span class="nid">B-4</span><span class="ndate">Due 1 Jun 2027</span><span class="pill st-green">active</span></span><span class="ntitle">Save 20000 for kiln and lease</span></div>
+        <div class="node fp st-purple focus" style="left: 370px; top: 112px"><span class="fp-tag"><svg class="ic ic-sm" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>FIXED POINT · FP-2</span><span class="ntitle" style="font-size: 14.5px; line-height: 18px">Own a profitable ceramics studio</span></div>
+        <div role="region" aria-label="Review walk" style="position: absolute; left: 16px; right: 16px; bottom: 16px; box-sizing: border-box; padding: 12px 14px; border-radius: 10px; background: var(--background-secondary); border: 1px solid var(--background-modifier-border); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <span style="font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--text-muted)">REVIEW WALK</span>
+            <span style="display: flex; align-items: center; gap: 5px" aria-label="Step 2 of 10"><span class="dot done"></span><span class="dot on"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>
+            <span style="flex: 1"></span>
+            <span style="font-size: 12px; color: var(--text-muted)">2 of 10 · Fixed points, then routes, then bets</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px">
+            <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0"><span style="font-size: 14px; font-weight: 700"><span class="mono" style="font-size: 12px; color: var(--text-muted)">FP-2</span> Own a profitable ceramics studio</span><span style="font-size: 12px; color: var(--text-muted)">Served by B-4 · reached through B-3 and B-8</span></span>
+            <button type="button" class="btn btn-line">Previous</button>
+            <button type="button" class="btn" style="background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 600">Next: B-1</button>
+            <button type="button" class="btn btn-icon" aria-label="Exit review walk" style="color: var(--text-muted)"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1060}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'dark' };
+  }
+}
+</script>
+</body>
+</html>

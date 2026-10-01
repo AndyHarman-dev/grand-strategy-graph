@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Node components</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a993f7}a:hover{color:#c3b4fa}
+.gs{--font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,ui-sans-serif,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-family:var(--font-ui);font-size:13px;color:var(--text-normal);background:var(--background-primary);-webkit-font-smoothing:antialiased}
+.theme-dark{color-scheme:dark;--background-primary:#1e1e1e;--background-primary-alt:#232323;--background-secondary:#262626;--background-secondary-alt:#2e2e2e;--background-modifier-border:#363636;--background-modifier-border-hover:#4d4d4d;--background-modifier-hover:rgba(255,255,255,.06);--background-modifier-form-field:#1b1b1b;--text-normal:#dadada;--text-muted:#a8a8a8;--text-faint:#8f8f8f;--text-accent:#a993f7;--interactive-accent:#7c5ce6;--text-on-accent:#ffffff;--node-bg:#272727;--node-bg-alt:#222222;--edge:#8c8c8c;--canvas-dot:#383838;--frame-bg:rgba(255,255,255,.022);--frame-border:#333333;--shadow:0 10px 28px rgba(0,0,0,.5);--red-rgb:251,70,76;--orange-rgb:233,151,63;--yellow-rgb:224,222,113;--green-rgb:68,207,110;--cyan-rgb:83,223,221;--blue-rgb:2,122,255;--purple-rgb:168,130,255;--gray-rgb:150,150,150;--red-text:#fb6b70;--orange-text:#eda15a;--yellow-text:#e0de71;--green-text:#5ad47f;--cyan-text:#53dfdd;--blue-text:#5aa5ff;--purple-text:#b597ff;--gray-text:#b0b0b0}
+.theme-light{color-scheme:light;--background-primary:#ffffff;--background-primary-alt:#fafafa;--background-secondary:#f6f6f6;--background-secondary-alt:#eeeeee;--background-modifier-border:#e0e0e0;--background-modifier-border-hover:#c8c8c8;--background-modifier-hover:rgba(0,0,0,.05);--background-modifier-form-field:#ffffff;--text-normal:#222222;--text-muted:#5c5c5c;--text-faint:#767676;--text-accent:#6240d8;--interactive-accent:#6c4ee0;--text-on-accent:#ffffff;--node-bg:#ffffff;--node-bg-alt:#fbfbfb;--edge:#8f8f8f;--canvas-dot:#d4d4d4;--frame-bg:rgba(0,0,0,.022);--frame-border:#e3e3e3;--shadow:0 10px 28px rgba(0,0,0,.14);--red-rgb:233,49,71;--orange-rgb:236,117,0;--yellow-rgb:224,172,0;--green-rgb:8,185,78;--cyan-rgb:0,191,188;--blue-rgb:8,109,221;--purple-rgb:120,82,238;--gray-rgb:130,130,130;--red-text:#b8202f;--orange-text:#9c4f00;--yellow-text:#7d6100;--green-text:#0a7535;--cyan-text:#00706e;--blue-text:#0a5cb8;--purple-text:#5b3bd1;--gray-text:#5c5c5c}
+.st-red{--st-rgb:var(--red-rgb);--st-text:var(--red-text)}.st-orange{--st-rgb:var(--orange-rgb);--st-text:var(--orange-text)}.st-yellow{--st-rgb:var(--yellow-rgb);--st-text:var(--yellow-text)}.st-green{--st-rgb:var(--green-rgb);--st-text:var(--green-text)}.st-cyan{--st-rgb:var(--cyan-rgb);--st-text:var(--cyan-text)}.st-blue{--st-rgb:var(--blue-rgb);--st-text:var(--blue-text)}.st-purple{--st-rgb:var(--purple-rgb);--st-text:var(--purple-text)}.st-gray{--st-rgb:var(--gray-rgb);--st-text:var(--gray-text)}
+.mono{font-family:var(--font-mono)}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic-sm{width:13px;height:13px}
+.btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:6px;font-family:var(--font-ui);font-size:12.5px;color:var(--text-muted);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--background-modifier-hover);color:var(--text-normal)}
+.pill{display:inline-flex;align-items:center;gap:4px;height:18px;padding:0 7px;border-radius:9px;font-size:10.5px;font-weight:600;letter-spacing:.02em;color:var(--st-text);background:rgba(var(--st-rgb),.15);white-space:nowrap;flex:none}
+.canvas-bg{background-color:var(--background-primary);background-image:radial-gradient(var(--canvas-dot) 1.1px,transparent 1.3px);background-size:18px 18px}
+.node{all:unset;box-sizing:border-box;position:relative;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:10px 12px;background:var(--node-bg);border:1px solid rgba(var(--st-rgb),.5);border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.18);color:var(--text-normal);font-family:var(--font-ui);flex:none}
+.node:hover{border-color:rgba(var(--st-rgb),.95)}
+.node:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:3px}
+.node.sel{box-shadow:0 0 0 2px var(--background-primary),0 0 0 4px var(--interactive-accent)}
+.row1{display:flex;align-items:center;gap:6px;height:18px;min-width:0}
+.nid{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-muted);flex:none}
+.ndate{flex:1;min-width:0;font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ndate.warn{color:var(--orange-text);font-weight:600}
+.ntitle{font-size:13px;line-height:16px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.k-bet{width:220px;height:84px}
+.k-asm{width:200px;height:60px;border-radius:4px;padding:7px 10px;gap:3px;background:var(--node-bg-alt)}
+.k-asm .ntitle{font-size:12px;line-height:15px;font-weight:500;white-space:nowrap;text-overflow:ellipsis;display:block}
+.k-asm .pill{height:16px;font-size:10px;padding:0 6px}
+.k-fp{width:200px;height:96px;border:2px solid rgb(var(--purple-rgb));border-radius:20px;background:rgba(var(--purple-rgb),.1);box-shadow:0 0 0 4px var(--background-primary),0 0 0 5px rgba(var(--purple-rgb),.45);padding:12px 16px;gap:4px;justify-content:center;cursor:default}
+.k-fp .ntitle{font-size:14.5px;line-height:18px}
+.tagline{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--st-text)}
+.k-cp{width:170px;height:84px;background:var(--background-secondary);border:1px solid var(--background-modifier-border-hover);gap:4px}
+.cp-sum{font-size:11.5px;line-height:15px;color:var(--text-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.k-route{width:240px;height:64px;border-radius:32px;padding:10px 22px;gap:3px;justify-content:center;border-width:1.5px;background:rgba(var(--st-rgb),.08)}
+.k-ghost{width:240px;height:64px;border-radius:32px;padding:10px 22px;gap:3px;justify-content:center;border:1.5px dashed rgba(var(--gray-rgb),.7);background:transparent;box-shadow:none}
+.k-ghost .ntitle{font-weight:500;font-style:italic;color:var(--text-muted)}
+.k-ms{width:200px;height:64px;border-radius:6px;padding:10px 12px 10px 14px;flex-direction:row;align-items:center;gap:12px}
+.ms-mark{width:16px;height:16px;transform:rotate(45deg);border-radius:3px;background:rgb(var(--st-rgb));flex:none}
+.k-card{background:rgba(var(--st-rgb),.12);border-color:rgba(var(--st-rgb),.55);border-radius:6px;align-items:center;justify-content:center;text-align:center;padding:6px 12px;font-size:12.5px;font-weight:500;height:44px}
+.k-card.dashed{border-style:dashed;border-width:1.5px}
+.k-diamond{width:64px;height:64px;padding:0;align-items:center;justify-content:center;background:transparent;border:none;box-shadow:none}
+.k-diamond .dm{position:absolute;inset:9px;transform:rotate(45deg);border-radius:6px;background:rgba(var(--st-rgb),.14);border:1px solid rgba(var(--st-rgb),.6)}
+.k-diamond .dt{position:relative;font-size:11.5px;font-weight:700;color:var(--st-text)}
+.k-note{width:170px;height:56px;background:var(--background-secondary);border-color:var(--background-modifier-border);flex-direction:row;align-items:center;gap:9px;padding:8px 10px}
+.note-t{font-size:12px;line-height:15px;font-weight:500;word-break:break-all}
+.note-s{font-size:10.5px;color:var(--text-faint)}
+.s-dormant{opacity:.66}.s-dormant .ntitle{color:var(--text-muted)}
+.s-killed{opacity:.55}.s-killed .ntitle{text-decoration:line-through;text-decoration-color:rgba(var(--red-rgb),.8)}
+.badge{position:absolute;top:-9px;right:-9px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:10px;background:rgb(var(--orange-rgb));color:#1e1e1e;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--background-primary)}
+.badge.issue{background:var(--text-faint);color:var(--background-primary)}
+.handle{position:absolute;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--background-primary);border:2px solid var(--interactive-accent);box-sizing:border-box}
+.frame{position:relative;box-sizing:border-box;border:1px solid var(--frame-border);background:var(--frame-bg);border-radius:14px}
+.frame-label{position:absolute;top:10px;left:14px;font-size:13px;font-weight:600;color:var(--text-muted)}
+.sec-title{margin:0;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.cap{font-family:var(--font-mono);font-size:11px;color:var(--text-faint)}
+.cap b{color:var(--text-muted);font-weight:600}
+.menu{box-sizing:border-box;padding:5px;border-radius:8px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);box-shadow:var(--shadow);display:flex;flex-direction:column;gap:1px}
+.mi{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:9px;height:28px;padding:0 10px;border-radius:5px;font-size:12.5px;color:var(--text-normal);cursor:pointer}
+.mi:hover,.mi.hot{background:var(--background-modifier-hover)}
+.mi .dot{width:8px;height:8px;border-radius:50%;background:rgb(var(--st-rgb))}
+.cal{width:260px;box-sizing:border-box;padding:12px;border-radius:10px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);box-shadow:var(--shadow)}
+.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+.cal-h{font-size:10.5px;font-weight:600;color:var(--text-faint);text-align:center;height:22px;display:flex;align-items:center;justify-content:center}
+.cal-d{all:unset;box-sizing:border-box;height:30px;display:flex;align-items:center;justify-content:center;border-radius:6px;font-size:12px;color:var(--text-normal);cursor:pointer}
+.cal-d:hover{background:var(--background-modifier-hover)}
+.cal-d.on{background:var(--interactive-accent);color:var(--text-on-accent);font-weight:700}
+.cal-d.mark{box-shadow:inset 0 0 0 1px rgba(var(--orange-rgb),.8)}
+</style>
+</helmet>
+<div class="gs theme-{{theme}} canvas-bg" style="width: 1440px; height: 1280px; box-sizing: border-box; padding: 48px 56px; display: flex; flex-direction: column; gap: 40px">
+
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <h1 style="margin: 0; font-size: 28px; font-weight: 700">Node components</h1>
+    <p style="margin: 0; max-width: 860px; font-size: 14px; line-height: 21px; color: var(--text-muted)">One React Flow node type per note type. Status sets the colour; dormant and killed bets fade. Smell and issue badges sit on the top-right corner. Fixed points are locked and cannot be dragged.</p>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 18px">
+    <h2 class="sec-title">Bet · by status</h2>
+    <div style="display: flex; gap: 36px">
+      <div class="tile">
+        <button type="button" class="node k-bet st-green"><span class="row1"><span class="nid">B-1</span><span class="ndate">Due 1 Dec 2026</span><span class="pill st-green">active</span></span><span class="ntitle">Get a D7 visa</span></button>
+        <span class="cap"><b>active</b> · green</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-bet st-gray s-dormant"><span class="row1"><span class="nid">B-2</span><span class="ndate">No deadline</span><span class="pill st-gray">dormant</span></span><span class="ntitle">Apply for a digital nomad visa</span></button>
+        <span class="cap"><b>dormant</b> · was asleep (D6)</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-bet st-cyan"><span class="row1"><span class="nid">B-5</span><span class="ndate">Due 10 Sep 2026</span><span class="pill st-cyan"><svg class="ic" viewBox="0 0 24 24" style="width: 11px; height: 11px; stroke-width: 3"><path d="M20 6 9 17l-5-5"></path></svg>won</span></span><span class="ntitle">Learn Portuguese to B1</span></button>
+        <span class="cap"><b>won</b> · cyan</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-bet st-red s-killed"><span class="row1"><span class="nid">B-6</span><span class="ndate">Due 1 Aug 2026</span><span class="pill st-red">killed</span></span><span class="ntitle">Online ceramics course</span></button>
+        <span class="cap"><b>killed</b> · was cancelled (D6)</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-bet st-yellow"><span class="row1"><span class="nid">B-4</span><span class="ndate">Due 1 Jun 2027</span><span class="pill st-yellow">extended</span></span><span class="ntitle">Save 20000 for kiln and lease</span></button>
+        <span class="cap"><b>extended</b> · one extension max</span>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 18px">
+    <h2 class="sec-title">Bet · states</h2>
+    <div style="display: flex; gap: 36px">
+      <div class="tile">
+        <button type="button" class="node k-bet st-green sel" aria-pressed="true"><span class="row1"><span class="nid">B-1</span><span class="ndate">Due 1 Dec 2026</span><span class="pill st-green">active</span></span><span class="ntitle">Get a D7 visa</span><span class="badge" title="Gating violation">1</span></button>
+        <span class="cap"><b>selected</b> + 1 smell</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-bet st-green"><span class="row1"><span class="nid">B-7</span><span class="ndate">No deadline</span><span class="pill st-green">active</span></span><span class="ntitle">Part-time barista job</span><span class="badge" title="Orphan bet">1</span></button>
+        <span class="cap"><b>smell</b> · orphan, no chain to a FP</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-bet st-green"><span class="row1"><span class="nid">B-3</span><span class="ndate warn">Overdue 15 Oct 2026</span><span class="pill st-green">active</span></span><span class="ntitle">Sell pottery at weekend markets</span><span class="badge" title="Falsified dependency, Overdue">2</span></button>
+        <span class="cap"><b>overdue</b> · after 15 Oct, 2 smells</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-bet st-red s-killed"><span class="row1"><span class="nid">B-6</span><span class="ndate">Due 1 Aug 2026</span><span class="pill st-red">killed</span></span><span class="ntitle">Online ceramics course</span><span class="badge issue" title="Phantom target">?</span></button>
+        <span class="cap"><b>issue</b> · serves a phantom note</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-bet st-green" style="border-color: rgba(var(--green-rgb),.95)"><span class="row1"><span class="nid">B-4</span><span class="ndate">Due 1 Jun 2027</span><span class="pill st-green">active</span></span><span class="ntitle">Save 20000 for kiln and lease</span><span class="handle" style="left: -6px"></span><span class="handle" style="right: -6px"></span></button>
+        <span class="cap"><b>hover</b> · handles to draw edges</span>
+      </div>
+    </div>
+  </section>
+
+  <div style="display: flex; gap: 72px">
+    <section style="display: flex; flex-direction: column; gap: 18px">
+      <h2 class="sec-title">Assumption · by status</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px 32px">
+        <div class="tile">
+          <button type="button" class="node k-asm st-orange"><span class="row1"><span class="nid">A-2</span><span class="ndate">No verify-by</span><span class="pill st-orange">unverified</span></span><span class="ntitle">Rent in Lisbon stays under 1200</span></button>
+          <span class="cap"><b>unverified</b> · amber</span>
+        </div>
+        <div class="tile">
+          <button type="button" class="node k-asm st-green"><span class="row1"><span class="nid">A-1</span><span class="ndate">Verify 20 Jul 2026</span><span class="pill st-green">confirmed</span></span><span class="ntitle">D7 accepts freelance income</span></button>
+          <span class="cap"><b>confirmed</b> · green</span>
+        </div>
+        <div class="tile">
+          <button type="button" class="node k-asm st-red"><span class="row1"><span class="nid">A-3</span><span class="ndate">Verify 10 Aug 2026</span><span class="pill st-red">falsified</span></span><span class="ntitle">Weekend market stalls are available</span></button>
+          <span class="cap"><b>falsified</b> · red, flags dependents</span>
+        </div>
+        <div class="tile">
+          <button type="button" class="node k-asm st-gray"><span class="row1"><span class="nid">A-4</span><span class="ndate">No verify-by</span><span class="pill st-gray">undeterminable</span></span><span class="ntitle">Tourists buy handmade ceramics</span></button>
+          <span class="cap"><b>undeterminable</b> · gray (D13)</span>
+        </div>
+        <div class="tile">
+          <button type="button" class="node k-asm st-orange"><span class="row1"><span class="nid">A-5</span><span class="ndate warn">Verify today</span><span class="pill st-orange">unverified</span></span><span class="ntitle">I can study one hour a day</span></button>
+          <span class="cap"><b>verify-by due</b> · today</span>
+        </div>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 18px">
+      <h2 class="sec-title">Free cards and frames · .gsmap only</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, auto); gap: 26px 32px; align-items: start">
+        <div class="tile">
+          <button type="button" class="node k-card st-yellow" style="width: 180px">Needs elaboration</button>
+          <span class="cap"><b>card</b> · colour 3</span>
+        </div>
+        <div class="tile">
+          <button type="button" class="node k-card st-gray dashed" style="width: 200px">Route C - Freelance visa (suspended)</button>
+          <span class="cap"><b>card</b> · dashed border</span>
+        </div>
+        <div class="tile">
+          <button type="button" class="node k-diamond st-cyan" aria-label="AND card"><span class="dm"></span><span class="dt">AND</span></button>
+          <span class="cap"><b>diamond</b> · kept as a card</span>
+        </div>
+        <div class="tile">
+          <button type="button" class="node k-note"><svg class="ic" viewBox="0 0 24 24" style="color: var(--text-muted)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M16 13H8M16 17H8"></path></svg><span style="display: flex; flex-direction: column; gap: 2px; min-width: 0"><span class="note-t">lisbon-neighbourhoods-research</span><span class="note-s">Note reference</span></span></button>
+          <span class="cap"><b>note reference</b></span>
+        </div>
+        <div class="tile" style="grid-column: span 2">
+          <div class="frame" style="width: 300px; height: 96px"><span class="frame-label">Visa route</span><span style="position: absolute; right: -5px; bottom: -5px; width: 10px; height: 10px; border-radius: 2px; background: var(--background-primary); border: 2px solid var(--interactive-accent); box-sizing: border-box"></span></div>
+          <span class="cap"><b>frame</b> · resizable, was a canvas group</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 18px">
+    <h2 class="sec-title">Anchors and routes</h2>
+    <div style="display: flex; gap: 40px; align-items: flex-start">
+      <div class="tile">
+        <button type="button" class="node k-fp st-purple" aria-label="Fixed point FP-1, locked"><span class="tagline"><svg class="ic ic-sm" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>FIXED POINT · FP-1</span><span class="ntitle">Live in Portugal</span></button>
+        <span class="cap"><b>fixed point</b> · locked</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-cp st-gray"><span class="tagline"><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>YOU ARE HERE</span><span class="ntitle">Current Position</span><span class="cp-sum">Employed remotely, saving money, hobby potter.</span></button>
+        <span class="cap"><b>current position</b> · leftmost</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-route st-blue"><span class="tagline">ROUTE</span><span class="ntitle">[Route title]</span></button>
+        <span class="cap"><b>route</b> · active</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-ghost st-gray"><span class="tagline" style="color: var(--text-faint)">GHOST ROUTE</span><span class="ntitle">Golden visa path?</span></button>
+        <span class="cap"><b>route</b> · ghost, dashed and empty</span>
+      </div>
+      <div class="tile">
+        <button type="button" class="node k-ms st-blue"><span class="ms-mark"></span><span style="display: flex; flex-direction: column; gap: 3px; min-width: 0"><span class="nid">[M-id] · [date]</span><span class="ntitle" style="font-size: 12.5px">[Milestone title]</span></span></button>
+        <span class="cap"><b>milestone</b></span>
+      </div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 18px">
+    <h2 class="sec-title">Inline editing on the node</h2>
+    <div style="display: flex; gap: 72px; align-items: flex-start">
+      <div class="tile">
+        <div style="position: relative; width: 220px; height: 300px">
+          <button type="button" class="node k-bet st-green sel"><span class="row1"><span class="nid">B-1</span><span class="ndate">Due 1 Dec 2026</span><span class="pill st-green" style="box-shadow: 0 0 0 1.5px rgba(var(--green-rgb),.7)">active<svg class="ic" viewBox="0 0 24 24" style="width: 10px; height: 10px; stroke-width: 3"><path d="m6 9 6 6 6-6"></path></svg></span></span><span class="ntitle">Get a D7 visa</span></button>
+          <div class="menu" role="menu" aria-label="Status" style="position: absolute; left: 104px; top: 34px; width: 168px">
+            <button type="button" class="mi st-green hot" role="menuitemradio" aria-checked="true"><span class="dot"></span><span style="flex: 1">active</span><svg class="ic ic-sm" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></button>
+            <button type="button" class="mi st-gray" role="menuitemradio" aria-checked="false"><span class="dot"></span>dormant</button>
+            <button type="button" class="mi st-cyan" role="menuitemradio" aria-checked="false"><span class="dot"></span>won</button>
+            <button type="button" class="mi st-red" role="menuitemradio" aria-checked="false"><span class="dot"></span>killed</button>
+            <button type="button" class="mi st-yellow" role="menuitemradio" aria-checked="false"><span class="dot"></span>extended</button>
+          </div>
+        </div>
+        <span class="cap"><b>status pill</b> · dropdown</span>
+      </div>
+      <div class="tile">
+        <div style="position: relative; width: 300px; height: 400px">
+          <button type="button" class="node k-asm st-orange sel"><span class="row1"><span class="nid">A-5</span><span class="ndate warn" style="text-decoration: underline; text-underline-offset: 2px">Verify today</span><span class="pill st-orange">unverified</span></span><span class="ntitle">I can study one hour a day</span></button>
+          <div class="cal" style="position: absolute; left: 30px; top: 40px">
+            <div style="display: flex; align-items: center; margin-bottom: 8px">
+              <button type="button" class="btn" aria-label="Previous month" style="width: 28px; height: 28px; padding: 0; justify-content: center"><svg class="ic" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></button>
+              <span style="flex: 1; text-align: center; font-size: 13px; font-weight: 700">October 2026</span>
+              <button type="button" class="btn" aria-label="Next month" style="width: 28px; height: 28px; padding: 0; justify-content: center"><svg class="ic" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></button>
+            </div>
+            <div class="cal-g">
+              <span class="cal-h">Mo</span><span class="cal-h">Tu</span><span class="cal-h">We</span><span class="cal-h">Th</span><span class="cal-h">Fr</span><span class="cal-h">Sa</span><span class="cal-h">Su</span>
+              <sc-for list="{{days}}" as="d" hint-placeholder-count="35">
+                <sc-if value="{{d.blank}}" hint-placeholder-val="{{false}}"><span></span></sc-if>
+                <sc-if value="{{d.real}}" hint-placeholder-val="{{true}}"><button type="button" class="cal-d {{d.cls}}" aria-label="{{d.aria}}">{{d.n}}</button></sc-if>
+              </sc-for>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--background-modifier-border)">
+              <button type="button" class="btn" style="height: 28px">Clear</button>
+              <button type="button" class="btn" style="height: 28px; color: var(--text-accent)">+1 week</button>
+            </div>
+          </div>
+        </div>
+        <span class="cap"><b>verify-by / deadline</b> · date picker</span>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1280}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const days = [];
+    for (let i = 0; i < 3; i++) days.push({ blank: true, real: false });
+    for (let d = 1; d <= 31; d++) days.push({ blank: false, real: true, n: d, cls: d === 1 ? 'on' : d === 8 ? 'mark' : '', aria: d + ' October 2026' + (d === 1 ? ', selected, today' : '') });
+    return { theme: this.props.theme ?? 'dark', days: days };
+  }
+}
+</script>
+</body>
+</html>
