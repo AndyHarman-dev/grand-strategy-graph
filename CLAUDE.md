@@ -29,7 +29,7 @@ renders the strategy as a data-driven graph. The full plan, decisions (D1–D13)
 | `src/obsidian/` | Obsidian adapter: modals, create flows, views, commands |
 | `src/ui/` | React components (from Phase 5a) |
 | `src/main.ts` | Plugin entry |
-| `tools/` | Node CLIs, e.g. the migration planner (Phase 2) |
+| `tools/` | Node-only code: `fs-adapter.ts` (reads a vault folder), later the migration planner (Phase 2) |
 | `tests/` | Vitest. `mocks/obsidian.ts` replaces the `obsidian` module; `support/` has the in-memory vault |
 | `test-vault/` | Synthetic legacy-format vault; `ANOMALIES.md` maps each note to the anomaly it covers |
 

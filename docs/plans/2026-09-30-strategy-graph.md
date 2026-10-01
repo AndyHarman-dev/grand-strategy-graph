@@ -383,6 +383,20 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Decisions:** none.
   - **Verification:** **Create new Bet**: identical. The first attempt differed only in dates (run A and run B were done on different days) and in an `[[A-28 …]]` backlink from an assumption step that was skipped in run B. **Create new Assumption**: re-run with both runs on the same day, no differences. Phase 0 manual check passed.
 
+- **2026-10-01**:
+  - **Context:** Phase 1 (schema v2 + pure graph core), run as a Claude Code on the web session.
+  - **Actions:**
+    - `src/core/schema.ts` (types, status lists, relation table), `links.ts` (wikilink parsing and Obsidian-style link-path resolution), `frontmatter.ts`, `graph.ts` (`buildGraph`), `smells.ts` (`findSmells`), `adapter.ts` (`VaultAdapter`), `memory-adapter.ts`.
+    - Adapters: `MemoryAdapter` (core), `FsAdapter` (`tools/fs-adapter.ts`, reads a folder, never writes), `ObsidianAdapter` (`src/obsidian/adapter.ts`, built but not yet registered anywhere; Phase 5a wires it in).
+    - Added the `yaml` dependency (frontmatter parsing for the Memory/Fs adapters; the plugin bundle doesn't import it yet).
+  - **Decisions:**
+    - `NoteRecord.resolvedLinks` maps each frontmatter linkpath to the resolved vault path or null; the core never sees a vault. Adapters resolve links, scoped to `Strategy/` for records but across the whole vault for targets, so the phantom root note resolves and is reported as `non-strategy-target` (D13).
+    - Notes without `type` are skipped silently; an unknown `type` is an issue. A note without `id` is keyed by its path and flagged, so positions never rest on a filename.
+    - Relation table (`RELATIONS`): which types may carry each field and which targets are valid. A violation is an issue and creates no edge. Scalar values are read as one-element lists. Legacy `next sequel` is not read.
+    - Smell semantics: "active" is `status: active` exactly (not `extended`). `orphan-bet` needs a `serves` chain to a fixed point, so `ultimately-serves` alone doesn't clear it. `unreached-fixed-point` means no incoming `serves` edge from any node. Dates compare by their `YYYY-MM-DD` part; `today` is passed in.
+    - The test vault is legacy format and has no v2 relations, so smells are tested on `tests/support/v2.ts`, a hand-written v2 version of it, until Phase 2's planner can generate it. The legacy test vault is still run through `buildGraph` to pin the issues its anomalies produce.
+  - **Verification:** `npm run typecheck`, `npm test` (116 tests, 48 new) and `npm run build` pass; the Phase 0 goldens are untouched. Unverified: `ObsidianAdapter` against the real `metadataCache` (only a fake is tested; needs the user to open the test vault once a command uses it).
+
 ## Decisions Log
 
 *(For the user's own hand only.)*
