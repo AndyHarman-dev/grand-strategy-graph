@@ -19,3 +19,4 @@ legacy-edges.json
 migration.diff
 migration-plan.json
 migration-out/
+migration-applied.json

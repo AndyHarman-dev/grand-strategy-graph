@@ -9,7 +9,7 @@ renders the strategy as a data-driven graph. The full plan, decisions (D1–D13)
 - **Fixtures only.** The user's real vault never enters this repo or a cloud session. All tests and
   manual runs use the synthetic vault in `test-vault/`.
 - **Never commit real-vault outputs**: `migration-report.md`, `resolutions.yaml`, `legacy-edges.json`,
-  `migration.diff`, `migration-plan.json`, `migration-out/` (already in `.gitignore`). If one shows up in
+  `migration.diff`, `migration-plan.json`, `migration-applied.json`, `migration-out/` (already in `.gitignore`). If one shows up in
   `git status`, stop and ask. The test-vault versions under `tests/migration/__golden__/` are synthetic and
   are committed on purpose.
 - **No Obsidian runtime in the cloud.** Cloud sessions can run npm, Vitest and (from Phase 5a)
@@ -21,9 +21,11 @@ renders the strategy as a data-driven graph. The full plan, decisions (D1–D13)
   writes. Never regenerate them (`npx vitest run -u`) to make a failing test pass. Only update them when
   a phase deliberately changes output (Phase 4), and call out the golden diff in the commit message.
   `tests/migration/__golden__/` pins the migration planner's output over the test vault; same rule.
-- **The migration is dry-run only until Phase 3.** `tools/migrate.ts` never writes to the vault and refuses
-  `--apply`. A legacy edge the classification rules don't cover comes out `unclassified` (exit code 2):
-  that is a decision for the user (plan Phase 2, "Escalate/stop"), never something to settle in code.
+- **Never run `--apply` in a cloud session.** `tools/migrate.ts --apply` (Phase 3) writes into a vault, so it is
+  user-run, local, on the real vault, with Obsidian closed. Tests apply only to throwaway copies of `test-vault/`
+  in the OS temp dir. A legacy edge the classification rules don't cover comes out `unclassified` (exit code 2):
+  that is a decision for the user (plan Phase 2, "Escalate/stop"), never something to settle in code. Apply stops
+  if any touched file's hash differs from the reviewed dry run; never loosen that guard.
 - **`tests/legacy/main.js` is the pre-port oracle**, kept byte-for-byte as it shipped. Don't edit it.
   Remove it (and the `legacy` entries in the tests) only once Phase 4 intentionally changes output.
 
@@ -48,6 +50,7 @@ npm run typecheck   # tsc --noEmit (TypeScript 7)
 npm run build       # esbuild -> dist/main.js + manifest.json + styles.css
 npm run dev         # esbuild watch
 npm run migrate -- --vault <path> [--resolutions <file>] [--out <dir>]   # migration dry run (outputs outside the vault)
+npm run migrate -- --vault <path> --resolutions <file> --apply            # Phase 3, user-run only (backs up to ~/strategy-backups)
 ```
 
 Run `npm run typecheck && npm test && npm run build` before every push.

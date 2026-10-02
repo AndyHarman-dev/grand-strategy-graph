@@ -1,13 +1,16 @@
-import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve } from 'node:path';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { readVaultFiles } from '../fs-adapter';
+import { applyMigration, isInside, sha256, type PlanFile } from './apply';
 import { unifiedDiff } from './diff';
 import { parityGate } from './parity';
 import { planMigration } from './plan';
+import type { MigrationPlan } from './types';
 import { parseResolutions, renderReport, renderResolutions, verdictOf, type Verdict } from './report';
 
 export const USAGE = `Usage: npm run migrate -- --vault <path> [--resolutions <file>] [--out <dir>]
+       npm run migrate -- --vault <path> [--resolutions <file>] --apply [--plan <file>] [--backup-dir <dir>] [--out <dir>]
 
 Dry run of the schema v2 migration (plan Phase 2). Reads the vault, writes nothing to it.
 Writes to --out (default: ./migration-out, which must be outside the vault):
@@ -18,7 +21,15 @@ Writes to --out (default: ./migration-out, which must be outside the vault):
   migration-plan.json   sha256 of every touched file before/after (Phase 3 guards its writes on these)
 
 Exit code: 0 parity gate passed · 1 open questions · 2 stop (unclassified data, refused file, or gate failure).
---apply is Phase 3 and is refused here.`;
+
+--apply (plan Phase 3) writes the planned content into the vault. Close Obsidian or pause Sync first. It:
+  1. re-plans the vault and requires the parity gate to pass,
+  2. requires every touched file to still hash as the reviewed dry run saw it (--plan, default <out>/migration-plan.json),
+  3. copies Strategy/, Templates/, The Map.canvas and the files kept links resolve to into
+     <backup-dir>/<timestamp>/ (default ~/strategy-backups, must be outside the vault) and verifies the copy,
+  4. writes the planned files (The Map.canvas is never written),
+  5. re-checks the live result: bytes as planned, canvas untouched, a re-plan changes nothing, gate passes.
+If any check fails before step 4, nothing is written. Writes <out>/migration-applied.json.`;
 
 export interface CliIo {
   log(line: string): void;
@@ -41,8 +52,6 @@ function parseArgs(argv: readonly string[]): Record<string, string | true> {
   return args;
 }
 
-const sha256 = (text: string) => createHash('sha256').update(text, 'utf8').digest('hex');
-
 /** Returns the exit code. */
 export async function runMigrate(argv: readonly string[], io: CliIo = defaultIo): Promise<number> {
   let args: Record<string, string | true>;
@@ -52,7 +61,7 @@ export async function runMigrate(argv: readonly string[], io: CliIo = defaultIo)
     io.error(`${(e as Error).message}\n\n${USAGE}`);
     return 2;
   }
-  const known = new Set(['vault', 'resolutions', 'out', 'apply', 'help']);
+  const known = new Set(['vault', 'resolutions', 'out', 'apply', 'plan', 'backup-dir', 'help']);
   const unknown = Object.keys(args).filter((k) => !known.has(k));
   if (args.help) {
     io.log(USAGE);
@@ -60,10 +69,6 @@ export async function runMigrate(argv: readonly string[], io: CliIo = defaultIo)
   }
   if (unknown.length) {
     io.error(`Unknown option(s): ${unknown.map((k) => '--' + k).join(', ')}\n\n${USAGE}`);
-    return 2;
-  }
-  if (args.apply) {
-    io.error('--apply is Phase 3 (hash-guarded, with a backup outside the vault) and is not implemented. Nothing was written.');
     return 2;
   }
   if (typeof args.vault !== 'string') {
@@ -76,8 +81,7 @@ export async function runMigrate(argv: readonly string[], io: CliIo = defaultIo)
     return 2;
   }
   const out = resolve(typeof args.out === 'string' ? args.out : 'migration-out');
-  const rel = relative(vault, out);
-  if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) {
+  if (isInside(vault, out)) {
     io.error(`--out must be outside the vault (${out} is inside ${vault}): Obsidian would index the report and its links.`);
     return 2;
   }
@@ -98,6 +102,12 @@ export async function runMigrate(argv: readonly string[], io: CliIo = defaultIo)
   const gate = await parityGate(files, plan);
   const generatedAt = io.now().toISOString();
   const verdict: Verdict = verdictOf(gate);
+
+  if (args.apply) return runApply({ args, vault, out, resolutions, plan, verdict, io });
+  if (args.plan || args['backup-dir']) {
+    io.error('--plan and --backup-dir only apply together with --apply. Nothing was written.');
+    return 2;
+  }
 
   mkdirSync(out, { recursive: true });
   const write = (name: string, text: string) => writeFileSync(join(out, name), text, 'utf8');
@@ -131,4 +141,46 @@ export async function runMigrate(argv: readonly string[], io: CliIo = defaultIo)
   }[verdict];
   (verdict === 'passed' || verdict === 'open' ? io.log : io.error)(message);
   return verdict === 'passed' ? 0 : verdict === 'open' ? 1 : 2;
+}
+
+async function runApply(c: {
+  args: Record<string, string | true>;
+  vault: string;
+  out: string;
+  resolutions: Record<string, unknown>;
+  plan: MigrationPlan;
+  verdict: Verdict;
+  io: CliIo;
+}): Promise<number> {
+  const { args, io } = c;
+  const planPath = resolve(typeof args.plan === 'string' ? args.plan : join(c.out, 'migration-plan.json'));
+  let planFile: PlanFile;
+  try {
+    planFile = JSON.parse(readFileSync(planPath, 'utf8')) as PlanFile;
+    if (!Array.isArray(planFile.files)) throw new Error('no "files" list');
+  } catch (e) {
+    io.error(`Can't read the reviewed dry-run plan ${planPath}: ${(e as Error).message}\nRun the dry run first (without --apply). Nothing was written.`);
+    return 2;
+  }
+  const backupRoot = resolve(typeof args['backup-dir'] === 'string' ? args['backup-dir'] : join(homedir(), 'strategy-backups'));
+  io.log(`Applying to ${c.vault} (make sure Obsidian is closed or Sync is paused).`);
+  const result = await applyMigration({ vault: c.vault, plan: c.plan, planFile, resolutions: c.resolutions, backupRoot, now: io.now() });
+  mkdirSync(c.out, { recursive: true });
+  writeFileSync(
+    join(c.out, 'migration-applied.json'),
+    JSON.stringify({ appliedAt: io.now().toISOString(), ok: result.ok, backupDir: result.backupDir, written: result.written, problems: result.problems }, null, 2) + '\n',
+    'utf8'
+  );
+  if (result.backupDir) io.log(`Backup (${result.backedUp} files): ${result.backupDir}`);
+  if (result.untouched) {
+    io.error(`Refused, nothing was written to the vault:\n${result.problems.map((p) => `  ${p}`).join('\n')}`);
+    return 2;
+  }
+  io.log(`Wrote ${result.written.length} file(s).`);
+  if (!result.ok) {
+    io.error(`The vault was written but the check of the result failed:\n${result.problems.map((p) => `  ${p}`).join('\n')}`);
+    return 2;
+  }
+  io.log('Live result re-checked: files are as planned, The Map.canvas is untouched, re-planning changes nothing, parity gate passes.');
+  return 0;
 }

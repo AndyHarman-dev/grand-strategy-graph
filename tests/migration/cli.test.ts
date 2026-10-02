@@ -59,12 +59,13 @@ describe('npm run migrate (dry run)', () => {
     expect(readFileSync(join(again, 'migration.diff'), 'utf8')).toBe(readFileSync(join(out, 'migration.diff'), 'utf8'));
   });
 
-  it('refuses --apply, an output folder inside the vault, a missing vault and unknown options', async () => {
+  it('refuses --apply without a reviewed plan, --plan without --apply, an output folder inside the vault, a missing vault and unknown options', async () => {
     const vault = join(temp(), 'vault');
     cpSync(TEST_VAULT_DIR, vault, { recursive: true, verbatimSymlinks: true });
     const before = fingerprint(vault);
     const cases: [string[], string][] = [
-      [['--vault', vault, '--apply'], 'Phase 3'],
+      [['--vault', vault, '--apply', '--out', temp()], 'reviewed dry-run plan'],
+      [['--vault', vault, '--plan', 'x.json', '--out', temp()], 'only apply together with --apply'],
       [['--vault', vault, '--out', join(vault, 'reports')], 'outside the vault'],
       [['--vault', vault, '--out', vault], 'outside the vault'],
       [['--vault', join(vault, 'nope')], 'not found'],
