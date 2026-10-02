@@ -429,6 +429,12 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Decisions:** D14, D15.
   - **Verification:** `npm run typecheck`, `npm test` and `npm run build` pass. Not yet done (user, local): re-run the dry run on the vault copy with this fix, then answer the 23 open questions until the gate passes. The `{{DATE}}` YAML warning comes from two non-strategy files (`obsidian-task-workflow.md`, `Templates/Project Hub Template.md`) and is harmless.
 
+- **2026-10-02**:
+  - **Context:** Phase 2 parity gate on a copy of the real vault, after the D14/D15 fixes (run locally by the user).
+  - **Actions:** the user answered all 23 questions in `resolutions.yaml` (5 link questions, 1 "AND" junction, 17 canvas-only edges) and re-ran the dry run with `--resolutions`.
+  - **Decisions:** the user's answers, kept in their local `resolutions.yaml` (never committed).
+  - **Verification:** **parity gate passed**, exit 0: 193 legacy edges, 56 files to change, 0 of 23 questions open, all 8 checks `ok`. Remaining for Phase 3: apply from this plan with its hash guard; if the real vault changes first, re-run the dry run on a fresh copy.
+
 ## Decisions Log
 
 *(For the user's own hand only.)*
