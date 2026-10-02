@@ -230,3 +230,17 @@ describe('canvas rules', () => {
     expect((await parityGate(files, plan)).checks.find((c) => c.name === 'canvas-placed')!.passed).toBe(true);
   });
 });
+
+describe('links to a non-strategy note (D13)', () => {
+  const PHANTOM = 'FP-9 Phantom.md';
+
+  it('a body `## Serves` link that repeats a kept frontmatter link is kept, not written', async () => {
+    const files = vault({ [PHANTOM]: '', [B1]: bet('serves:\n  - "[[FP-9 Phantom]]"\n', ['[[FP-9 Phantom]]']) });
+    const plan = planMigration(files);
+    expect(plan.edges.map((e) => `${e.edge.source} ${e.fate.kind}`)).toEqual(['fm:serves kept', 'body:serves kept']);
+    expect(fm(files, plan, B1).serves).toEqual(['[[FP-9 Phantom]]']);
+    const gate = await parityGate(files, plan);
+    expect(gate.checks.find((c) => c.name === 'relations-present')!.failures).toEqual([]);
+    expect(verdictOf(gate)).toBe('passed');
+  });
+});

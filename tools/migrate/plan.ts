@@ -537,10 +537,12 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
         const raw = `[[${inner}]]`;
         const t = inspectInner(inner, note.path);
         const base = { source: 'body:serves' as const, from: note.path, to: raw, toPath: t.kind === 'note' ? t.path : null, label: null, line };
-        if (t.kind === 'note' && has(note.path, 'serves', t.path)) {
-          record(base, { kind: 'written', field: 'serves', holder: note.path, target: t.path, how: 'also in frontmatter `serves`; body section dropped' });
-        } else if (t.kind === 'note' && fieldPlans.get(note.path)?.get('serves')?.entries.some((e) => e.keep && e.path === t.path)) {
+        // A non-strategy target first: `has` also counts frontmatter links kept as is (D13),
+        // which make no graph edge, so they must not be classified as `written`.
+        if (t.kind === 'note' && t.type === null && fieldPlans.get(note.path)?.get('serves')?.entries.some((e) => e.keep && e.path === t.path)) {
           record(base, { kind: 'kept', reason: 'also in frontmatter `serves`, kept there as is (D13); body section dropped' });
+        } else if (t.kind === 'note' && has(note.path, 'serves', t.path)) {
+          record(base, { kind: 'written', field: 'serves', holder: note.path, target: t.path, how: 'also in frontmatter `serves`; body section dropped' });
         } else {
           const why = t.kind === 'note' ? 'body-only link' : `body-only link, ${problemOf(t)}`;
           record(base, { kind: 'dropped', reason: `${why}; \`## Serves\` is dropped without merging (D12)` });
