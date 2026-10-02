@@ -77,6 +77,8 @@ describe('buildGraph issues', () => {
   it('skips notes without a type and flags unknown types', () => {
     expect(codes([note('x.md', { title: 'plain' })])).toEqual([]);
     expect(codes([note('x.md', { type: 'meeting' })])).toEqual(['unknown-type']);
+    // A known non-graph type (D15) is skipped like a note without a type.
+    expect(codes([note('x.md', { type: 'strategic-inbox' })])).toEqual([]);
   });
 
   it('flags a missing or unknown status, but not types without statuses', () => {

@@ -413,17 +413,18 @@ diff --migrate a/Strategy/Bets/B-6 Online ceramics course.md b/Strategy/Bets/B-6
  ---
  ## The Bet
  I believe continuing **taking an online course:** `[action/effort]`
-@@ -14,9 +16,6 @@
+@@ -14,10 +16,6 @@
  will produce **throwing skills:** `[concrete, observable result]`
  within **one month:** `[timeframe — must match the deadline above]`
  
 -## Serves
 -Which fixed point / direction does this bet serve?
+-- [[FP-2 Profitable pottery business]]
 -
  ## Kill Condition (decided NOW, before the deadline)
  When the deadline arrives and Y has not materialized, this bet is:
  - [ ] **Killed** — X stops entirely
-@@ -25,8 +24,6 @@
+@@ -26,8 +24,6 @@
  
  > Extension justification (fill only if extending; one extension maximum):
  

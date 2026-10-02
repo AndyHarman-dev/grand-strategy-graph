@@ -46,13 +46,10 @@ describe('edges no rule covers stop the migration', () => {
     expect(fm(files, plan, B1).serves).toEqual(['[[A-1 Holds]]']);
   });
 
-  it('a canvas edge touching a group, and an unknown canvas node type', async () => {
+  it('a canvas edge touching an unknown canvas node type', async () => {
     const files = vault({
       [B1]: bet('serves:\n'),
-      [CANVAS]: canvas(
-        [fileNode('b1', B1), { id: 'g', type: 'group', label: 'G', x: 0, y: 0, width: 1, height: 1 }, { id: 'w', type: 'widget', x: 0, y: 0 }],
-        [{ id: 'e1', fromNode: 'b1', toNode: 'g' }]
-      ),
+      [CANVAS]: canvas([fileNode('b1', B1), { id: 'w', type: 'widget', x: 0, y: 0 }], [{ id: 'e1', fromNode: 'b1', toNode: 'w' }]),
     });
     const plan = planMigration(files);
     expect(kinds(plan)).toEqual(['canvas unclassified']);
@@ -220,6 +217,23 @@ describe('canvas rules', () => {
     expect((await parityGate(files, plan)).passed).toBe(true);
     const none = planMigration(files, { resolutions: { 'junction: and': 'none' } });
     expect(fm(files, none, B3).requires).toBeUndefined();
+  });
+
+  it('drops edges touching a group, in either direction and labelled "On kill" too (D14)', async () => {
+    const group = { id: 'g', type: 'group', label: 'G', x: 0, y: 0, width: 1, height: 1 };
+    const files = vault({
+      [B1]: bet('serves: "[[FP-1 Home]]"\n'),
+      [CANVAS]: canvas([fileNode('b1', B1), group], [
+        { id: 'e1', fromNode: 'b1', toNode: 'g', label: 'On Kill' },
+        { id: 'e2', fromNode: 'g', toNode: 'b1' },
+      ]),
+    });
+    const plan = planMigration(files);
+    expect(plan.edges.filter((e) => e.edge.source === 'canvas').map((e) => [e.edge.id, e.fate.kind])).toEqual([['canvas|e1', 'dropped'], ['canvas|e2', 'dropped']]);
+    expect(plan.gsmap.frames.map((f) => f.label)).toEqual(['G']);
+    expect(plan.gsmap.links).toEqual([]);
+    expect(fm(files, plan, B1).next).toBeUndefined();
+    expect(verdictOf(await parityGate(files, plan))).toBe('passed');
   });
 
   it('turns a second node for the same note into a note-reference card', async () => {

@@ -12,7 +12,7 @@ import { emptyGsMap, GSMAP_PATH, serializeGsMap, type GsEndpoint, type GsLink, t
 import { parseIds } from '../../src/core/ids';
 import { linkpathOf, resolveLinkpath } from '../../src/core/links';
 import { STRATEGY_ROOT } from '../../src/core/memory-adapter';
-import { isNodeType, RELATIONS, statusesFor, type NodeType } from '../../src/core/schema';
+import { isIgnoredType, isNodeType, RELATIONS, statusesFor, type NodeType } from '../../src/core/schema';
 import { eolOf, joinNote, sameHeading, sections, splitNote, type SplitNote } from './markdown';
 import type {
   Ambiguity,
@@ -191,7 +191,9 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
     if (inRoot) {
       if (isNodeType(legacyType)) type = legacyType;
       else if (path === currentPositionPath && (legacyType == null || legacyType === '')) type = 'current-position';
-      else if (legacyType != null && legacyType !== '') {
+      else if (isIgnoredType(legacyType)) {
+        findings.push({ severity: 'info', path, message: `Type "${String(legacyType)}" is not a graph node (D15): left untouched.` });
+      } else if (legacyType != null && legacyType !== '') {
         findings.push({ severity: 'warning', path, message: `Unknown type "${String(legacyType)}": not a strategy note, left untouched.` });
       } else if (parsed.error && split.yaml !== null) {
         findings.push({ severity: 'blocker', path, message: `Frontmatter can't be read (${parsed.error}), so its type and links are unknown.` });
@@ -722,7 +724,7 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
       if (!from || !to || from.kind === 'unknown' || to.kind === 'unknown') {
         record(base, { kind: 'unclassified', reason: `canvas edge ${String(e.id)} touches a missing or unknown node` });
       } else if (from.kind === 'frame' || to.kind === 'frame') {
-        record(base, { kind: 'unclassified', reason: `canvas edge ${String(e.id)} touches a group: no rule covers it` });
+        record(base, { kind: 'dropped', reason: `touches a group; groups become frames, which carry no links (D14)` });
       } else if (from.kind === 'card' || to.kind === 'card') {
         const link = linkFrom(e, cardEndpoint(String(e.fromNode), from), cardEndpoint(String(e.toNode), to));
         gsmap.links.push(link);

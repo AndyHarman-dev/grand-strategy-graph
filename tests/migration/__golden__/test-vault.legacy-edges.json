@@ -197,6 +197,15 @@
     "line": 30
   },
   {
+    "id": "body:serves|Strategy/Bets/B-6 Online ceramics course.md|1",
+    "source": "body:serves",
+    "from": "Strategy/Bets/B-6 Online ceramics course.md",
+    "to": "[[FP-2 Profitable pottery business]]",
+    "toPath": "FP-2 Profitable pottery business.md",
+    "label": null,
+    "line": 19
+  },
+  {
     "id": "body:serves|Strategy/Bets/B-7  Part-time barista job.md|1",
     "source": "body:serves",
     "from": "Strategy/Bets/B-7  Part-time barista job.md",
@@ -341,6 +350,22 @@
     "from": "card:t-routec",
     "to": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
     "toPath": "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "label": null
+  },
+  {
+    "id": "canvas|e18",
+    "source": "canvas",
+    "from": "Strategy/Bets/B-6 Online ceramics course.md",
+    "to": "group:g-studio",
+    "toPath": null,
+    "label": "On Kill"
+  },
+  {
+    "id": "canvas|e19",
+    "source": "canvas",
+    "from": "group:g-studio",
+    "to": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "toPath": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
     "label": null
   },
   {

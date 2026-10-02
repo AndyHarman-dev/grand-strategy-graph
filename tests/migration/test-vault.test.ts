@@ -44,7 +44,7 @@ describe('oracle over the test vault', () => {
       'body:assumptions': count('body:assumptions'),
       'body:depended-on-by': count('body:depended-on-by'),
       canvas: count('canvas'),
-    }).toEqual({ 'fm:serves': 9, 'fm:next sequel': 1, 'body:serves': 7, 'body:assumptions': 10, 'body:depended-on-by': 7, canvas: 17 });
+    }).toEqual({ 'fm:serves': 9, 'fm:next sequel': 1, 'body:serves': 8, 'body:assumptions': 10, 'body:depended-on-by': 7, canvas: 19 });
     expect(new Set(bare.oracle.map((e) => e.id)).size).toBe(bare.oracle.length);
   });
 
@@ -94,6 +94,16 @@ describe('every anomaly in test-vault/ANOMALIES.md gets its expected outcome', (
   it('the phantom root FP-2 link is kept as is and listed (D13); the root file is never touched', () => {
     expect(bare.edges.find((e) => e.edge.from === B[6] && e.edge.source === 'fm:serves')!.fate).toMatchObject({ kind: 'kept' });
     expect(bare.changes.map((c) => c.path)).not.toContain('FP-2 Profitable pottery business.md');
+  });
+
+  it('the same phantom link repeated in body `## Serves` is kept too, and writes no relation (B-6)', () => {
+    expect(fates(bare, 'body:serves', B[6])).toEqual(['[[FP-2 Profitable pottery business]] kept']);
+    expect(fm(bare, B[6]).serves).toEqual(['[[FP-2 Profitable pottery business]]']);
+  });
+
+  it('a note of a known non-graph type is left untouched (Strategic Inbox; D15)', () => {
+    expect(bare.changes.map((c) => c.path)).not.toContain('Strategy/Strategic Inbox.md');
+    expect(bare.findings.find((f) => f.path === 'Strategy/Strategic Inbox.md')).toMatchObject({ severity: 'info' });
   });
 
   it('body `## Serves` is dropped; body-only links are reported as dropped (B-3, B-8; D12)', () => {
@@ -188,6 +198,12 @@ describe('canvas → .gsmap', () => {
     expect(canvasFate(bare, 'e2')).toMatchObject({ kind: 'written', field: 'next', holder: B[1], target: B[2] });
     expect(canvasFate(bare, 'e3')).toMatchObject({ kind: 'written', field: 'assumptions' });
     expect(canvasFate(bare, 'e8')).toMatchObject({ kind: 'written', field: 'serves', holder: B[8], target: B[4] }); // "indirectly serves"
+  });
+
+  it('drops edges touching a group, "On Kill" included, and keeps the group as a frame (e18, e19; D14)', () => {
+    expect(canvasFate(bare, 'e18')).toMatchObject({ kind: 'dropped', reason: expect.stringContaining('D14') });
+    expect(canvasFate(bare, 'e19')).toMatchObject({ kind: 'dropped', reason: expect.stringContaining('D14') });
+    expect(fm(bare, B[6]).next).toBeNull();
   });
 
   it('asks about canvas-only edges (candidate relations) and keeps card links', () => {

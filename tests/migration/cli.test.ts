@@ -45,7 +45,7 @@ describe('npm run migrate (dry run)', () => {
     const planJson = JSON.parse(readFileSync(join(out, 'migration-plan.json'), 'utf8'));
     expect(planJson.files).toHaveLength(21);
     expect(planJson.files.find((f: { path: string }) => f.path === 'Strategy/Strategy.gsmap').before).toBeNull();
-    expect(JSON.parse(readFileSync(join(out, 'legacy-edges.json'), 'utf8'))).toHaveLength(51);
+    expect(JSON.parse(readFileSync(join(out, 'legacy-edges.json'), 'utf8'))).toHaveLength(54);
   });
 
   it('passes the gate with the fixture answers, and carries answers over when its own file is passed back', async () => {

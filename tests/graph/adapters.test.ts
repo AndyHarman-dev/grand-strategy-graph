@@ -57,7 +57,7 @@ describe('FsAdapter', () => {
 
   it('reads every note under Strategy/ in the committed test vault', async () => {
     const notes = await new FsAdapter(TEST_VAULT_DIR).readNotes();
-    expect(notes).toHaveLength(18); // 8 bets, 7 assumptions, 2 fixed points, Current Position
+    expect(notes).toHaveLength(19); // 8 bets, 7 assumptions, 2 fixed points, Current Position, Strategic Inbox
   });
 });
 

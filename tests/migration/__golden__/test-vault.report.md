@@ -9,8 +9,8 @@
 
 ## Summary
 
-- Legacy edges (oracle): 51 — `fm:serves` 9, `fm:next sequel` 1, `body:serves` 7, `body:assumptions` 10, `body:depended-on-by` 7, `canvas` 17
-- Fates: written 34, open 7, kept 1, dropped 3, gsmap-link 6
+- Legacy edges (oracle): 54 — `fm:serves` 9, `fm:next sequel` 1, `body:serves` 8, `body:assumptions` 10, `body:depended-on-by` 7, `canvas` 19
+- Fates: written 34, open 7, kept 2, dropped 5, gsmap-link 6
 - Strategy notes: 18; files to change: 21
 - Questions: 7 (7 open)
 
@@ -63,12 +63,15 @@
 | `body:serves:18` | B-3 Sell pottery at weekend markets | `[[FP-2 Own a profitable ceramics studio]]` |  | dropped | body-only link; `## Serves` is dropped without merging (D12) |
 | `body:serves:17` | B-7  Part-time barista job | `[[FP-]]` |  | dropped | body-only link, malformed (id prefix with no number); `## Serves` is dropped without merging (D12) |
 | `body:serves:18` | B-8 Teach pottery workshops | `[[FP-2 Own a profitable ceramics studio]]` |  | dropped | body-only link; `## Serves` is dropped without merging (D12) |
+| `canvas e18` | B-6 Online ceramics course | `group:g-studio` | On Kill | dropped | touches a group; groups become frames, which carry no links (D14) |
+| `canvas e19` | group:g-studio | `B-4 Save 20000 for kiln and lease` |  | dropped | touches a group; groups become frames, which carry no links (D14) |
 
 ## Kept as is (D13)
 
 | Edge | From | To | Label | Fate | Detail |
 |---|---|---|---|---|---|
 | `fm:serves` | B-6 Online ceramics course | `[[FP-2 Profitable pottery business]]` |  | kept as is | links to FP-2 Profitable pottery business.md, which is not a strategy note; kept as is (D13) |
+| `body:serves:19` | B-6 Online ceramics course | `[[FP-2 Profitable pottery business]]` |  | kept as is | also in frontmatter `serves`, kept there as is (D13); body section dropped |
 
 ## Every legacy edge and its fate
 
@@ -97,6 +100,7 @@
 | `body:assumptions:33` | B-4 Save 20000 for kiln and lease | `[[B-5 Learn Portuguese to B1]]` |  | → `requires` | B-4 Save 20000 for kiln and lease → B-5 Learn Portuguese to B1; bet listed as an assumption → `requires` (D7) |
 | `body:serves:19` | B-5 Learn Portuguese to B1 | `[[FP-1 Live in Portugal]]` |  | → `serves` | B-5 Learn Portuguese to B1 → FP-1 Live in Portugal; also in frontmatter `serves`; body section dropped |
 | `body:assumptions:30` | B-5 Learn Portuguese to B1 | `[[A-5 I can study one hour a day]]` |  | → `assumptions` | B-5 Learn Portuguese to B1 → A-5 I can study one hour a day; forward list |
+| `body:serves:19` | B-6 Online ceramics course | `[[FP-2 Profitable pottery business]]` |  | kept as is | also in frontmatter `serves`, kept there as is (D13); body section dropped |
 | `body:serves:17` | B-7  Part-time barista job | `[[FP-]]` |  | dropped | body-only link, malformed (id prefix with no number); `## Serves` is dropped without merging (D12) |
 | `body:assumptions:28` | B-7  Part-time barista job | `[[A-]]` |  | **open** | see `link: B-7  Part-time barista job / body:assumptions / [[A-]]` |
 | `body:serves:18` | B-8 Teach pottery workshops | `[[FP-2 Own a profitable ceramics studio]]` |  | dropped | body-only link; `## Serves` is dropped without merging (D12) |
@@ -114,6 +118,8 @@
 | `canvas e10` | card:t-ghost | `B-2 Apply for a digital nomad visa` | Only A-6 | .gsmap link | e10: touches a card: free card link (D8) |
 | `canvas e11` | lisbon-neighbourhoods-research | `B-1 Get a D7 visa` | Non significant relationship | .gsmap link | e11: touches a card: free card link (D8) |
 | `canvas e17` | card:t-routec | `FP-1 Live in Portugal` |  | .gsmap link | e17: touches a card: free card link (D8) |
+| `canvas e18` | B-6 Online ceramics course | `group:g-studio` | On Kill | dropped | touches a group; groups become frames, which carry no links (D14) |
+| `canvas e19` | group:g-studio | `B-4 Save 20000 for kiln and lease` |  | dropped | touches a group; groups become frames, which carry no links (D14) |
 | `canvas e2` | B-1 Get a D7 visa | `B-2 Apply for a digital nomad visa` | On kill | → `next` | B-1 Get a D7 visa → B-2 Apply for a digital nomad visa; canvas "On kill" matches `next` |
 | `canvas e1` | B-1 Get a D7 visa | `FP-1 Live in Portugal` |  | → `serves` | B-1 Get a D7 visa → FP-1 Live in Portugal; canvas edge matches `serves` |
 | `canvas e3` | A-1 D7 accepts freelance income | `B-1 Get a D7 visa` |  | → `assumptions` | B-1 Get a D7 visa → A-1 D7 accepts freelance income; canvas edge matches `assumptions` |
@@ -253,4 +259,5 @@
 
 ## Other findings
 
+- info: `Strategy/Strategic Inbox.md`: Type "strategic-inbox" is not a graph node (D15): left untouched.
 - info: `Strategy/The Map.canvas`: "AND" card t-and matches `requires`: B-4 Save 20000 for kiln and lease requires B-3 Sell pottery at weekend markets; B-4 Save 20000 for kiln and lease requires B-5 Learn Portuguese to B1.

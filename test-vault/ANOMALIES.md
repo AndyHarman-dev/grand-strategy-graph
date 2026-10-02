@@ -12,6 +12,7 @@ update it whenever a note changes.
 | Self-loop in `serves` | B-5 → B-5 | reported, never written |
 | Dangling link to a non-existent note | B-1 → `A-9 Testing new assumption` | reported, never written |
 | Phantom target: empty stray root note | B-6 → `FP-2 Profitable pottery business` (root file) | link kept as is, reported (D13); file never touched |
+| Phantom target repeated in body `## Serves` | B-6 (fm and body both → phantom FP-2) | both kept as is (D13), no relation written; body section dropped (D12) |
 | Body `## Serves` differs from frontmatter | B-3 (fm B-4, body FP-2), B-8 (fm B-4, body FP-2) | body section dropped; body-only links reported as dropped (D12) |
 | `next sequel` field (with a space) | B-1 → B-2 | renamed to `next` |
 | Bets listed under "Assumptions This Bet Depends On" | B-4 lists B-3, B-5 | `requires` (D7) |
@@ -29,6 +30,7 @@ update it whenever a note changes.
 | Assumption statuses | confirmed (A-1), unverified, falsified (A-3), undeterminable (A-4) | unchanged (D13) |
 | `Current Position.md` without `type` | Strategy/ | `type: current-position` added |
 | Empty Milestones folder | Strategy/Milestones | — |
+| Known non-graph type `strategic-inbox` | `Strategy/Strategic Inbox.md` | left untouched, not a graph node, no issue (D15) |
 | Legacy templates | Templates/Bet, Templates/Assumption | rewritten to schema v2 |
 | Dataview filtering on `status = "active"` | Templates/Weekly Review | still works after D6 |
 
@@ -45,3 +47,4 @@ update it whenever a note changes.
 | Edge B-8 → B-4 "indirectly serves", B-6 → FP-2 "Killed" | reported (labelled edges) |
 | Edge "Golden visa path?" → B-2 "Only A-6" | free card link |
 | Non-strategy note `lisbon-neighbourhoods-research.md` + its edge | note-reference card + free card link |
+| Edges touching a group: B-6 → "Studio route" "On Kill", "Studio route" → B-4 | dropped, listed in the report (D14); the group stays a frame |

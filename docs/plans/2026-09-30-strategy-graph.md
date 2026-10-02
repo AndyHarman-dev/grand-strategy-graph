@@ -33,6 +33,8 @@ plugin (plain JS, 883 lines, no build step), and a read-only survey of the real 
 | D11 | A synthetic **test vault** lives at `test-vault/` in the repo. It is legacy format and covers every anomaly class (see `test-vault/ANOMALIES.md`). Its plugin folder `test-vault/.obsidian/plugins/strategy-bet-creator` is a committed **symlink to `../../../dist`**, so it always runs the latest build. The symlink targets `dist/`, not the repo root, which would create a loop. The test vault is both the test fixture and the vault to open in Obsidian for manual testing. |
 | D12 | The body `## Serves` list is **dropped** without being merged (user: "it's just the same as the frontmatter"). Body-only links still appear in the migration report as *dropped*, so the parity gate accounts for them. `ultimately-serves` stays in the schema as an optional field, set by hand or from the graph; the migration doesn't fill it. |
 | D13 | Assumption status `undeterminable` is kept (styled gray). Links to the phantom `FP-2 Multi-billion dollar AI company` are **left as they are**: no retargeting, only listed in the report. |
+| D14 | Canvas edges that touch a **group** (note→group, group→note, an "On Kill" to a group included) are **dropped** and listed in the report. The group itself still becomes a frame. (User, 2026-10-02, after the real-vault dry run found four.) |
+| D15 | `type: strategic-inbox` is a known **non-graph** type: such notes are left untouched by the migration and skipped by `buildGraph` without an issue. Other unknown types are still reported. (User, 2026-10-02.) |
 
 ### Schema v2 (target)
 
@@ -416,6 +418,16 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
     - Templates (`Templates/`, `type: bet|assumption`) are part of the plan, so Phase 3 only writes planned content. They get empty `id` (and `requires`/`assumptions` for bets), `next sequel → next`, and the same section edits.
     - The `## Depended On By` replacement is `LIST FROM "Strategy" WHERE contains(assumptions, this.file.link) SORT file.name ASC`.
   - **Verification:** `npm run typecheck`, `npm test` (186 tests) and `npm run build` pass; Phase 0/1 goldens untouched. On the test vault the gate passes with the fixture answers: 51 legacy edges, 0 unclassified, 21 files planned. Without answers it fails only on the 7 open questions, and its graph equals the hand-written v2 vault except B-6's kept phantom link (D13). Five deliberate planner mutations (no union, bets→`assumptions`, merging body serves, a lost blank line, writing an unanswered link) each failed the suite. **Not yet done (user, local):** the run on a *copy* of the real vault, reviewing its report and filling in `resolutions.yaml` until the gate passes. Any `unclassified` row or refused file there is a new decision to bring back. Unverified: the Dataview block rendering in Obsidian (Phase 3's Verify).
+
+- **2026-10-02**:
+  - **Context:** first Phase 2 dry run on a copy of the real vault (run locally by the user): 193 legacy edges, 56 files, 23 open questions, exit 2.
+  - **Actions:**
+    - Fixed a planner bug the gate caught (`relations-present`, 2 failures): a body `## Serves` link to a non-strategy note that is also in frontmatter `serves` (B-3, B-4 → phantom FP-2) was classified `written` instead of `kept` (D13), because `has()` also counts kept frontmatter links. Regression test added.
+    - Four canvas edges touching a group stopped the run (`unclassified`). User decided D14: drop them. Implemented as fate `dropped`.
+    - `Strategy/Strategic Inbox.md` (`type: strategic-inbox`) showed as an `unknown-type` error in the planned graph. User decided D15: a known non-graph type (`IGNORED_TYPES` in `src/core/schema.ts`), skipped by `buildGraph` and logged as info by the planner.
+    - Test vault: B-6 now repeats its phantom link in the body `## Serves`; the canvas gains e18 (B-6 → "Studio route", "On Kill") and e19 ("Studio route" → B-4); `Strategy/Strategic Inbox.md` added. `ANOMALIES.md` updated. Migration goldens regenerated: 54 legacy edges (was 51), 2 more dropped, 1 more kept, one info finding; Phase 0/1 goldens unchanged.
+  - **Decisions:** D14, D15.
+  - **Verification:** `npm run typecheck`, `npm test` and `npm run build` pass. Not yet done (user, local): re-run the dry run on the vault copy with this fix, then answer the 23 open questions until the gate passes. The `{{DATE}}` YAML warning comes from two non-strategy files (`obsidian-task-workflow.md`, `Templates/Project Hub Template.md`) and is harmless.
 
 ## Decisions Log
 

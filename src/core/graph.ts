@@ -1,6 +1,7 @@
 import { readLinkField } from './links';
 import {
   RELATIONS,
+  isIgnoredType,
   isNodeType,
   statusesFor,
   type Graph,
@@ -25,7 +26,8 @@ function text(value: unknown): string | null {
  * Derive nodes, edges and issues from note records. Never throws: anything the
  * schema doesn't allow becomes an issue and is left out of the graph.
  *
- * - Only notes with a `type` are strategy notes; notes without one are skipped.
+ * - Only notes with a `type` are strategy notes; notes without one, or with a known
+ *   non-graph type (`IGNORED_TYPES`, D15), are skipped.
  * - Edge kind comes from the field name; the target's `type` decides whether
  *   the link is valid (see `RELATIONS`).
  * - Links are followed through `resolvedLinks`, never through filename prefixes.
@@ -51,7 +53,7 @@ export function buildGraph(notes: readonly NoteRecord[]): Graph {
       continue;
     }
     const type = note.frontmatter.type;
-    if (type == null || type === '') continue;
+    if (type == null || type === '' || isIgnoredType(type)) continue;
     if (!isNodeType(type)) {
       report('unknown-type', 'error', note, `Unknown type "${String(type)}".`, 'type');
       continue;

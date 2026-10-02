@@ -38,6 +38,16 @@ export const RELATIONS: readonly RelationRule[] = [
   { field: 'assumptions', kind: 'assumption', from: ['bet', 'fixed-point', 'route', 'milestone'], to: ['assumption'] },
 ];
 
+/**
+ * Types that are known but are not graph nodes (D15): such notes are skipped like notes
+ * without a type, instead of being reported as `unknown-type`.
+ */
+export const IGNORED_TYPES: readonly string[] = ['strategic-inbox'];
+
+export function isIgnoredType(value: unknown): boolean {
+  return typeof value === 'string' && IGNORED_TYPES.includes(value);
+}
+
 export function isNodeType(value: unknown): value is NodeType {
   return typeof value === 'string' && (NODE_TYPES as readonly string[]).includes(value);
 }
