@@ -1,5 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { parse, stringify } from 'yaml';
+import { TFile } from '../mocks/obsidian';
 
 /** Minimal TFile look-alike: the fields the plugin reads. */
 export interface FakeFile {
@@ -17,18 +19,18 @@ export interface FakeFolder {
 export type VaultOp =
   | { op: 'createFolder'; path: string }
   | { op: 'create'; path: string }
-  | { op: 'process'; path: string; changed: boolean }
+  | { op: 'processFrontMatter'; path: string; changed: boolean }
   | { op: 'openFile'; path: string };
 
 function makeFile(path: string): FakeFile {
   const name = path.slice(path.lastIndexOf('/') + 1);
   const dot = name.lastIndexOf('.');
-  return {
+  return Object.assign(new TFile(), {
     path,
     name,
     basename: dot > 0 ? name.slice(0, dot) : name,
     extension: dot > 0 ? name.slice(dot + 1) : '',
-  };
+  });
 }
 
 /**
@@ -87,13 +89,24 @@ export class FakeVault {
     return this.addFile(path, content);
   }
 
-  async process(file: FakeFile, fn: (data: string) => string): Promise<string> {
+  /**
+   * Stand-in for `fileManager.processFrontMatter`: parse the frontmatter, hand the object to `fn`,
+   * and write it back only when `fn` changed it. Real Obsidian re-dumps the YAML its own way, so
+   * the goldens pin what the plugin changes, not Obsidian's exact formatting (manual check).
+   */
+  async processFrontMatter(file: FakeFile, fn: (frontmatter: Record<string, unknown>) => void): Promise<void> {
     const before = this.contents.get(file.path);
     if (before === undefined) throw new Error('File does not exist: ' + file.path);
-    const after = fn(before);
-    this.contents.set(file.path, after);
-    this.ops.push({ op: 'process', path: file.path, changed: after !== before });
-    return after;
+    const block = /^---\n([\s\S]*?)\n---\n?/.exec(before);
+    const frontmatter = ((block ? parse(block[1]) : null) ?? {}) as Record<string, unknown>;
+    const snapshot = JSON.stringify(frontmatter);
+    fn(frontmatter);
+    const changed = JSON.stringify(frontmatter) !== snapshot;
+    if (changed) {
+      const rest = block ? before.slice(block[0].length) : before;
+      this.contents.set(file.path, '---\n' + stringify(frontmatter, { lineWidth: 0 }) + '---\n' + rest);
+    }
+    this.ops.push({ op: 'processFrontMatter', path: file.path, changed });
   }
 
   file(path: string): FakeFile {
@@ -105,12 +118,14 @@ export class FakeVault {
 
 export interface FakeApp {
   vault: FakeVault;
+  fileManager: { processFrontMatter: FakeVault['processFrontMatter'] };
   workspace: { getLeaf(newLeaf?: boolean): { openFile(file: FakeFile): Promise<void> } };
 }
 
 export function makeApp(vault: FakeVault): FakeApp {
   return {
     vault,
+    fileManager: { processFrontMatter: (file, fn) => vault.processFrontMatter(file, fn) },
     workspace: {
       getLeaf() {
         return {

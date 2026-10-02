@@ -53,6 +53,38 @@
       }
     ]
   },
+  "optionalRelations": {
+    "submitted": [
+      {
+        "title": "T",
+        "x": "x",
+        "y": "y",
+        "z": "z",
+        "deadline": "2027-01-01",
+        "servesFiles": [
+          {
+            "file": "Strategy/Fixed Points/FP-1 Live in Portugal.md"
+          }
+        ],
+        "ultimatelyServesFiles": [
+          {
+            "file": "Strategy/Fixed Points/FP-1 Live in Portugal.md"
+          }
+        ],
+        "requiresFiles": [
+          {
+            "file": "Strategy/Bets/B-3 Sell pottery at weekend markets.md"
+          }
+        ],
+        "nextFile": {
+          "file": "Strategy/Bets/B-3 Sell pottery at weekend markets.md"
+        },
+        "assumptionRows": []
+      }
+    ],
+    "closed": true,
+    "notices": []
+  },
   "valid": {
     "submitted": [
       {
@@ -66,6 +98,9 @@
             "file": "Strategy/Fixed Points/FP-1 Live in Portugal.md"
           }
         ],
+        "ultimatelyServesFiles": [],
+        "requiresFiles": [],
+        "nextFile": null,
         "assumptionRows": [
           {
             "id": 1,

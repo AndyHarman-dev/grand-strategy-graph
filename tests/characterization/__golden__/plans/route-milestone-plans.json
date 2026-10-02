@@ -1,0 +1,82 @@
+{
+  "route": {
+    "writes": [
+      {
+        "kind": "create",
+        "path": "Strategy/Routes/R-1 Study → H1B.md",
+        "content": "---\nid: R-1\ntype: route\nstatus: active\nserves:\n  - \"[[FP-1 Live in Portugal]]\"\nassumptions:\n---\n## The Route\nUS study path\n\n## Log\n- 2026-10-01: Created\n"
+      }
+    ],
+    "open": "Strategy/Routes/R-1 Study → H1B.md",
+    "notice": "Created R-1 Study → H1B."
+  },
+  "ghostRoute": {
+    "writes": [
+      {
+        "kind": "create",
+        "path": "Strategy/Routes/R-1 O1 visa?.md",
+        "content": "---\nid: R-1\ntype: route\nstatus: ghost\nserves:\n  - \"[[FP-1 Live in Portugal]]\"\nassumptions:\n---\n## The Route\n*Suspected, unexplored: what would make this a real route?*\n\n## Log\n- 2026-10-01: Created\n"
+      }
+    ],
+    "open": "Strategy/Routes/R-1 O1 visa?.md",
+    "notice": "Created R-1 O1 visa?."
+  },
+  "milestone": {
+    "writes": [
+      {
+        "kind": "create",
+        "path": "Strategy/Milestones/M-1 First workshop held.md",
+        "content": "---\nid: M-1\ntype: milestone\nserves:\n  - \"[[B-8 Teach pottery workshops]]\"\nassumptions:\n---\n## The Milestone\n*What will be true when this milestone is reached?*\n\n## Log\n- 2026-10-01: Created\n"
+      }
+    ],
+    "open": "Strategy/Milestones/M-1 First workshop held.md",
+    "notice": "Created M-1 First workshop held."
+  },
+  "nextIdsAfterExisting": [
+    {
+      "writes": [
+        {
+          "kind": "create",
+          "path": "Strategy/Routes/R-5 Next.md",
+          "content": "---\nid: R-5\ntype: route\nstatus: active\nserves:\nassumptions:\n---\n## The Route\n*What is this route, and which fixed point does it lead to?*\n\n## Log\n- 2026-10-01: Created\n"
+        }
+      ],
+      "open": "Strategy/Routes/R-5 Next.md",
+      "notice": "Created R-5 Next."
+    },
+    {
+      "writes": [
+        {
+          "kind": "create",
+          "path": "Strategy/Milestones/M-3 Next.md",
+          "content": "---\nid: M-3\ntype: milestone\nserves:\nassumptions:\n---\n## The Milestone\n*What will be true when this milestone is reached?*\n\n## Log\n- 2026-10-01: Created\n"
+        }
+      ],
+      "open": "Strategy/Milestones/M-3 Next.md",
+      "notice": "Created M-3 Next."
+    }
+  ],
+  "emptyVault": {
+    "writes": [
+      {
+        "kind": "create",
+        "path": "Strategy/Routes/R-1 First.md",
+        "content": "---\nid: R-1\ntype: route\nstatus: active\nserves:\nassumptions:\n---\n## The Route\n*What is this route, and which fixed point does it lead to?*\n\n## Log\n- 2026-10-01: Created\n"
+      }
+    ],
+    "open": "Strategy/Routes/R-1 First.md",
+    "notice": "Created R-1 First."
+  },
+  "emptyTitle": {
+    "error": "The route title is empty after removing illegal filename characters. Nothing was created."
+  },
+  "servesAnAssumption": {
+    "error": "\"Serves\" must be notes in Strategy/Fixed Points, Strategy/Bets, Strategy/Routes, Strategy/Milestones (not A-1 D7 accepts freelance income). Nothing was created."
+  },
+  "pathTaken": {
+    "error": "A note already exists at \"Strategy/Routes/R-1 Taken.md\". Nothing was created."
+  },
+  "duplicateIds": {
+    "error": "Duplicate route ids in Strategy/Routes: R-1. Nothing was created."
+  }
+}

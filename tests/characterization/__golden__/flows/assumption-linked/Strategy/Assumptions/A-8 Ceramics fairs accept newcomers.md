@@ -1,4 +1,5 @@
 ---
+id: A-8
 type: assumption
 status: unverified
 created: 2026-10-01
@@ -14,10 +15,12 @@ Rejected by three fairs
 *If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*
 
 ## Depended On By
-*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*
-- [[B-4 Save 20000 for kiln and lease]]
-- [[B-7  Part-time barista job]]
-- [[B-9 No assumptions section]]
+```dataview
+LIST
+FROM "Strategy"
+WHERE contains(assumptions, this.file.link)
+SORT file.name ASC
+```
 
 ## Log
 - 2026-10-01: Created

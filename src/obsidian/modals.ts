@@ -1,6 +1,14 @@
 import { App, FuzzySuggestModal, Modal, Notice, Setting, TFile, type TextComponent } from 'obsidian';
+import { ASSUMPTION_HOLDER_FOLDERS, SERVES_FOLDERS } from '../core/actions';
 import { ASSUMPTIONS_FOLDER, BETS_FOLDER, FIXED_POINTS_FOLDER } from '../core/constants';
-import { getFilesInFolders, type AssumptionFormData, type AssumptionRow, type BetFormData } from '../core/plan';
+import {
+  getFilesInFolders,
+  type AssumptionFormData,
+  type AssumptionRow,
+  type BetFormData,
+  type MilestoneFormData,
+  type RouteFormData,
+} from '../core/plan';
 
 export class FilePickerModal extends FuzzySuggestModal<TFile> {
   files: TFile[];
@@ -26,6 +34,47 @@ export class FilePickerModal extends FuzzySuggestModal<TFile> {
   }
 }
 
+/**
+ * A heading, a row of chips for the notes picked so far and a button that opens a picker over
+ * `folders`. `selected` is edited in place, so the modal keeps reading its own array. With
+ * `limit` 1 a new pick replaces the old one.
+ */
+function addFilePicker(
+  app: App,
+  contentEl: HTMLElement,
+  heading: string,
+  selected: TFile[],
+  folders: readonly string[],
+  buttonText: string,
+  limit = Infinity
+): void {
+  contentEl.createEl('h3', { text: heading });
+  const chips = contentEl.createDiv({ cls: 'sbc-chips' });
+  const render = () => {
+    chips.empty();
+    selected.forEach((file, idx) => {
+      const chip = chips.createDiv({ cls: 'sbc-chip' });
+      chip.createSpan({ text: file.basename });
+      const remove = chip.createEl('button', { text: '×' });
+      remove.onclick = () => {
+        selected.splice(idx, 1);
+        render();
+      };
+    });
+  };
+  render();
+  new Setting(contentEl).addButton((b) =>
+    b.setButtonText(buttonText).onClick(() => {
+      new FilePickerModal(app, getFilesInFolders(app.vault, folders), (file) => {
+        if (selected.includes(file)) return;
+        if (selected.length >= limit) selected.splice(0, selected.length);
+        selected.push(file);
+        render();
+      }).open();
+    })
+  );
+}
+
 let assumptionRowSeq = 0;
 
 export class BetModal extends Modal {
@@ -37,6 +86,10 @@ export class BetModal extends Modal {
   z = '';
   deadline = '';
   servesFiles: TFile[] = [];
+  ultimatelyServesFiles: TFile[] = [];
+  requiresFiles: TFile[] = [];
+  /** At most one: the sequel activated when this bet is killed. */
+  nextFiles: TFile[] = [];
   assumptionRows: AssumptionRow<TFile>[] = [];
 
   constructor(app: App, onSubmit: (data: BetFormData<TFile>) => void) {
@@ -89,32 +142,10 @@ export class BetModal extends Modal {
         t.onChange((v) => (this.deadline = v));
       });
 
-    contentEl.createEl('h3', { text: 'Serves' });
-    const servesChips = contentEl.createDiv({ cls: 'sbc-chips' });
-    const renderServesChips = () => {
-      servesChips.empty();
-      this.servesFiles.forEach((file, idx) => {
-        const chip = servesChips.createDiv({ cls: 'sbc-chip' });
-        chip.createSpan({ text: file.basename });
-        const remove = chip.createEl('button', { text: '×' });
-        remove.onclick = () => {
-          this.servesFiles.splice(idx, 1);
-          renderServesChips();
-        };
-      });
-    };
-    renderServesChips();
-    new Setting(contentEl).addButton((b) =>
-      b.setButtonText('+ Add link').onClick(() => {
-        const candidates = getFilesInFolders(this.app.vault, [FIXED_POINTS_FOLDER, BETS_FOLDER]);
-        new FilePickerModal(this.app, candidates, (file) => {
-          if (!this.servesFiles.includes(file)) {
-            this.servesFiles.push(file);
-            renderServesChips();
-          }
-        }).open();
-      })
-    );
+    addFilePicker(this.app, contentEl, 'Serves', this.servesFiles, SERVES_FOLDERS, '+ Add link');
+    addFilePicker(this.app, contentEl, 'Ultimately serves (optional, a fixed point)', this.ultimatelyServesFiles, [FIXED_POINTS_FOLDER], '+ Add fixed point');
+    addFilePicker(this.app, contentEl, 'Requires (optional, prerequisite bets)', this.requiresFiles, [BETS_FOLDER], '+ Add bet');
+    addFilePicker(this.app, contentEl, 'Next (optional, the sequel activated on kill)', this.nextFiles, [BETS_FOLDER], '+ Choose bet', 1);
 
     contentEl.createEl('h3', { text: 'Assumptions this bet depends on' });
     const rowsContainer = contentEl.createDiv({ cls: 'sbc-assumption-rows' });
@@ -224,6 +255,9 @@ export class BetModal extends Modal {
       z: this.z.trim(),
       deadline: this.deadline,
       servesFiles: this.servesFiles.slice(),
+      ultimatelyServesFiles: this.ultimatelyServesFiles.slice(),
+      requiresFiles: this.requiresFiles.slice(),
+      nextFile: this.nextFiles[0] ?? null,
       assumptionRows: this.assumptionRows.map((r) => ({ ...r })),
     };
 
@@ -237,17 +271,16 @@ export class BetModal extends Modal {
 }
 
 /**
- * Standalone assumption creation. Unlike the assumption rows inside BetModal,
- * this links the new assumption to zero or more *existing* bets — it never
- * creates a bet, so the picker below only ever offers files already in
- * Strategy/Bets.
+ * Standalone assumption creation. Unlike the assumption rows inside BetModal, this adds the new
+ * assumption to the `assumptions` of zero or more *existing* notes (bets, fixed points, routes,
+ * milestones). It never creates one of them.
  */
 export class AssumptionModal extends Modal {
   onSubmit: (data: AssumptionFormData<TFile>) => void;
   statement = '';
   falsifier = '';
   verifyBy = '';
-  betFiles: TFile[] = [];
+  dependentFiles: TFile[] = [];
 
   constructor(app: App, onSubmit: (data: AssumptionFormData<TFile>) => void) {
     super(app);
@@ -274,32 +307,7 @@ export class AssumptionModal extends Modal {
         t.onChange((v) => (this.verifyBy = v));
       });
 
-    contentEl.createEl('h3', { text: 'Bets this assumption depends on' });
-    const betChips = contentEl.createDiv({ cls: 'sbc-chips' });
-    const renderBetChips = () => {
-      betChips.empty();
-      this.betFiles.forEach((file, idx) => {
-        const chip = betChips.createDiv({ cls: 'sbc-chip' });
-        chip.createSpan({ text: file.basename });
-        const remove = chip.createEl('button', { text: '×' });
-        remove.onclick = () => {
-          this.betFiles.splice(idx, 1);
-          renderBetChips();
-        };
-      });
-    };
-    renderBetChips();
-    new Setting(contentEl).addButton((b) =>
-      b.setButtonText('+ Add bet').onClick(() => {
-        const candidates = getFilesInFolders(this.app.vault, [BETS_FOLDER]);
-        new FilePickerModal(this.app, candidates, (file) => {
-          if (!this.betFiles.includes(file)) {
-            this.betFiles.push(file);
-            renderBetChips();
-          }
-        }).open();
-      })
-    );
+    addFilePicker(this.app, contentEl, 'Notes that depend on this assumption', this.dependentFiles, ASSUMPTION_HOLDER_FOLDERS, '+ Add note');
 
     const footer = new Setting(contentEl);
     footer.addButton((b) =>
@@ -321,11 +329,68 @@ export class AssumptionModal extends Modal {
       statement: this.statement.trim(),
       falsifier: this.falsifier.trim(),
       verifyBy: this.verifyBy,
-      betFiles: this.betFiles.slice(),
+      dependentFiles: this.dependentFiles.slice(),
     };
 
     this.close();
     this.onSubmit(data);
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+  }
+}
+
+/**
+ * A route (`ghost` false), a ghost route (suspected, unexplored) or a milestone: a title, a
+ * description and what it serves. The kind is fixed by the command that opened the modal.
+ */
+export class NoteModal extends Modal {
+  title = '';
+  description = '';
+  servesFiles: TFile[] = [];
+
+  constructor(
+    app: App,
+    readonly kind: 'route' | 'ghost-route' | 'milestone',
+    readonly onSubmit: (data: RouteFormData<TFile> | MilestoneFormData<TFile>) => void
+  ) {
+    super(app);
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl('h2', { text: { route: 'New route', 'ghost-route': 'New ghost route', milestone: 'New milestone' }[this.kind] });
+
+    new Setting(contentEl)
+      .setName('Title')
+      .setDesc('Short name, used for the note filename.')
+      .addText((t) => t.onChange((v) => (this.title = v)));
+    new Setting(contentEl)
+      .setName('Description (optional)')
+      .addText((t) => t.onChange((v) => (this.description = v)));
+
+    addFilePicker(this.app, contentEl, 'Serves', this.servesFiles, SERVES_FOLDERS, '+ Add link');
+
+    const footer = new Setting(contentEl);
+    footer.addButton((b) =>
+      b
+        .setButtonText('Create')
+        .setCta()
+        .onClick(() => this.handleCreate())
+    );
+    footer.addButton((b) => b.setButtonText('Cancel').onClick(() => this.close()));
+  }
+
+  handleCreate(): void {
+    if (!this.title.trim()) {
+      new Notice('A title is required.');
+      return;
+    }
+    const common = { title: this.title.trim(), description: this.description.trim(), servesFiles: this.servesFiles.slice() };
+    this.close();
+    this.onSubmit(this.kind === 'milestone' ? common : { ...common, ghost: this.kind === 'ghost-route' });
   }
 
   onClose(): void {

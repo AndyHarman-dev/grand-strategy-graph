@@ -5,18 +5,33 @@
       "path": "Strategy/Assumptions/A-8 Ceramics fairs accept newcomers.md"
     },
     {
-      "op": "process",
+      "op": "processFrontMatter",
       "path": "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
       "changed": true
     },
     {
-      "op": "process",
+      "op": "processFrontMatter",
       "path": "Strategy/Bets/B-7  Part-time barista job.md",
       "changed": true
     },
     {
-      "op": "process",
-      "path": "Strategy/Bets/B-9 No assumptions section.md",
+      "op": "processFrontMatter",
+      "path": "Strategy/Bets/B-9 No assumptions key.md",
+      "changed": true
+    },
+    {
+      "op": "processFrontMatter",
+      "path": "Strategy/Bets/B-10 Scalar assumptions.md",
+      "changed": true
+    },
+    {
+      "op": "processFrontMatter",
+      "path": "Strategy/Bets/B-11 Already listed.md",
+      "changed": false
+    },
+    {
+      "op": "processFrontMatter",
+      "path": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
       "changed": true
     },
     {
@@ -26,14 +41,16 @@
   ],
   "notices": [
     {
-      "message": "Created A-8 Ceramics fairs accept newcomers — linked to 3 bet(s)."
+      "message": "Created A-8 Ceramics fairs accept newcomers — linked to 6 note(s)."
     }
   ],
   "console": [],
   "changed": [
     "Strategy/Assumptions/A-8 Ceramics fairs accept newcomers.md",
+    "Strategy/Bets/B-10 Scalar assumptions.md",
     "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
     "Strategy/Bets/B-7  Part-time barista job.md",
-    "Strategy/Bets/B-9 No assumptions section.md"
+    "Strategy/Bets/B-9 No assumptions key.md",
+    "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md"
   ]
 }

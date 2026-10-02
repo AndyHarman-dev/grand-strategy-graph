@@ -1,25 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { FakeVault, makeApp, readTestVault, testVault } from '../support/fake-app';
-import { implementations } from '../support/impls';
+import { addLinkToField, planAssumption, planBet, planMilestone, planRoute } from '../../src/core/actions';
+import { getFilesInFolders } from '../../src/core/plan';
+import { FakeVault, readTestVault, testVault } from '../support/fake-app';
 import { json } from '../support/serialize';
 
 const TODAY = '2026-10-01';
 
-describe.each(implementations)('write plans over the test vault ($name)', (impl) => {
+describe('write plans over the test vault (schema v2)', () => {
   it('getFilesInFolders lists strategy notes sorted by basename', async () => {
-    const app = makeApp(testVault());
+    const vault = testVault();
     const listing = {
-      fixedPointsAndBets: impl.getFilesInFolders(app, ['Strategy/Fixed Points', 'Strategy/Bets']).map((f) => f.path),
-      assumptions: impl.getFilesInFolders(app, ['Strategy/Assumptions']).map((f) => f.path),
+      fixedPointsAndBets: getFilesInFolders(vault, ['Strategy/Fixed Points', 'Strategy/Bets']).map((f) => f.path),
+      assumptions: getFilesInFolders(vault, ['Strategy/Assumptions']).map((f) => f.path),
       // A prefix that is not followed by "/" must not match.
-      noTrailingSlashMatch: impl.getFilesInFolders(app, ['Strategy/Bet']).map((f) => f.path),
+      noTrailingSlashMatch: getFilesInFolders(vault, ['Strategy/Bet']).map((f) => f.path),
     };
     await expect(json(listing)).toMatchFileSnapshot('__golden__/plans/get-files-in-folders.json');
   });
 
-  it('bet plan with new, reused and duplicate assumption rows', async () => {
+  it('bet plan with new, reused and duplicate assumption rows, and every optional relation', async () => {
     const vault = testVault();
-    const app = makeApp(vault);
     const data = {
       title: 'Open a pop-up shop',
       x: 'renting a market corner on weekends',
@@ -27,6 +27,9 @@ describe.each(implementations)('write plans over the test vault ($name)', (impl)
       z: 'six months',
       deadline: '2027-04-01',
       servesFiles: [vault.file('Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md'), vault.file('Strategy/Bets/B-7  Part-time barista job.md')],
+      ultimatelyServesFiles: [vault.file('Strategy/Fixed Points/FP-1 Live in Portugal.md')],
+      requiresFiles: [vault.file('Strategy/Bets/B-3 Sell pottery at weekend markets.md')],
+      nextFile: vault.file('Strategy/Bets/B-4 Save 20000 for kiln and lease.md'),
       assumptionRows: [
         { id: 1, mode: 'new', statement: '  Footfall on weekends is high enough.  ', falsifier: ' Under 100 visitors a day ', verifyBy: '2026-11-30', existingFile: null },
         { id: 2, mode: 'existing', statement: '', falsifier: '', verifyBy: '', existingFile: vault.file('Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md') },
@@ -36,17 +39,15 @@ describe.each(implementations)('write plans over the test vault ($name)', (impl)
         { id: 6, mode: 'existing', statement: '', falsifier: '', verifyBy: '', existingFile: vault.file('Strategy/Assumptions/A-1 D7 accepts freelance income.md') },
       ],
     };
-    await expect(json(impl.buildWritePlan(app, data, TODAY))).toMatchFileSnapshot('__golden__/plans/bet-plan-mixed.json');
+    await expect(json(planBet(vault, data as any, TODAY))).toMatchFileSnapshot('__golden__/plans/bet-plan-mixed.json');
   });
 
   it('bet plan with no serves and no assumptions', async () => {
-    const app = makeApp(testVault());
     const data = { title: 'Solo', x: 'a', y: 'b', z: 'c', deadline: '', servesFiles: [], assumptionRows: [] };
-    await expect(json(impl.buildWritePlan(app, data, TODAY))).toMatchFileSnapshot('__golden__/plans/bet-plan-bare.json');
+    await expect(json(planBet(testVault(), data, TODAY))).toMatchFileSnapshot('__golden__/plans/bet-plan-bare.json');
   });
 
   it('bet plan in an empty vault starts at B-1 / A-1', async () => {
-    const app = makeApp(new FakeVault());
     const data = {
       title: 'First / bet: ever',
       x: 'a',
@@ -54,69 +55,112 @@ describe.each(implementations)('write plans over the test vault ($name)', (impl)
       z: 'c',
       deadline: '',
       servesFiles: [],
-      assumptionRows: [{ id: 1, mode: 'new', statement: 'First assumption', falsifier: '', verifyBy: '', existingFile: null }],
+      assumptionRows: [{ id: 1, mode: 'new' as const, statement: 'First assumption', falsifier: '', verifyBy: '', existingFile: null }],
     };
-    await expect(json(impl.buildWritePlan(app, data, TODAY))).toMatchFileSnapshot('__golden__/plans/bet-plan-empty-vault.json');
+    await expect(json(planBet(new FakeVault(), data, TODAY))).toMatchFileSnapshot('__golden__/plans/bet-plan-empty-vault.json');
   });
 
   it('bet plan refusals', async () => {
     const base = { x: 'a', y: 'b', z: 'c', deadline: '', servesFiles: [], assumptionRows: [] };
-    const withExtra = (extra: Record<string, string>, folders: string[] = []) =>
-      makeApp(new FakeVault({ ...readTestVault(), ...extra }, folders));
+    const withExtra = (extra: Record<string, string>, folders: string[] = []) => new FakeVault({ ...readTestVault(), ...extra }, folders);
+    const vault = testVault();
 
     const refusals = {
-      duplicateBetIds: impl.buildWritePlan(withExtra({ 'Strategy/Bets/B-3 Duplicate.md': '', 'Strategy/Bets/old/B-1 Again.md': '' }), { ...base, title: 'T' }, TODAY),
-      duplicateAssumptionIds: impl.buildWritePlan(withExtra({ 'Strategy/Assumptions/A-2 Duplicate.md': '' }), { ...base, title: 'T' }, TODAY),
-      invalidIds: impl.buildWritePlan(
+      duplicateBetIds: planBet(withExtra({ 'Strategy/Bets/B-3 Duplicate.md': '', 'Strategy/Bets/old/B-1 Again.md': '' }), { ...base, title: 'T' }, TODAY),
+      duplicateAssumptionIds: planBet(withExtra({ 'Strategy/Assumptions/A-2 Duplicate.md': '' }), { ...base, title: 'T' }, TODAY),
+      invalidIds: planBet(
         withExtra({ 'Strategy/Bets/B-99999999999999999999 Huge.md': '', 'Strategy/Assumptions/A-99999999999999999999 Huge.md': '' }),
         { ...base, title: 'T' },
         TODAY
       ),
-      emptyTitleAfterSanitize: impl.buildWritePlan(makeApp(testVault()), { ...base, title: '#[]|' }, TODAY),
-      betPathTaken: impl.buildWritePlan(withExtra({}, ['Strategy/Bets/B-9 Taken.md']), { ...base, title: 'Taken' }, TODAY),
-      assumptionPathTaken: impl.buildWritePlan(
+      emptyTitleAfterSanitize: planBet(testVault(), { ...base, title: '#[]|' }, TODAY),
+      betPathTaken: planBet(withExtra({}, ['Strategy/Bets/B-9 Taken.md']), { ...base, title: 'Taken' }, TODAY),
+      assumptionPathTaken: planBet(
         withExtra({}, ['Strategy/Assumptions/A-8 Taken.md']),
         { ...base, title: 'T', assumptionRows: [{ id: 1, mode: 'new', statement: 'Taken', falsifier: '', verifyBy: '', existingFile: null }] },
+        TODAY
+      ),
+      // The relation table decides what each field may point at.
+      ultimatelyServesABet: planBet(vault, { ...base, title: 'T', ultimatelyServesFiles: [vault.file('Strategy/Bets/B-1 Get a D7 visa.md')] }, TODAY),
+      requiresAFixedPoint: planBet(vault, { ...base, title: 'T', requiresFiles: [vault.file('Strategy/Fixed Points/FP-1 Live in Portugal.md')] }, TODAY),
+      nextAnAssumption: planBet(vault, { ...base, title: 'T', nextFile: vault.file('Strategy/Assumptions/A-1 D7 accepts freelance income.md') }, TODAY),
+      servesAnAssumption: planBet(vault, { ...base, title: 'T', servesFiles: [vault.file('Strategy/Assumptions/A-1 D7 accepts freelance income.md')] }, TODAY),
+      existingAssumptionIsABet: planBet(
+        vault,
+        { ...base, title: 'T', assumptionRows: [{ id: 1, mode: 'existing', statement: '', falsifier: '', verifyBy: '', existingFile: vault.file('Strategy/Bets/B-1 Get a D7 visa.md') }] },
         TODAY
       ),
     };
     await expect(json(refusals)).toMatchFileSnapshot('__golden__/plans/bet-plan-refusals.json');
   });
 
-  it('assumption plan linking existing bets (deduplicated)', async () => {
+  it('assumption plan adds itself to existing notes (deduplicated, any holder type)', async () => {
     const vault = testVault();
-    const app = makeApp(vault);
     const b3 = vault.file('Strategy/Bets/B-3 Sell pottery at weekend markets.md');
     const data = {
       statement: 'Ceramics fairs accept newcomers.',
       falsifier: 'Rejected by three fairs',
       verifyBy: '2027-02-01',
-      betFiles: [b3, vault.file('Strategy/Bets/B-7  Part-time barista job.md'), b3],
+      dependentFiles: [b3, vault.file('Strategy/Bets/B-7  Part-time barista job.md'), vault.file('Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md'), b3],
     };
-    await expect(json(impl.buildAssumptionWritePlan(app, data, TODAY))).toMatchFileSnapshot(
-      '__golden__/plans/assumption-plan-linked.json'
-    );
+    await expect(json(planAssumption(vault, data, TODAY))).toMatchFileSnapshot('__golden__/plans/assumption-plan-linked.json');
   });
 
   it('assumption plan refusals and fallbacks', async () => {
+    const vault = testVault();
+    const none = { falsifier: '', verifyBy: '', dependentFiles: [] };
     const results = {
-      noBetsFallbackTitle: impl.buildAssumptionWritePlan(makeApp(testVault()), { statement: '|||', falsifier: '', verifyBy: '', betFiles: [] }, TODAY),
-      duplicateIds: impl.buildAssumptionWritePlan(
-        makeApp(new FakeVault({ ...readTestVault(), 'Strategy/Assumptions/A-1 Again.md': '' })),
-        { statement: 'S', falsifier: '', verifyBy: '', betFiles: [] },
-        TODAY
-      ),
-      invalidIds: impl.buildAssumptionWritePlan(
-        makeApp(new FakeVault({ 'Strategy/Assumptions/A-99999999999999999999 Huge.md': '' })),
-        { statement: 'S', falsifier: '', verifyBy: '', betFiles: [] },
-        TODAY
-      ),
-      pathTaken: impl.buildAssumptionWritePlan(
-        makeApp(new FakeVault(readTestVault(), ['Strategy/Assumptions/A-8 S.md'])),
-        { statement: 'S', falsifier: '', verifyBy: '', betFiles: [] },
-        TODAY
-      ),
+      noDependentsFallbackTitle: planAssumption(testVault(), { ...none, statement: '|||' }, TODAY),
+      duplicateIds: planAssumption(new FakeVault({ ...readTestVault(), 'Strategy/Assumptions/A-1 Again.md': '' }), { ...none, statement: 'S' }, TODAY),
+      invalidIds: planAssumption(new FakeVault({ 'Strategy/Assumptions/A-99999999999999999999 Huge.md': '' }), { ...none, statement: 'S' }, TODAY),
+      pathTaken: planAssumption(new FakeVault(readTestVault(), ['Strategy/Assumptions/A-8 S.md']), { ...none, statement: 'S' }, TODAY),
+      dependentIsAnAssumption: planAssumption(vault, { ...none, statement: 'S', dependentFiles: [vault.file('Strategy/Assumptions/A-1 D7 accepts freelance income.md')] }, TODAY),
     };
     await expect(json(results)).toMatchFileSnapshot('__golden__/plans/assumption-plan-refusals.json');
+  });
+
+  it('route, ghost route and milestone plans', async () => {
+    const vault = testVault();
+    const fp1 = vault.file('Strategy/Fixed Points/FP-1 Live in Portugal.md');
+    const withRoute = new FakeVault({ ...readTestVault(), 'Strategy/Routes/R-4 Existing.md': '', 'Strategy/Milestones/M-2 Existing.md': '' });
+    const results = {
+      route: planRoute(vault, { ghost: false, title: 'Study → H1B', description: ' US study path ', servesFiles: [fp1, fp1] }, TODAY),
+      ghostRoute: planRoute(vault, { ghost: true, title: 'O1 visa?', description: '', servesFiles: [fp1] }, TODAY),
+      milestone: planMilestone(vault, { title: 'First workshop held', description: '', servesFiles: [vault.file('Strategy/Bets/B-8 Teach pottery workshops.md')] }, TODAY),
+      nextIdsAfterExisting: [
+        planRoute(withRoute, { ghost: false, title: 'Next', description: '', servesFiles: [] }, TODAY),
+        planMilestone(withRoute, { title: 'Next', description: '', servesFiles: [] }, TODAY),
+      ],
+      emptyVault: planRoute(new FakeVault(), { ghost: false, title: 'First', description: '', servesFiles: [] }, TODAY),
+      emptyTitle: planRoute(vault, { ghost: false, title: '#[]', description: '', servesFiles: [] }, TODAY),
+      servesAnAssumption: planMilestone(vault, { title: 'T', description: '', servesFiles: [vault.file('Strategy/Assumptions/A-1 D7 accepts freelance income.md')] }, TODAY),
+      pathTaken: planRoute(new FakeVault({}, ['Strategy/Routes/R-1 Taken.md']), { ghost: false, title: 'Taken', description: '', servesFiles: [] }, TODAY),
+      duplicateIds: planRoute(new FakeVault({ 'Strategy/Routes/R-1 A.md': '', 'Strategy/Routes/R-1 B.md': '' }), { ghost: false, title: 'T', description: '', servesFiles: [] }, TODAY),
+    };
+    await expect(json(results)).toMatchFileSnapshot('__golden__/plans/route-milestone-plans.json');
+  });
+});
+
+describe('addLinkToField', () => {
+  const link = '[[A-8 New]]';
+  it.each([
+    ['nothing', undefined, [link]],
+    ['null', null, [link]],
+    ['empty string', '', [link]],
+    ['empty list', [], [link]],
+    ['a list', ['[[A-1 One]]'], ['[[A-1 One]]', link]],
+    ['a scalar', '[[A-1 One]]', ['[[A-1 One]]', link]],
+  ])('appends to %s', (_name, value, expected) => {
+    expect(addLinkToField(value, link)).toEqual(expected);
+  });
+
+  it.each([
+    ['the same link', ['[[A-8 New]]']],
+    ['the same link as a scalar', '[[A-8 New]]'],
+    ['an aliased link', ['[[A-8 New|alias]]']],
+    ['a different case', ['[[a-8 new]]']],
+    ['a heading link', ['[[A-8 New#Log]]']],
+  ])('leaves %s alone (same value back, so nothing is written)', (_name, value) => {
+    expect(addLinkToField(value, link)).toBe(value);
   });
 });

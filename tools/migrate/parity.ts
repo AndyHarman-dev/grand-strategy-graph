@@ -8,7 +8,8 @@ import { buildGraph } from '../../src/core/graph';
 import { MemoryAdapter, STRATEGY_ROOT } from '../../src/core/memory-adapter';
 import type { EdgeKind, Graph } from '../../src/core/schema';
 import { sameHeading, sections, splitNote } from './markdown';
-import { applyPlan, BET_ASSUMPTIONS_HEADING, DEPENDED_ON_BY_HEADING, dependedOnByBlock, SERVES_HEADING } from './plan';
+import { dependedOnByBlock } from '../../src/core/content';
+import { applyPlan, BET_ASSUMPTIONS_HEADING, DEPENDED_ON_BY_HEADING, SERVES_HEADING } from './plan';
 import type { MigrationOptions, MigrationPlan, RelField } from './types';
 
 export interface GateCheck {

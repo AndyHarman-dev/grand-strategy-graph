@@ -1,0 +1,25 @@
+{
+  "ops": [
+    {
+      "op": "createFolder",
+      "path": "Strategy/Routes"
+    },
+    {
+      "op": "create",
+      "path": "Strategy/Routes/R-1 First.md"
+    },
+    {
+      "op": "openFile",
+      "path": "Strategy/Routes/R-1 First.md"
+    }
+  ],
+  "notices": [
+    {
+      "message": "Created R-1 First."
+    }
+  ],
+  "console": [],
+  "changed": [
+    "Strategy/Routes/R-1 First.md"
+  ]
+}

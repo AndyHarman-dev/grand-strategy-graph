@@ -8,6 +8,7 @@
  * migration: that is a new decision for the user, not something to guess in code.
  */
 import type { Document, Pair } from 'yaml';
+import { dependedOnByBlock } from '../../src/core/content';
 import { emptyGsMap, GSMAP_PATH, serializeGsMap, type GsEndpoint, type GsLink, type GsMap, type GsSide } from '../../src/core/gsmap';
 import { parseIds } from '../../src/core/ids';
 import { linkpathOf, resolveLinkpath } from '../../src/core/links';
@@ -100,11 +101,6 @@ const SOURCE_LABEL: Record<EdgeSource, string> = {
   'body:depended-on-by': '`## Depended On By`',
   canvas: 'the canvas',
 };
-
-/** The live replacement for `## Depended On By`: dependents computed from frontmatter (D2). */
-export function dependedOnByBlock(root: string): string[] {
-  return ['```dataview', 'LIST', `FROM "${root}"`, 'WHERE contains(assumptions, this.file.link)', 'SORT file.name ASC', '```'];
-}
 
 const WIKILINK = /!?\[\[([^\]]*)\]\]/g;
 const PURE_LINK_LINE = /^\s*(?:[-*+]\s+(?:\[[ xX]\]\s+)?)?(?:!?\[\[[^\]]*\]\][\s,;]*)+$/;

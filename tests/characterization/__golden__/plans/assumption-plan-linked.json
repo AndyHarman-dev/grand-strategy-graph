@@ -1,3 +1,29 @@
 {
-  "file": "Strategy/Assumptions/A-8 Ceramics fairs accept newcomers.md"
+  "writes": [
+    {
+      "kind": "create",
+      "path": "Strategy/Assumptions/A-8 Ceramics fairs accept newcomers.md",
+      "content": "---\nid: A-8\ntype: assumption\nstatus: unverified\ncreated: 2026-10-01\nverify-by: 2027-02-01\n---\n## The Assumption\nCeramics fairs accept newcomers.\n\n## How I'd Know It's False\nRejected by three fairs\n\n## Verify By\n*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*\n\n## Depended On By\n```dataview\nLIST\nFROM \"Strategy\"\nWHERE contains(assumptions, this.file.link)\nSORT file.name ASC\n```\n\n## Log\n- 2026-10-01: Created\n"
+    },
+    {
+      "kind": "add-link",
+      "path": "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+      "field": "assumptions",
+      "link": "[[A-8 Ceramics fairs accept newcomers]]"
+    },
+    {
+      "kind": "add-link",
+      "path": "Strategy/Bets/B-7  Part-time barista job.md",
+      "field": "assumptions",
+      "link": "[[A-8 Ceramics fairs accept newcomers]]"
+    },
+    {
+      "kind": "add-link",
+      "path": "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md",
+      "field": "assumptions",
+      "link": "[[A-8 Ceramics fairs accept newcomers]]"
+    }
+  ],
+  "open": "Strategy/Assumptions/A-8 Ceramics fairs accept newcomers.md",
+  "notice": "Created A-8 Ceramics fairs accept newcomers — linked to 3 note(s)."
 }

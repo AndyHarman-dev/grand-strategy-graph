@@ -16,7 +16,7 @@
     }
   ],
   "console": [
-    "error: strategy-bet-creator: failed part-way through creation Error: Simulated write failure."
+    "error: strategy-bet-creator: failed part-way through bet creation Error: Simulated write failure."
   ],
   "changed": [
     "Strategy/Assumptions/A-8 Gets written.md"

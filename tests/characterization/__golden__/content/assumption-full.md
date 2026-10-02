@@ -1,4 +1,5 @@
 ---
+id: A-12
 type: assumption
 status: unverified
 created: 2026-10-01
@@ -14,8 +15,12 @@ Fewer than four sign-ups after two months of ads.
 *If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*
 
 ## Depended On By
-*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*
-- [[B-8 Teach pottery workshops]]
+```dataview
+LIST
+FROM "Strategy"
+WHERE contains(assumptions, this.file.link)
+SORT file.name ASC
+```
 
 ## Log
 - 2026-10-01: Created

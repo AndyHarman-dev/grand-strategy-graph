@@ -1,6 +1,14 @@
 {
-  "noBetsFallbackTitle": {
-    "file": "Strategy/Assumptions/A-8 Assumption 8.md"
+  "noDependentsFallbackTitle": {
+    "writes": [
+      {
+        "kind": "create",
+        "path": "Strategy/Assumptions/A-8 Assumption 8.md",
+        "content": "---\nid: A-8\ntype: assumption\nstatus: unverified\ncreated: 2026-10-01\nverify-by:\n---\n## The Assumption\n|||\n\n## How I'd Know It's False\n*What observable evidence would falsify this? If nothing could, it's a belief, not an assumption — rewrite it.*\n\n## Verify By\n*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*\n\n## Depended On By\n```dataview\nLIST\nFROM \"Strategy\"\nWHERE contains(assumptions, this.file.link)\nSORT file.name ASC\n```\n\n## Log\n- 2026-10-01: Created\n"
+      }
+    ],
+    "open": "Strategy/Assumptions/A-8 Assumption 8.md",
+    "notice": "Created A-8 Assumption 8 — linked to 0 note(s)."
   },
   "duplicateIds": {
     "error": "Duplicate assumption ids in Strategy/Assumptions: A-1. Nothing was created."
@@ -10,5 +18,8 @@
   },
   "pathTaken": {
     "error": "A note already exists at \"Strategy/Assumptions/A-8 S.md\". Nothing was created."
+  },
+  "dependentIsAnAssumption": {
+    "error": "Notes that depend on an assumption must be notes in Strategy/Bets, Strategy/Fixed Points, Strategy/Routes, Strategy/Milestones (not A-1 D7 accepts freelance income). Nothing was created."
   }
 }

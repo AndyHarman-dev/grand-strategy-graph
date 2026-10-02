@@ -1,0 +1,20 @@
+{
+  "ops": [
+    {
+      "op": "create",
+      "path": "Strategy/Assumptions/A-8 S.md"
+    }
+  ],
+  "notices": [
+    {
+      "message": "Assumption creation failed: Simulated frontmatter failure.\nAlready written (not rolled back): Strategy/Assumptions/A-8 S.md",
+      "timeout": 20000
+    }
+  ],
+  "console": [
+    "error: strategy-bet-creator: failed part-way through assumption creation Error: Simulated frontmatter failure."
+  ],
+  "changed": [
+    "Strategy/Assumptions/A-8 S.md"
+  ]
+}

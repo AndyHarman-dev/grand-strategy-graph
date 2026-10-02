@@ -1,29 +1,26 @@
 {
-  "betId": 9,
-  "betTitle": "Open a pop-up shop",
-  "betPath": "Strategy/Bets/B-9 Open a pop-up shop.md",
-  "betLink": "[[B-9 Open a pop-up shop]]",
-  "betContent": "---\ntype: bet\nstatus: active\nstarted: 2026-10-01\ndeadline: 2027-04-01\nexpected-result: \"a pop-up shop that breaks even\"\nserves:\n  - \"[[FP-2 Own a profitable ceramics studio]]\"\n  - \"[[B-7  Part-time barista job]]\"\nnext sequel:\n---\n## The Bet\nI believe continuing **renting a market corner on weekends:** `[action/effort]`\nwill produce **a pop-up shop that breaks even:** `[concrete, observable result]`\nwithin **six months:** `[timeframe — must match the deadline above]`\n\n## Serves\nWhich fixed point / direction does this bet serve?\n- [[FP-2 Own a profitable ceramics studio]]\n- [[B-7  Part-time barista job]]\n\n## Kill Condition (decided NOW, before the deadline)\nWhen the deadline arrives and Y has not materialized, this bet is:\n- [ ] **Killed** — X stops entirely\n- [ ] **Modified** — X changes to: \n- [ ] **Extended once** — new deadline: `____` — written justification required below\n\n> Extension justification (fill only if extending; one extension maximum):\n\n## Assumptions This Bet Depends On\n- [[A-8 Footfall on weekends is high enough]]\n- [[A-9 A rather long statement that goes well beyond the sixty]]\n- [[A-10 Assumption 10]]\n- [[A-4 Tourists buy handmade ceramics]]\n- [[A-1 D7 accepts freelance income]]\n\n## Log\n*Weekly check-ins go here. Date + one line: on track / off track / signal observed.*\n\n- 2026-10-01: created\n\n## Resolution\n*Fill when the bet closes.*\n- **Outcome:** \n- **What I learned:** \n- **Status updated in frontmatter?** (active → won / killed / extended)\n",
-  "newAssumptions": [
+  "writes": [
     {
+      "kind": "create",
       "path": "Strategy/Assumptions/A-8 Footfall on weekends is high enough.md",
-      "content": "---\ntype: assumption\nstatus: unverified\ncreated: 2026-10-01\nverify-by: 2026-11-30\n---\n## The Assumption\nFootfall on weekends is high enough.\n\n## How I'd Know It's False\nUnder 100 visitors a day\n\n## Verify By\n*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*\n\n## Depended On By\n*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*\n- [[B-9 Open a pop-up shop]]\n\n## Log\n- 2026-10-01: Created\n"
+      "content": "---\nid: A-8\ntype: assumption\nstatus: unverified\ncreated: 2026-10-01\nverify-by: 2026-11-30\n---\n## The Assumption\nFootfall on weekends is high enough.\n\n## How I'd Know It's False\nUnder 100 visitors a day\n\n## Verify By\n*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*\n\n## Depended On By\n```dataview\nLIST\nFROM \"Strategy\"\nWHERE contains(assumptions, this.file.link)\nSORT file.name ASC\n```\n\n## Log\n- 2026-10-01: Created\n"
     },
     {
+      "kind": "create",
       "path": "Strategy/Assumptions/A-9 A rather long statement that goes well beyond the sixty.md",
-      "content": "---\ntype: assumption\nstatus: unverified\ncreated: 2026-10-01\nverify-by:\n---\n## The Assumption\nA rather long statement that goes well beyond the sixty character budget for titles\n\n## How I'd Know It's False\n*What observable evidence would falsify this? If nothing could, it's a belief, not an assumption — rewrite it.*\n\n## Verify By\n*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*\n\n## Depended On By\n*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*\n- [[B-9 Open a pop-up shop]]\n\n## Log\n- 2026-10-01: Created\n"
+      "content": "---\nid: A-9\ntype: assumption\nstatus: unverified\ncreated: 2026-10-01\nverify-by:\n---\n## The Assumption\nA rather long statement that goes well beyond the sixty character budget for titles\n\n## How I'd Know It's False\n*What observable evidence would falsify this? If nothing could, it's a belief, not an assumption — rewrite it.*\n\n## Verify By\n*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*\n\n## Depended On By\n```dataview\nLIST\nFROM \"Strategy\"\nWHERE contains(assumptions, this.file.link)\nSORT file.name ASC\n```\n\n## Log\n- 2026-10-01: Created\n"
     },
     {
+      "kind": "create",
       "path": "Strategy/Assumptions/A-10 Assumption 10.md",
-      "content": "---\ntype: assumption\nstatus: unverified\ncreated: 2026-10-01\nverify-by:\n---\n## The Assumption\n###\n\n## How I'd Know It's False\n*What observable evidence would falsify this? If nothing could, it's a belief, not an assumption — rewrite it.*\n\n## Verify By\n*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*\n\n## Depended On By\n*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*\n- [[B-9 Open a pop-up shop]]\n\n## Log\n- 2026-10-01: Created\n"
+      "content": "---\nid: A-10\ntype: assumption\nstatus: unverified\ncreated: 2026-10-01\nverify-by:\n---\n## The Assumption\n###\n\n## How I'd Know It's False\n*What observable evidence would falsify this? If nothing could, it's a belief, not an assumption — rewrite it.*\n\n## Verify By\n*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*\n\n## Depended On By\n```dataview\nLIST\nFROM \"Strategy\"\nWHERE contains(assumptions, this.file.link)\nSORT file.name ASC\n```\n\n## Log\n- 2026-10-01: Created\n"
+    },
+    {
+      "kind": "create",
+      "path": "Strategy/Bets/B-9 Open a pop-up shop.md",
+      "content": "---\nid: B-9\ntype: bet\nstatus: active\nstarted: 2026-10-01\ndeadline: 2027-04-01\nexpected-result: \"a pop-up shop that breaks even\"\nserves:\n  - \"[[FP-2 Own a profitable ceramics studio]]\"\n  - \"[[B-7  Part-time barista job]]\"\nultimately-serves:\n  - \"[[FP-1 Live in Portugal]]\"\nrequires:\n  - \"[[B-3 Sell pottery at weekend markets]]\"\nnext: \"[[B-4 Save 20000 for kiln and lease]]\"\nassumptions:\n  - \"[[A-8 Footfall on weekends is high enough]]\"\n  - \"[[A-9 A rather long statement that goes well beyond the sixty]]\"\n  - \"[[A-10 Assumption 10]]\"\n  - \"[[A-4 Tourists buy handmade ceramics]]\"\n  - \"[[A-1 D7 accepts freelance income]]\"\n---\n## The Bet\nI believe continuing **renting a market corner on weekends:** `[action/effort]`\nwill produce **a pop-up shop that breaks even:** `[concrete, observable result]`\nwithin **six months:** `[timeframe — must match the deadline above]`\n\n## Kill Condition (decided NOW, before the deadline)\nWhen the deadline arrives and Y has not materialized, this bet is:\n- [ ] **Killed** — X stops entirely\n- [ ] **Modified** — X changes to: \n- [ ] **Extended once** — new deadline: `____` — written justification required below\n\n> Extension justification (fill only if extending; one extension maximum):\n\n## Log\n*Weekly check-ins go here. Date + one line: on track / off track / signal observed.*\n\n- 2026-10-01: created\n\n## Resolution\n*Fill when the bet closes.*\n- **Outcome:** \n- **What I learned:** \n- **Status updated in frontmatter?** (active → won / killed / extended)\n"
     }
   ],
-  "reused": [
-    {
-      "file": "Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md"
-    },
-    {
-      "file": "Strategy/Assumptions/A-1 D7 accepts freelance income.md"
-    }
-  ]
+  "open": "Strategy/Bets/B-9 Open a pop-up shop.md",
+  "notice": "Created B-9 Open a pop-up shop — 3 new assumption(s), 2 reused."
 }

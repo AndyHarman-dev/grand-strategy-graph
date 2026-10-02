@@ -278,56 +278,6 @@
       "max": 12
     }
   ],
-  "insertIntoSection": [
-    {
-      "name": "already linked (bullet-less backlink counts)",
-      "result": "## Depended On By\n[[B-1 x]]\n"
-    },
-    {
-      "name": "appends after placeholder and existing links, before next h2",
-      "result": "# T\n## Depended On By\n*placeholder*\n- [[B-1 a]]\n- [[B-2 b]]\n\n\n## Log\n- entry\n"
-    },
-    {
-      "name": "empty section directly under heading",
-      "result": "## Depended On By\n- [[B-2 b]]\n\n## Log\n"
-    },
-    {
-      "name": "h3 subsection stays inside the section",
-      "result": "## Depended On By\n- [[B-1 a]]\n### Notes\nsub text\n- [[B-2 b]]\n\n# Next h1\n"
-    },
-    {
-      "name": "section is last in the file without trailing newline",
-      "result": "intro\n## Depended On By\n- [[B-1 a]]\n- [[B-2 b]]"
-    },
-    {
-      "name": "heading matched after trimming surrounding whitespace",
-      "result": "  ## Depended On By  \n- [[B-1 a]]\n- [[B-2 b]]\n"
-    },
-    {
-      "name": "only the first matching heading is used",
-      "result": "## Depended On By\n- [[B-1 a]]\n- [[B-2 b]]\n## Log\n## Depended On By\n"
-    },
-    {
-      "name": "missing section, content without newline",
-      "result": "body text\n\n## Assumptions This Bet Depends On\n- [[A-1 a]]\n"
-    },
-    {
-      "name": "missing section, content ending in one newline",
-      "result": "body text\n\n## Assumptions This Bet Depends On\n- [[A-1 a]]\n"
-    },
-    {
-      "name": "missing section, content ending in a blank line",
-      "result": "body text\n\n## Assumptions This Bet Depends On\n- [[A-1 a]]\n"
-    },
-    {
-      "name": "missing section, empty content",
-      "result": "## Assumptions This Bet Depends On\n- [[A-1 a]]\n"
-    },
-    {
-      "name": "CRLF content",
-      "result": "## Depended On By\r\n- [[B-1 a]]\r\n- [[B-2 b]]\n\r\n## Log\r\n"
-    }
-  ],
   "yamlString": [
     [
       "plain",

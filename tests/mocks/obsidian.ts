@@ -1,8 +1,7 @@
 /**
  * Runtime stand-in for the `obsidian` module, which only exists inside the
  * Obsidian app. Vitest aliases `obsidian` to this file (vitest.config.ts), and
- * the legacy loader hands the same instance to the old main.js, so both
- * implementations observe identical notices and dates.
+ * tests read the notices and dates it records.
  *
  * Only what the plugin touches outside of DOM rendering is modelled.
  */
@@ -43,6 +42,9 @@ export function moment() {
     },
   };
 }
+
+/** `instanceof TFile` is how the plugin tells a note from a folder; FakeVault files are instances. */
+export class TFile {}
 
 const stubEl = { empty() {} };
 

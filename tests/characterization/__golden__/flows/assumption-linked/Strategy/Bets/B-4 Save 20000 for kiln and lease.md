@@ -9,7 +9,9 @@ expected-result: |-
   2) first lease deposit
 serves:
   - "[[FP-2 Own a profitable ceramics studio]]"
-next sequel:
+next sequel: null
+assumptions:
+  - "[[A-8 Ceramics fairs accept newcomers]]"
 ---
 ## The Bet
 I believe continuing **saving from both incomes:** `[action/effort]`
@@ -31,7 +33,6 @@ When the deadline arrives and Y has not materialized, this bet is:
 ## Assumptions This Bet Depends On
 - [[B-3 Sell pottery at weekend markets]]
 - [[B-5 Learn Portuguese to B1]]
-- [[A-8 Ceramics fairs accept newcomers]]
 
 ## Log
 *Weekly check-ins go here. Date + one line: on track / off track / signal observed.*

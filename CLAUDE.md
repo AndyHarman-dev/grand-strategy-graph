@@ -26,18 +26,21 @@ renders the strategy as a data-driven graph. The full plan, decisions (D1–D13)
   in the OS temp dir. A legacy edge the classification rules don't cover comes out `unclassified` (exit code 2):
   that is a decision for the user (plan Phase 2, "Escalate/stop"), never something to settle in code. Apply stops
   if any touched file's hash differs from the reviewed dry run; never loosen that guard.
-- **`tests/legacy/main.js` is the pre-port oracle**, kept byte-for-byte as it shipped. Don't edit it.
-  Remove it (and the `legacy` entries in the tests) only once Phase 4 intentionally changes output.
+- **The legacy plugin oracle is gone.** Phase 4 intentionally changed the notes the plugin writes (schema v2), so
+  `tests/legacy/main.js` and its `legacy` test entries were removed; the goldens now pin the v2 output alone.
+  Write-side behavior is tied to `buildGraph` by `tests/characterization/v2-graph.test.ts`: every note the plugin
+  creates must build a clean graph. Existing notes are only ever changed by appending a link to a frontmatter list
+  (`processFrontMatter`), never in the body.
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `src/core/` | Pure TS: helpers, content builders, write planners, schema, graph, smells, `.gsmap` format (later: actions) |
-| `src/obsidian/` | Obsidian adapter: modals, create flows, views, commands |
+| `src/core/` | Pure TS: helpers, content builders, `actions.ts` (creation intents → planned writes), schema, graph, smells, `.gsmap` format |
+| `src/obsidian/` | Obsidian adapter: modals, create flows (execute the planned writes), views, commands |
 | `src/ui/` | React components (from Phase 5a) |
 | `src/main.ts` | Plugin entry |
-| `tools/` | Node-only code: `fs-adapter.ts` (reads a vault folder), `migrate.ts` + `migrate/` (Phase 2 planner, parity gate, report) |
+| `tools/` | Node-only code: `fs-adapter.ts` (reads a vault folder), `migrate.ts` + `migrate/` (Phase 2 planner, parity gate, report; Phase 3 `apply.ts`) |
 | `tests/` | Vitest. `mocks/obsidian.ts` replaces the `obsidian` module; `support/` has the in-memory vault |
 | `test-vault/` | Synthetic legacy-format vault; `ANOMALIES.md` maps each note to the anomaly it covers |
 

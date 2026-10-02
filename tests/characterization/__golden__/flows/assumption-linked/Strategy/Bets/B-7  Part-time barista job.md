@@ -2,10 +2,12 @@
 type: bet
 status: active
 started: 2026-08-15
-deadline:
+deadline: null
 expected-result: Steady side income
 serves: "[[...]]"
-next sequel:
+next sequel: null
+assumptions:
+  - "[[A-8 Ceramics fairs accept newcomers]]"
 ---
 ## The Bet
 I believe continuing **working part-time:** `[action/effort]`
@@ -26,7 +28,6 @@ When the deadline arrives and Y has not materialized, this bet is:
 
 ## Assumptions This Bet Depends On
 - [[A-]]
-- [[A-8 Ceramics fairs accept newcomers]]
 
 ## Log
 *Weekly check-ins go here. Date + one line: on track / off track / signal observed.*

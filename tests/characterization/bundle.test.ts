@@ -5,15 +5,13 @@ import { buildOptions } from '../../esbuild.options.mjs';
 import * as obsidian from '../mocks/obsidian';
 import { notices, openedModals, resetObsidianMock } from '../mocks/obsidian';
 import { FakeVault, makeApp, readTestVault } from '../support/fake-app';
-import { LegacyPlugin } from '../support/legacy';
 import { json } from '../support/serialize';
 
 /**
  * End to end through what Obsidian actually loads: build the production
  * bundle in memory, evaluate it the way Obsidian does (CommonJS, default
  * export), run a command, fill the modal, submit, and compare the resulting
- * vault writes against the same goldens the unit-level flows use. The legacy
- * plugin runs the identical path as the reference.
+ * vault writes against the same goldens the unit-level flows use.
  */
 
 async function loadBundledPlugin(): Promise<any> {
@@ -30,7 +28,7 @@ async function loadBundledPlugin(): Promise<any> {
   return mod.exports.default ?? mod.exports;
 }
 
-const plugins: { name: string; Plugin: any }[] = [{ name: 'legacy', Plugin: LegacyPlugin }];
+const plugins: { name: string; Plugin: any }[] = [];
 let consoleLog: string[] = [];
 
 beforeAll(async () => {
@@ -75,7 +73,7 @@ async function expectFlow(caseName: string, vault: FakeVault, before: Record<str
 }
 
 describe('plugin end to end via commands', () => {
-  it.each(['legacy', 'bundle'])('%s: create-bet command writes the golden notes', async (name) => {
+  it.each(['bundle'])('%s: create-bet command writes the golden notes', async (name) => {
     const { Plugin } = plugins.find((p) => p.name === name)!;
     const before = readTestVault();
     const vault = new FakeVault(before);
@@ -98,11 +96,14 @@ describe('plugin end to end via commands', () => {
     await expectFlow('bet-mixed', vault, before);
   });
 
-  it.each(['legacy', 'bundle'])('%s: create-assumption command writes the golden notes', async (name) => {
+  it.each(['bundle'])('%s: create-assumption command writes the golden notes', async (name) => {
     const { Plugin } = plugins.find((p) => p.name === name)!;
     const before = {
       ...readTestVault(),
-      'Strategy/Bets/B-9 No assumptions section.md': '---\ntype: bet\nstatus: active\n---\n## The Bet\nText\n',
+      // Same fixture as flows.test.ts: both write the `assumption-linked` golden.
+      'Strategy/Bets/B-9 No assumptions key.md': '---\ntype: bet\nstatus: active\n---\n## The Bet\nText\n',
+      'Strategy/Bets/B-10 Scalar assumptions.md': '---\ntype: bet\nstatus: active\nassumptions: "[[A-2 Rent in Lisbon stays under 1200]]"\n---\n',
+      'Strategy/Bets/B-11 Already listed.md': '---\ntype: bet\nstatus: active\nassumptions:\n  - "[[A-8 Ceramics fairs accept newcomers]]"\n---\n',
     };
     const vault = new FakeVault(before);
     const b4 = vault.file('Strategy/Bets/B-4 Save 20000 for kiln and lease.md');
@@ -110,7 +111,15 @@ describe('plugin end to end via commands', () => {
       statement: 'Ceramics fairs accept newcomers.',
       falsifier: 'Rejected by three fairs',
       verifyBy: '2027-02-01',
-      betFiles: [b4, vault.file('Strategy/Bets/B-7  Part-time barista job.md'), vault.file('Strategy/Bets/B-9 No assumptions section.md'), b4],
+      dependentFiles: [
+        b4,
+        vault.file('Strategy/Bets/B-7  Part-time barista job.md'),
+        vault.file('Strategy/Bets/B-9 No assumptions key.md'),
+        vault.file('Strategy/Bets/B-10 Scalar assumptions.md'),
+        vault.file('Strategy/Bets/B-11 Already listed.md'),
+        vault.file('Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md'),
+        b4,
+      ],
     });
     await expectFlow('assumption-linked', vault, before);
   });

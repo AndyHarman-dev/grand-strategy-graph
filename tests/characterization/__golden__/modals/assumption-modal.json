@@ -3,7 +3,7 @@
     "statement": "",
     "falsifier": "",
     "verifyBy": "",
-    "betFiles": []
+    "dependentFiles": []
   },
   "missingStatement": {
     "submitted": [],
@@ -20,7 +20,7 @@
         "statement": "S",
         "falsifier": "F",
         "verifyBy": "",
-        "betFiles": [
+        "dependentFiles": [
           {
             "file": "Strategy/Bets/B-1 Get a D7 visa.md"
           }

@@ -1,35 +1,43 @@
-import { DEPENDED_ON_BY_HEADING } from './constants';
+import { DEPENDED_ON_BY_HEADING, STRATEGY_FOLDER } from './constants';
 import { stripTrailingColon, yamlString } from './text';
+
+/**
+ * Note bodies and frontmatter in schema v2, matching what Phase 2's migration produces from
+ * the legacy notes and what the migrated `Templates/` hold: every relationship lives in the
+ * frontmatter (D2), so no body section lists links.
+ */
+
+/** The live replacement for `## Depended On By`: dependents computed from frontmatter (D2). */
+export function dependedOnByBlock(root: string = STRATEGY_FOLDER): string[] {
+  return ['```dataview', 'LIST', `FROM "${root}"`, 'WHERE contains(assumptions, this.file.link)', 'SORT file.name ASC', '```'];
+}
+
+/** A list field: `key:` alone when empty, else one quoted wikilink per line. */
+function linkList(key: string, basenames: readonly string[]): string[] {
+  if (!basenames.length) return [key + ':'];
+  return [key + ':', ...basenames.map((b) => '  - ' + yamlString('[[' + b + ']]'))];
+}
 
 export interface AssumptionContentOptions {
   today: string;
+  /** `A-<n>`. */
+  id: string;
   statement: string;
   falsifier: string;
   verifyBy: string;
-  /** Zero or more `[[Bet]]` links. Takes precedence over `betLink`. */
-  betLinks?: string[];
-  /** Single-link call shape, used when `betLinks` is absent. */
-  betLink?: string;
 }
 
-/**
- * Assumption note body, mirroring Templates/Assumption Template.md.
- * `betLinks` (zero or more `[[Bet]]` strings) covers both call sites: a bet's
- * own new-assumption rows pass exactly one (the bet being created), while
- * standalone assumption creation passes however many existing bets were
- * picked, including none.
- */
+/** Assumption note, mirroring Templates/Assumption Template.md. Dependents point at it from their own `assumptions`. */
 export function buildAssumptionContent(opts: AssumptionContentOptions): string {
   const frontmatter = [
     '---',
+    'id: ' + opts.id,
     'type: assumption',
     'status: unverified',
     'created: ' + opts.today,
     'verify-by:' + (opts.verifyBy ? ' ' + opts.verifyBy : ''),
     '---',
   ];
-
-  const betLinks = opts.betLinks || (opts.betLink ? [opts.betLink] : []);
 
   const body = [
     '## The Assumption',
@@ -44,40 +52,43 @@ export function buildAssumptionContent(opts: AssumptionContentOptions): string {
     '*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*',
     '',
     DEPENDED_ON_BY_HEADING,
-    '*Check linked mentions — every bet and decision that leans on this. When status flips to `falsified`, everything listed there needs re-examination at the next weekly review.*',
+    ...dependedOnByBlock(),
+    '',
+    '## Log',
+    '- ' + opts.today + ': Created',
+    '',
   ];
-  for (const link of betLinks) {
-    body.push('- ' + link);
-  }
-  body.push('', '## Log', '- ' + opts.today + ': Created', '');
 
   return frontmatter.concat(body).join('\n');
 }
 
 export interface BetContentOptions {
   today: string;
+  /** `B-<n>`. */
+  id: string;
   x: string;
   y: string;
   z: string;
   deadline: string;
   servesBasenames: string[];
-  assumptionLinks: string[];
+  ultimatelyServesBasenames?: string[];
+  requiresBasenames?: string[];
+  /** The sequel activated when this bet is killed. */
+  nextBasename?: string | null;
+  assumptionBasenames: string[];
 }
 
-/** Bet note body, mirroring Templates/Bet Template.md. */
+/** Bet note, mirroring Templates/Bet Template.md. */
 export function buildBetContent(opts: BetContentOptions): string {
-  const frontmatter = ['---', 'type: bet', 'status: active', 'started: ' + opts.today];
+  const frontmatter = ['---', 'id: ' + opts.id, 'type: bet', 'status: active', 'started: ' + opts.today];
   frontmatter.push('deadline:' + (opts.deadline ? ' ' + opts.deadline : ''));
   frontmatter.push('expected-result: ' + yamlString(opts.y));
-  if (opts.servesBasenames.length) {
-    frontmatter.push('serves:');
-    for (const basename of opts.servesBasenames) {
-      frontmatter.push('  - ' + yamlString('[[' + basename + ']]'));
-    }
-  } else {
-    frontmatter.push('serves:');
-  }
-  frontmatter.push('next sequel:');
+  frontmatter.push(...linkList('serves', opts.servesBasenames));
+  // Optional: the template omits it, so a note only carries the key when it has a far anchor.
+  if (opts.ultimatelyServesBasenames?.length) frontmatter.push(...linkList('ultimately-serves', opts.ultimatelyServesBasenames));
+  frontmatter.push(...linkList('requires', opts.requiresBasenames ?? []));
+  frontmatter.push('next:' + (opts.nextBasename ? ' ' + yamlString('[[' + opts.nextBasename + ']]') : ''));
+  frontmatter.push(...linkList('assumptions', opts.assumptionBasenames));
   frontmatter.push('---');
 
   const body = [
@@ -86,14 +97,6 @@ export function buildBetContent(opts: BetContentOptions): string {
     'will produce **' + stripTrailingColon(opts.y) + ':** `[concrete, observable result]`',
     'within **' + stripTrailingColon(opts.z) + ':** `[timeframe — must match the deadline above]`',
     '',
-    '## Serves',
-    'Which fixed point / direction does this bet serve?',
-  ];
-  for (const basename of opts.servesBasenames) {
-    body.push('- [[' + basename + ']]');
-  }
-  body.push(
-    '',
     '## Kill Condition (decided NOW, before the deadline)',
     'When the deadline arrives and Y has not materialized, this bet is:',
     '- [ ] **Killed** — X stops entirely',
@@ -101,13 +104,6 @@ export function buildBetContent(opts: BetContentOptions): string {
     '- [ ] **Extended once** — new deadline: `____` — written justification required below',
     '',
     '> Extension justification (fill only if extending; one extension maximum):',
-    '',
-    '## Assumptions This Bet Depends On'
-  );
-  for (const link of opts.assumptionLinks) {
-    body.push('- ' + link);
-  }
-  body.push(
     '',
     '## Log',
     '*Weekly check-ins go here. Date + one line: on track / off track / signal observed.*',
@@ -119,8 +115,54 @@ export function buildBetContent(opts: BetContentOptions): string {
     '- **Outcome:** ',
     '- **What I learned:** ',
     '- **Status updated in frontmatter?** (active → won / killed / extended)',
-    ''
-  );
+    '',
+  ];
 
+  return frontmatter.concat(body).join('\n');
+}
+
+export interface RouteContentOptions {
+  today: string;
+  /** `R-<n>`. */
+  id: string;
+  /** A ghost is a suspected, unexplored route. */
+  ghost: boolean;
+  description: string;
+  servesBasenames: string[];
+}
+
+export function buildRouteContent(opts: RouteContentOptions): string {
+  const frontmatter = ['---', 'id: ' + opts.id, 'type: route', 'status: ' + (opts.ghost ? 'ghost' : 'active')];
+  frontmatter.push(...linkList('serves', opts.servesBasenames), ...linkList('assumptions', []), '---');
+  const body = [
+    '## The Route',
+    opts.description || (opts.ghost ? '*Suspected, unexplored: what would make this a real route?*' : '*What is this route, and which fixed point does it lead to?*'),
+    '',
+    '## Log',
+    '- ' + opts.today + ': Created',
+    '',
+  ];
+  return frontmatter.concat(body).join('\n');
+}
+
+export interface MilestoneContentOptions {
+  today: string;
+  /** `M-<n>`. */
+  id: string;
+  description: string;
+  servesBasenames: string[];
+}
+
+export function buildMilestoneContent(opts: MilestoneContentOptions): string {
+  const frontmatter = ['---', 'id: ' + opts.id, 'type: milestone'];
+  frontmatter.push(...linkList('serves', opts.servesBasenames), ...linkList('assumptions', []), '---');
+  const body = [
+    '## The Milestone',
+    opts.description || '*What will be true when this milestone is reached?*',
+    '',
+    '## Log',
+    '- ' + opts.today + ': Created',
+    '',
+  ];
   return frontmatter.concat(body).join('\n');
 }
