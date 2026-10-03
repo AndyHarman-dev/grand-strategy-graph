@@ -1,0 +1,93 @@
+/**
+ * The dev page: a GraphSession over a MemoryAdapter, mounted with the same `mountGraph` the
+ * plugin uses. The `.gsmap` lives in memory (reload to reset). `window.gsDev` lets Playwright
+ * read and change the in-memory vault.
+ */
+import vaults from 'virtual:test-vault';
+import '../src/styles.css';
+import './obsidian-theme.css';
+import { GraphSession, type GraphState } from '../src/core/graph-session';
+import { GSMAP_PATH } from '../src/core/gsmap';
+import { MemoryAdapter } from '../src/core/memory-adapter';
+import { mountGraph } from '../src/ui/mount';
+
+const params = new URLSearchParams(location.search);
+const vaultName = params.get('vault') === 'legacy' ? 'legacy' : 'planned';
+const files: Record<string, string> = { ...vaults[vaultName] };
+let gsmapText = files[GSMAP_PATH] ?? '';
+let writes = 0;
+let state: GraphState | null = null;
+let reveal: { key: string; nonce: number } | null = null;
+const opened: string[] = [];
+
+const status = document.getElementById('status')!;
+const mounted = mountGraph(document.getElementById('content')!, {
+  move: (updates) => session.move(updates),
+  openNote: (path) => {
+    opened.push(path);
+    status.textContent = `open ${path}`;
+  },
+});
+
+const session = new GraphSession({
+  adapter: { readNotes: () => new MemoryAdapter(files).readNotes() },
+  write: async (edit) => {
+    gsmapText = edit(gsmapText);
+    files[GSMAP_PATH] = gsmapText;
+    writes++;
+    session.loadMap(gsmapText); // what a modify event does in Obsidian
+    return gsmapText;
+  },
+  onUpdate: (next) => {
+    state = next;
+    mounted.render(next, reveal);
+  },
+  onIdChange: (message) => (status.textContent = message),
+  saveDelayMs: Number(params.get('saveDelay') ?? 400),
+  rebuildDelayMs: 100,
+});
+session.loadMap(gsmapText);
+void session.rebuild();
+
+const select = document.getElementById('vault') as HTMLSelectElement;
+select.value = vaultName;
+select.onchange = () => {
+  params.set('vault', select.value);
+  location.search = params.toString();
+};
+const dark = document.getElementById('dark') as HTMLInputElement;
+dark.checked = params.get('theme') === 'dark';
+document.body.classList.toggle('theme-dark', dark.checked);
+dark.onchange = () => document.body.classList.toggle('theme-dark', dark.checked);
+
+declare global {
+  interface Window {
+    gsDev: typeof api;
+  }
+}
+
+const api = {
+  /** The `.gsmap` as last written. */
+  gsmap: () => gsmapText,
+  writes: () => writes,
+  file: (path: string) => files[path],
+  /** Change a note (or add one) and let the session rebuild, as a metadataCache change would. */
+  setFile(path: string, text: string | null) {
+    if (text === null) delete files[path];
+    else files[path] = text;
+    session.requestRebuild();
+  },
+  rename(oldPath: string, newPath: string) {
+    files[newPath] = files[oldPath];
+    delete files[oldPath];
+    session.rename(oldPath, newPath);
+  },
+  reveal(key: string) {
+    reveal = { key, nonce: (reveal?.nonce ?? 0) + 1 };
+    if (state) mounted.render(state, reveal);
+  },
+  notices: () => state?.notices ?? [],
+  opened: () => opened,
+  flush: () => session.flush(),
+};
+window.gsDev = api;

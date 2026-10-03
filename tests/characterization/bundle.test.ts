@@ -123,4 +123,16 @@ describe('plugin end to end via commands', () => {
     });
     await expectFlow('assumption-linked', vault, before);
   });
+
+  it('bundle: registers the graph view for .gsmap files, and the view constructs', () => {
+    const { Plugin } = plugins.find((p) => p.name === 'bundle')!;
+    const plugin = new Plugin(makeApp(new FakeVault()), {});
+    plugin.onload();
+    expect(plugin.views.map((v: any) => v.type)).toEqual(['strategy-graph']);
+    expect(plugin.extensions).toEqual([{ extensions: ['gsmap'], viewType: 'strategy-graph' }]);
+    const view = plugin.views[0].creator({ app: plugin.app });
+    expect(view.getViewType()).toBe('strategy-graph');
+    expect(view.canAcceptExtension('gsmap')).toBe(true);
+    expect(view.canAcceptExtension('md')).toBe(false);
+  });
 });

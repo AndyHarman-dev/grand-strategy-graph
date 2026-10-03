@@ -46,7 +46,7 @@ export function moment() {
 /** `instanceof TFile` is how the plugin tells a note from a folder; FakeVault files are instances. */
 export class TFile {}
 
-const stubEl = { empty() {} };
+const stubEl = { empty() {} } as any;
 
 export class Modal {
   app: unknown;
@@ -89,13 +89,121 @@ export class Setting {
 export interface RecordedCommand {
   id: string;
   name: string;
-  callback: () => unknown;
+  callback?: () => unknown;
+  checkCallback?: (checking: boolean) => boolean | void;
+}
+
+export interface EventRef {
+  events: Events;
+  name: string;
+  callback: (...args: any[]) => unknown;
+}
+
+/** Obsidian's event emitter: `on` returns a ref that `offref` (or a Component unloading) removes. */
+export class Events {
+  private handlers = new Map<string, EventRef[]>();
+
+  on(name: string, callback: (...args: any[]) => unknown): EventRef {
+    const ref = { events: this, name, callback };
+    this.handlers.set(name, [...(this.handlers.get(name) ?? []), ref]);
+    return ref;
+  }
+
+  offref(ref: EventRef): void {
+    this.handlers.set(ref.name, (this.handlers.get(ref.name) ?? []).filter((r) => r !== ref));
+  }
+
+  trigger(name: string, ...args: unknown[]): void {
+    for (const ref of this.handlers.get(name) ?? []) ref.callback(...args);
+  }
+
+  /** Test helper: how many handlers are registered, for leak checks. */
+  listenerCount(name?: string): number {
+    if (name !== undefined) return this.handlers.get(name)?.length ?? 0;
+    return Array.from(this.handlers.values()).reduce((n, refs) => n + refs.length, 0);
+  }
+}
+
+/** Lifecycle owner: whatever it registered is released by `unload()`, as in Obsidian. */
+export class Component {
+  private eventRefs: EventRef[] = [];
+  private cleanups: (() => unknown)[] = [];
+  loaded = false;
+
+  load(): void {
+    this.loaded = true;
+    this.onload();
+  }
+
+  onload(): void {}
+
+  unload(): void {
+    for (const ref of this.eventRefs.splice(0)) ref.events.offref(ref);
+    for (const cleanup of this.cleanups.splice(0)) cleanup();
+    this.loaded = false;
+    this.onunload();
+  }
+
+  onunload(): void {}
+
+  register(cleanup: () => unknown): void {
+    this.cleanups.push(cleanup);
+  }
+
+  registerEvent(ref: EventRef): void {
+    this.eventRefs.push(ref);
+  }
+}
+
+export class View extends Component {
+  app: any;
+  leaf: any;
+  icon = '';
+  navigation = false;
+  containerEl = stubEl;
+
+  constructor(leaf: any) {
+    super();
+    this.leaf = leaf;
+    this.app = leaf.app;
+  }
+
+  async onOpen(): Promise<void> {}
+  async onClose(): Promise<void> {}
+}
+
+export class ItemView extends View {
+  contentEl = stubEl;
+}
+
+/** Tests drive the lifecycle themselves (load, onOpen, onLoadFile, …), in Obsidian's order. */
+export class FileView extends ItemView {
+  file: TFile | null = null;
+  allowNoFile = false;
+  navigation = true;
+
+  async onLoadFile(_file: TFile): Promise<void> {}
+  async onUnloadFile(_file: TFile): Promise<void> {}
+
+  canAcceptExtension(_extension: string): boolean {
+    return false;
+  }
 }
 
 export class Plugin {
   app: unknown;
   ribbonIcons: { icon: string; title: string; callback: () => unknown }[] = [];
   commands: RecordedCommand[] = [];
+  views: { type: string; creator: (leaf: unknown) => unknown }[] = [];
+  extensions: { extensions: string[]; viewType: string }[] = [];
+
+  registerView(type: string, creator: (leaf: unknown) => unknown): void {
+    this.views.push({ type, creator });
+  }
+
+  registerExtensions(extensions: string[], viewType: string): void {
+    this.extensions.push({ extensions, viewType });
+  }
 
   constructor(app: unknown) {
     this.app = app;

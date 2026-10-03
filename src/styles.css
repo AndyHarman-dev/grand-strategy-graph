@@ -1,3 +1,7 @@
+/* Bundled into dist/styles.css by esbuild (esbuild.options.mjs), imports included. */
+@import '@xyflow/react/dist/style.css';
+@import './ui/graph.css';
+
 .sbc-chips {
   display: flex;
   flex-wrap: wrap;

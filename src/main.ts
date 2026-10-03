@@ -1,5 +1,7 @@
 import { Notice, Plugin } from 'obsidian';
 import { createAssumptionFromForm, createBetFromForm, createMilestoneFromForm } from './obsidian/create';
+import { isGraphNote, openStrategyGraph, reportErrors, revealInStrategyGraph } from './obsidian/graph-commands';
+import { GSMAP_EXTENSION, StrategyGraphView, VIEW_TYPE } from './obsidian/graph-view';
 import { AssumptionModal, BetModal, MilestoneModal } from './obsidian/modals';
 
 export default class StrategyBetCreator extends Plugin {
@@ -39,5 +41,23 @@ export default class StrategyBetCreator extends Plugin {
     this.addCommand({ id: 'create-assumption', name: 'Create new Assumption', callback: openAssumptionModal });
 
     this.addCommand({ id: 'create-milestone', name: 'Create new Milestone', callback: openMilestoneModal });
+
+    // The strategy graph (plan Phase 5a): `.gsmap` files open as a graph tab.
+    this.registerView(VIEW_TYPE, (leaf) => new StrategyGraphView(leaf));
+    this.registerExtensions([GSMAP_EXTENSION], VIEW_TYPE);
+
+    const openGraph = () => reportErrors('opening the graph', () => openStrategyGraph(this.app));
+    this.addRibbonIcon('network', 'Open strategy graph', openGraph);
+    this.addCommand({ id: 'open-strategy-graph', name: 'Open strategy graph', callback: openGraph });
+    this.addCommand({
+      id: 'reveal-in-strategy-graph',
+      name: 'Reveal note in graph',
+      checkCallback: (checking) => {
+        const file = this.app.workspace.getActiveFile();
+        if (!isGraphNote(this.app, file)) return false;
+        if (!checking) reportErrors('revealing the note', () => revealInStrategyGraph(this.app, file));
+        return true;
+      },
+    });
   }
 }

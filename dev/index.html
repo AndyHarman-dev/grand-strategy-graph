@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Strategy graph — dev</title>
+  </head>
+  <body>
+    <header class="dev-bar">
+      <strong>Strategy graph</strong>
+      <label>vault
+        <select id="vault">
+          <option value="planned">test vault, migrated (planner + fixture answers)</option>
+          <option value="legacy">test vault, legacy (as on disk)</option>
+        </select>
+      </label>
+      <label><input id="dark" type="checkbox" /> dark</label>
+      <span id="status"></span>
+    </header>
+    <main id="graph" class="workspace-leaf-content" data-type="strategy-graph"><div class="view-content" id="content"></div></main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

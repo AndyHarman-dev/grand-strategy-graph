@@ -1,0 +1,260 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { GSMAP_PATH, parseGsMap, serializeGsMap, emptyGsMap } from '../../src/core/gsmap';
+import { isGraphNote, openStrategyGraph, revealInStrategyGraph } from '../../src/obsidian/graph-commands';
+import { StrategyGraphView } from '../../src/obsidian/graph-view';
+import { plannedTestVault } from '../../tools/test-vault';
+import { notices, resetObsidianMock } from '../mocks/obsidian';
+import { FakeWorkspaceApp, type MountRecord } from '../support/fake-workspace';
+import { md } from '../support/v2';
+
+const B1 = 'Strategy/Bets/B-1 Get a D7 visa.md';
+const B7 = 'Strategy/Bets/B-7  Part-time barista job.md';
+
+let app: FakeWorkspaceApp;
+
+beforeEach(() => {
+  resetObsidianMock();
+  vi.useFakeTimers();
+  app = new FakeWorkspaceApp(plannedTestVault());
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+const lastState = (mount: MountRecord) => mount.renders[mount.renders.length - 1].state;
+const nodeKeys = (mount: MountRecord) => lastState(mount).graph!.nodes.map((n) => n.key);
+const positionsOnDisk = () => {
+  const read = parseGsMap(app.vault.text(GSMAP_PATH));
+  if (!read.ok) throw new Error(read.error);
+  return read.map.positions;
+};
+const listeners = () => app.vault.listenerCount() + app.metadataCache.listenerCount();
+
+async function open() {
+  const view = await openStrategyGraph(app as never);
+  expect(view).toBeInstanceOf(StrategyGraphView);
+  return { view: view!, mount: app.mounts[app.mounts.length - 1], leaf: app.leaves[app.leaves.length - 1] };
+}
+
+describe('opening Strategy.gsmap', () => {
+  it('mounts the graph once, built from the metadata cache, with the saved positions', async () => {
+    const { mount } = await open();
+    expect(app.mounts).toHaveLength(1);
+    const state = lastState(mount);
+    expect(state.graph!.nodes).toHaveLength(18);
+    expect(state.map!.positions['B-1']).toEqual({ x: 300, y: 0 });
+    expect(state.mapError).toBeNull();
+    // The phantom FP-2 link, kept as is by the migration (D13), is listed as a warning.
+    expect(state.notices.map((n) => n.severity)).toEqual(['warning']);
+  });
+
+  it('creates an empty Strategy.gsmap when the vault has none', async () => {
+    app = new FakeWorkspaceApp({ 'Strategy/B-1.md': md({ id: 'B-1', type: 'bet', status: 'active' }) });
+    const { mount } = await open();
+    expect(app.vault.text(GSMAP_PATH)).toBe(serializeGsMap(emptyGsMap()));
+    expect(notices.map((n) => n.message)).toEqual([`Created ${GSMAP_PATH}.`]);
+    expect(nodeKeys(mount)).toEqual(['B-1']);
+  });
+
+  it('focuses the open graph tab instead of opening a second one', async () => {
+    const first = await open();
+    const again = await openStrategyGraph(app as never);
+    expect(again).toBe(first.view);
+    expect(app.leaves).toHaveLength(1);
+    expect(app.mounts).toHaveLength(1);
+    expect(app.revealed).toEqual([first.leaf]);
+  });
+});
+
+describe('re-deriving the graph', () => {
+  it('rebuilds once after a burst of note changes', async () => {
+    const { mount } = await open();
+    const renders = mount.renders.length;
+    app.vault.write('Strategy/Bets/B-9 New.md', md({ id: 'B-9', type: 'bet', status: 'active' }), app.metadataCache);
+    app.vault.write('Strategy/Bets/B-10 Newer.md', md({ id: 'B-10', type: 'bet', status: 'active' }), app.metadataCache);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(mount.renders.length).toBe(renders);
+    await vi.advanceTimersByTimeAsync(300);
+    expect(mount.renders.length).toBe(renders + 1);
+    expect(nodeKeys(mount)).toContain('B-9');
+    expect(nodeKeys(mount)).toContain('B-10');
+  });
+
+  it('does not re-render when a change leaves the graph as it was', async () => {
+    const { mount } = await open();
+    const renders = mount.renders.length;
+    app.vault.write('lisbon-neighbourhoods-research.md', 'still not a strategy note', app.metadataCache);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mount.renders.length).toBe(renders);
+  });
+
+  it('drops a deleted note', async () => {
+    const { mount } = await open();
+    app.vault.remove(B7, app.metadataCache);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(nodeKeys(mount)).not.toContain('B-7');
+  });
+
+  it('a rename needs no handling: same id, same saved position, no report', async () => {
+    const { mount } = await open();
+    app.vault.rename(B1, 'Strategy/Bets/B-1 Get a D7 visa (renamed).md', app.metadataCache);
+    await vi.advanceTimersByTimeAsync(1000);
+    const node = lastState(mount).graph!.nodes.find((n) => n.key === 'B-1')!;
+    expect(node.path).toBe('Strategy/Bets/B-1 Get a D7 visa (renamed).md');
+    expect(lastState(mount).map!.positions['B-1']).toEqual({ x: 300, y: 0 });
+    expect(notices).toEqual([]);
+  });
+
+  it('reports a note whose id changes, on the graph and as a notice', async () => {
+    const { mount } = await open();
+    app.vault.write(B1, app.vault.text(B1).replace('id: B-1', 'id: B-11'), app.metadataCache);
+    await vi.advanceTimersByTimeAsync(1000);
+    const expected =
+      'B-1 Get a D7 visa changed id from "B-1" to "B-11". Its saved position stays under "B-1" in Strategy.gsmap, so the node is placed automatically until you drag it.';
+    expect(notices.map((n) => n.message)).toEqual([expected]);
+    expect(lastState(mount).notices).toContainEqual({ severity: 'warning', path: B1, message: expected });
+    // Changing it back clears the report.
+    app.vault.write(B1, app.vault.text(B1).replace('id: B-11', 'id: B-1'), app.metadataCache);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(lastState(mount).notices.filter((n) => n.path === B1)).toEqual([]);
+  });
+
+  it('picks up a .gsmap changed elsewhere (Sync)', async () => {
+    const { mount } = await open();
+    const text = JSON.parse(app.vault.text(GSMAP_PATH));
+    text.positions['B-1'] = { x: 1, y: 2 };
+    app.vault.write(GSMAP_PATH, JSON.stringify(text));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(lastState(mount).map!.positions['B-1']).toEqual({ x: 1, y: 2 });
+  });
+});
+
+describe('saving positions', () => {
+  it('writes moved nodes on drag end, after a quiet period, through vault.process, changing nothing else', async () => {
+    const { mount } = await open();
+    const before = app.vault.text(GSMAP_PATH);
+    expect(mount.host.move({ 'B-1': { x: 320.4, y: 10 }, 'A-1': { x: -60, y: -40 } })).toBe(true);
+    expect(lastState(mount).map!.positions['B-1']).toEqual({ x: 320, y: 10 });
+    expect(app.vault.processed).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(app.vault.processed).toHaveLength(1);
+    const after = positionsOnDisk();
+    expect(after['B-1']).toEqual({ x: 320, y: 10 });
+    expect(after['A-1']).toEqual({ x: -60, y: -40 });
+    const untouched = JSON.parse(before);
+    untouched.positions['B-1'] = after['B-1'];
+    untouched.positions['A-1'] = after['A-1'];
+    expect(JSON.parse(app.vault.text(GSMAP_PATH))).toEqual(untouched);
+  });
+
+  it('keeps a position written to disk elsewhere meanwhile', async () => {
+    const { mount } = await open();
+    mount.host.move({ 'B-1': { x: 1, y: 1 } });
+    const text = JSON.parse(app.vault.text(GSMAP_PATH));
+    text.positions['B-2'] = { x: 2, y: 2 };
+    app.vault.write(GSMAP_PATH, JSON.stringify(text));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(positionsOnDisk()['B-1']).toEqual({ x: 1, y: 1 });
+    expect(positionsOnDisk()['B-2']).toEqual({ x: 2, y: 2 });
+  });
+
+  it('refuses to save into a .gsmap it cannot read, and says so', async () => {
+    app.vault.files.get(GSMAP_PATH)!.text = '{"version": 2, "positions": {}}';
+    const { mount } = await open();
+    expect(lastState(mount).mapError).toMatch(/newer plugin/);
+    expect(lastState(mount).notices[0]).toMatchObject({ severity: 'error' });
+    expect(mount.host.move({ 'B-1': { x: 1, y: 1 } })).toBe(false);
+    expect(notices.map((n) => n.message)).toEqual(["Strategy graph: Strategy.gsmap can't be read, so positions are not saved."]);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(app.vault.processed).toHaveLength(0);
+  });
+
+  it('reports a failed write and keeps the position for the next one', async () => {
+    const { mount } = await open();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    app.vault.failProcess = true;
+    mount.host.move({ 'B-1': { x: 5, y: 5 } });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(notices.map((n) => n.message)).toEqual(['Strategy graph: positions not saved. Simulated write failure.']);
+    app.vault.failProcess = false;
+    mount.host.move({ 'B-2': { x: 6, y: 6 } });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(positionsOnDisk()['B-1']).toEqual({ x: 5, y: 5 });
+    expect(positionsOnDisk()['B-2']).toEqual({ x: 6, y: 6 });
+  });
+});
+
+describe('closing the tab', () => {
+  it('writes a pending move, unmounts React and releases every event handler', async () => {
+    const idle = listeners();
+    const { mount, leaf } = await open();
+    expect(listeners()).toBeGreaterThan(idle);
+    mount.host.move({ 'B-1': { x: 9, y: 9 } });
+    await leaf.detach();
+    expect(positionsOnDisk()['B-1']).toEqual({ x: 9, y: 9 });
+    expect(mount.unmounted).toBe(true);
+    expect(listeners()).toBe(idle);
+    // Nothing reacts any more.
+    const renders = mount.renders.length;
+    app.vault.write(B1, app.vault.text(B1).replace('status: active', 'status: won'), app.metadataCache);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mount.renders.length).toBe(renders);
+  });
+
+  it('a rebuild still in flight when the tab closes renders nothing', async () => {
+    const { mount, leaf } = await open();
+    app.vault.write(B1, app.vault.text(B1).replace('status: active', 'status: won'), app.metadataCache);
+    const renders = mount.renders.length;
+    await leaf.detach();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(mount.renders.length).toBe(renders);
+  });
+
+  it('opening another .gsmap in the same tab lets go of the first one cleanly', async () => {
+    const { mount, leaf } = await open();
+    mount.host.move({ 'B-1': { x: 4, y: 4 } });
+    await app.vault.create('Strategy/Other.gsmap', '');
+    await leaf.openFile(app.file('Strategy/Other.gsmap'));
+    expect(positionsOnDisk()['B-1']).toEqual({ x: 4, y: 4 });
+    expect(mount.unmounted).toBe(true);
+    expect(app.mounts).toHaveLength(2);
+    expect(lastState(app.mounts[1]).map!.positions).toEqual({});
+  });
+});
+
+describe('Reveal note in graph', () => {
+  it('opens the graph and asks it to center on the note', async () => {
+    await revealInStrategyGraph(app as never, app.file(B1) as never);
+    const mount = app.mounts[0];
+    expect(mount.renders[mount.renders.length - 1].reveal).toEqual({ key: 'B-1', nonce: 1 });
+    await revealInStrategyGraph(app as never, app.file(B1) as never);
+    expect(app.mounts).toHaveLength(1);
+    expect(mount.renders[mount.renders.length - 1].reveal).toEqual({ key: 'B-1', nonce: 2 });
+  });
+
+  it('says so for a note that is not on the graph', async () => {
+    const { view } = await open();
+    expect(view.revealPath('Strategy/Strategic Inbox.md')).toBe(false);
+    expect(notices.map((n) => n.message)).toEqual(['Not on the strategy graph: Strategy/Strategic Inbox.md']);
+  });
+
+  it('is offered only for notes with a graph type', () => {
+    expect(isGraphNote(app as never, app.file(B1) as never)).toBe(true);
+    expect(isGraphNote(app as never, app.file('Strategy/Strategic Inbox.md') as never)).toBe(false);
+    expect(isGraphNote(app as never, app.file(GSMAP_PATH) as never)).toBe(false);
+    expect(isGraphNote(app as never, null)).toBe(false);
+  });
+});
+
+describe('opening a note from the graph', () => {
+  it('never replaces the graph tab', async () => {
+    const { mount } = await open();
+    mount.host.openNote!(B1, false);
+    mount.host.openNote!(B1, true);
+    expect(app.opened).toEqual([
+      { path: B1, how: 'tab' },
+      { path: B1, how: 'split' },
+    ]);
+  });
+});

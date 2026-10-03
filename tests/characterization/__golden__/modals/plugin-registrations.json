@@ -13,6 +13,11 @@
       "opens": [
         "AssumptionModal"
       ]
+    },
+    {
+      "icon": "network",
+      "title": "Open strategy graph",
+      "opens": []
     }
   ],
   "commands": [
@@ -36,6 +41,27 @@
       "opens": [
         "MilestoneModal"
       ]
+    },
+    {
+      "id": "open-strategy-graph",
+      "name": "Open strategy graph",
+      "opens": []
+    },
+    {
+      "id": "reveal-in-strategy-graph",
+      "name": "Reveal note in graph",
+      "checkCallback": true
+    }
+  ],
+  "views": [
+    "strategy-graph"
+  ],
+  "extensions": [
+    {
+      "extensions": [
+        "gsmap"
+      ],
+      "viewType": "strategy-graph"
     }
   ],
   "notices": 0

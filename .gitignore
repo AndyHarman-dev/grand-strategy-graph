@@ -20,3 +20,7 @@ migration.diff
 migration-plan.json
 migration-out/
 migration-applied.json
+
+# Playwright
+test-results/
+playwright-report/

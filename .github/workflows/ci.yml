@@ -23,3 +23,16 @@ jobs:
       # CI=true (set by Actions) makes Vitest fail on missing goldens instead of writing them.
       - run: npm test
       - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Screenshot baselines (@visual) depend on the machine's fonts; they are checked in cloud sessions, not here.
+      - run: npx playwright test --grep-invert @visual

@@ -143,7 +143,12 @@ describe('modals and plugin wiring (schema v2)', () => {
     };
     const registrations = {
       ribbonIcons: plugin.ribbonIcons.map((r: any) => ({ icon: r.icon, title: r.title, opens: opens(r.callback) })),
-      commands: plugin.commands.map((c: any) => ({ id: c.id, name: c.name, opens: opens(c.callback) })),
+      // A command with a checkCallback is only listed: whether it applies depends on the active note.
+      commands: plugin.commands.map((c: any) =>
+        c.callback ? { id: c.id, name: c.name, opens: opens(c.callback) } : { id: c.id, name: c.name, checkCallback: true }
+      ),
+      views: plugin.views.map((v: any) => v.type),
+      extensions: plugin.extensions,
       notices: notices.length,
     };
     await expect(json(registrations)).toMatchFileSnapshot('__golden__/modals/plugin-registrations.json');

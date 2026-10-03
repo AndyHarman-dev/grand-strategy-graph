@@ -1,0 +1,50 @@
+/* A stand-in for the Obsidian CSS variables the graph uses (default theme, approximately). */
+body {
+  --background-primary: #ffffff;
+  --background-primary-alt: #fafafa;
+  --background-secondary: #f6f6f6;
+  --background-modifier-border: #e0e0e0;
+  --background-modifier-hover: rgba(0, 0, 0, 0.075);
+  --text-normal: #222222;
+  --text-muted: #5c5c5c;
+  --text-faint: #ababab;
+  --text-error: #e93147;
+  --text-warning: #ec7500;
+  --interactive-accent: #8a5cf5;
+  --font-ui-small: 13px;
+  --font-ui-smaller: 12px;
+  --font-monospace: ui-monospace, Menlo, Consolas, monospace;
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+body.theme-dark {
+  --background-primary: #1e1e1e;
+  --background-primary-alt: #242424;
+  --background-secondary: #262626;
+  --background-modifier-border: #363636;
+  --background-modifier-hover: rgba(255, 255, 255, 0.075);
+  --text-normal: #dadada;
+  --text-muted: #b3b3b3;
+  --text-faint: #666666;
+  --text-error: #fb464c;
+  --text-warning: #e9973f;
+  --interactive-accent: #8a5cf5;
+}
+
+.dev-bar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  height: 40px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 13px;
+}
+
+#graph,
+#content {
+  height: calc(100vh - 41px);
+}

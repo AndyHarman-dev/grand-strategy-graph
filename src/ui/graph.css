@@ -1,0 +1,164 @@
+/*
+ * Strategy graph view (Phase 5a). Colours come from Obsidian's CSS variables, so the graph
+ * follows the theme. Per-type shapes and status colours are Phase 5b.
+ */
+
+.workspace-leaf-content[data-type='strategy-graph'] .view-content {
+  padding: 0;
+  overflow: hidden;
+}
+
+.gs-graph {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.gs-graph-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.gs-graph .react-flow {
+  --xy-background-color: var(--background-primary);
+  --xy-background-pattern-dots-color: var(--background-modifier-border);
+  --xy-edge-stroke: var(--text-muted);
+  --xy-edge-stroke-selected: var(--interactive-accent);
+  --xy-edge-label-background-color: var(--background-primary);
+  --xy-edge-label-color: var(--text-muted);
+  --xy-controls-button-background-color: var(--background-secondary);
+  --xy-controls-button-background-color-hover: var(--background-modifier-hover);
+  --xy-controls-button-color: var(--text-normal);
+  --xy-controls-button-color-hover: var(--text-normal);
+  --xy-controls-button-border-color: var(--background-modifier-border);
+  --xy-selection-background-color: var(--background-modifier-hover);
+  --xy-selection-border: 1px dotted var(--interactive-accent);
+  --xy-attribution-background-color: transparent;
+  color: var(--text-normal);
+}
+
+/* Nodes. The box size comes from NODE_SIZES (src/core/layout.ts). */
+.gs-graph .react-flow__node-strategy {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.gs-node {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+  line-height: 1.3;
+  overflow: hidden;
+}
+
+.gs-node.is-selected {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.gs-node--fixed-point {
+  border-width: 2px;
+  font-weight: 600;
+}
+
+.gs-node--assumption {
+  border-style: dashed;
+}
+
+.gs-node--current-position {
+  background: var(--background-primary-alt, var(--background-secondary));
+}
+
+.gs-node.is-unpinnable {
+  border-color: var(--text-error);
+}
+
+.gs-node-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.gs-node-id {
+  font-family: var(--font-monospace);
+}
+
+.gs-node-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.gs-node-date {
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.gs-node .react-flow__handle {
+  visibility: hidden;
+}
+
+/* Edges (plan, Schema section). */
+.gs-edge-next .react-flow__edge-path {
+  stroke-dasharray: 6 4;
+}
+
+.gs-edge-requires .react-flow__edge-path {
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
+
+.gs-edge-assumption .react-flow__edge-path {
+  stroke-dasharray: 3 3;
+  stroke-width: 1;
+  opacity: 0.7;
+}
+
+/* Problems found while building the graph. */
+.gs-notices {
+  max-width: 420px;
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-notices-toggle {
+  cursor: pointer;
+}
+
+.gs-notices.has-errors .gs-notices-toggle {
+  color: var(--text-error);
+}
+
+.gs-notices-list {
+  max-height: 50vh;
+  overflow: auto;
+  margin: 6px 0 0;
+  padding: 6px 10px 6px 24px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+}
+
+.gs-notice--error {
+  color: var(--text-error);
+}
+
+.gs-notice--warning {
+  color: var(--text-warning, var(--text-normal));
+}
+
+.gs-notice a {
+  cursor: pointer;
+  color: inherit;
+}

@@ -33,9 +33,25 @@ export function buildOptions({ production }) {
     logLevel: 'info',
     sourcemap: production ? false : 'inline',
     treeShaking: true,
-    // Unminified, like the legacy plugin, so errors in the dev console stay readable.
-    minify: false,
+    // ELK and React make the bundle ~4.4 MB unminified, ~1.9 MB minified, and Obsidian parses it at
+    // every startup. So releases are minified; the watch build (`npm run dev`) stays readable, with
+    // an inline source map.
+    minify: production,
     define: { 'process.env.NODE_ENV': JSON.stringify(production ? 'production' : 'development') },
     outfile: 'dist/main.js',
+  };
+}
+
+/**
+ * esbuild options for dist/styles.css: src/styles.css with its `@import`s (React Flow's
+ * stylesheet, the graph's) inlined, since Obsidian loads a single styles.css per plugin.
+ * @returns {import('esbuild').BuildOptions}
+ */
+export function cssBuildOptions() {
+  return {
+    entryPoints: ['src/styles.css'],
+    bundle: true,
+    logLevel: 'info',
+    outfile: 'dist/styles.css',
   };
 }

@@ -119,9 +119,14 @@ export class FakeVault {
 export interface FakeApp {
   vault: FakeVault;
   fileManager: { processFrontMatter: FakeVault['processFrontMatter'] };
-  workspace: { getLeaf(newLeaf?: boolean): { openFile(file: FakeFile): Promise<void> } };
+  workspace: {
+    getLeaf(newLeaf?: boolean | string): { view: unknown; openFile(file: FakeFile): Promise<void> };
+    getLeavesOfType(type: string): unknown[];
+    getActiveFile(): FakeFile | null;
+  };
 }
 
+/** Just enough of `App` for the create flows, and for the graph commands to open a file (no view is created). */
 export function makeApp(vault: FakeVault): FakeApp {
   return {
     vault,
@@ -129,11 +134,14 @@ export function makeApp(vault: FakeVault): FakeApp {
     workspace: {
       getLeaf() {
         return {
+          view: null,
           async openFile(file: FakeFile) {
             vault.ops.push({ op: 'openFile', path: file.path });
           },
         };
       },
+      getLeavesOfType: () => [],
+      getActiveFile: () => null,
     },
   };
 }

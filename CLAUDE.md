@@ -36,12 +36,13 @@ renders the strategy as a data-driven graph. The full plan, decisions (D1–D17)
 
 | Path | What |
 |---|---|
-| `src/core/` | Pure TS: helpers, content builders, `actions.ts` (creation intents → planned writes), schema, graph, smells, `.gsmap` format |
-| `src/obsidian/` | Obsidian adapter: modals, create flows (execute the planned writes), views, commands |
-| `src/ui/` | React components (from Phase 5a) |
+| `src/core/` | Pure TS: helpers, content builders, `actions.ts` (creation intents → planned writes), schema, graph, smells, `.gsmap` format and position store, ELK layout (`layout.ts`), `graph-session.ts` (everything the graph view does that isn't Obsidian or React) |
+| `src/obsidian/` | Obsidian adapter: modals, create flows (execute the planned writes), the graph `FileView` (`graph-view.ts`) and its commands |
+| `src/ui/` | React components: `<StrategyGraph>` (React Flow), `mount.tsx` (shared by the plugin and the dev page) |
+| `dev/` | Vite dev page (`npm run dev:web`): the graph over the test vault, no Obsidian; `window.gsDev` drives it from Playwright |
 | `src/main.ts` | Plugin entry |
 | `tools/` | Node-only code: `fs-adapter.ts` (reads a vault folder), `migrate.ts` + `migrate/` (Phase 2 planner, parity gate, report; Phase 3 `apply.ts`) |
-| `tests/` | Vitest. `mocks/obsidian.ts` replaces the `obsidian` module; `support/` has the in-memory vault |
+| `tests/` | Vitest (`*.test.ts`). `mocks/obsidian.ts` replaces the `obsidian` module; `support/` has the in-memory vault and a fake workspace for the graph view (`fake-workspace.ts`). `e2e/*.spec.ts` is Playwright against the dev page |
 | `test-vault/` | Synthetic legacy-format vault; `ANOMALIES.md` maps each note to the anomaly it covers |
 
 ## Commands
@@ -50,13 +51,16 @@ renders the strategy as a data-driven graph. The full plan, decisions (D1–D17)
 npm ci              # install
 npm test            # vitest run
 npm run typecheck   # tsc --noEmit (TypeScript 7)
-npm run build       # esbuild -> dist/main.js + manifest.json + styles.css
-npm run dev         # esbuild watch
+npm run build       # esbuild -> dist/main.js (minified) + manifest.json + styles.css (React Flow's CSS inlined)
+npm run dev         # esbuild watch (unminified, inline source map)
+npm run dev:web     # Vite dev page at http://localhost:5173 (?vault=legacy, ?theme=dark)
+npm run test:e2e    # Playwright against the dev page (starts it); --grep-invert @visual skips screenshots
 npm run migrate -- --vault <path> [--resolutions <file>] [--out <dir>]   # migration dry run (outputs outside the vault)
 npm run migrate -- --vault <path> --resolutions <file> --apply            # user-run, at the cutover only (backs up to ~/strategy-backups)
 ```
 
-Run `npm run typecheck && npm test && npm run build` before every push.
+Run `npm run typecheck && npm test && npm run build` before every push, and `npm run test:e2e` when `src/ui/`,
+`src/core/layout.ts`, the graph view or `dev/` changed.
 
 ## Test vault
 
@@ -74,9 +78,24 @@ schema v2, which must not land in an unmigrated vault. To release: bump `version
 versions match, runs the checks, and attaches `main.js`, `manifest.json` and `styles.css` to a GitHub
 Release.
 
+## Graph view (Phase 5a)
+
+- `Strategy/Strategy.gsmap` opens as the graph tab (`registerExtensions`). The graph is always re-derived from frontmatter
+  via `metadataCache`; the `.gsmap` holds positions (by note `id`), viewport, and the Phase 7 cards/frames/links.
+- Positions are written only after a drag ends (400 ms quiet, flushed on tab close), through `vault.process`, and only
+  the moved ids change (`writePositions`). A `.gsmap` that doesn't parse, or has a newer `version`, is never written.
+- Auto-placed (ELK) positions are not saved. Fixed points and notes without a unique `id` can't be dragged.
+- Playwright screenshot baselines (`tests/e2e/graph.spec.ts-snapshots/`, tagged `@visual`) are like goldens: update
+  them (`npx playwright test -g @visual --update-snapshots`) only for a deliberate visual change, and say so in the
+  commit. They are Linux/Chromium baselines from cloud sessions; CI runs `--grep-invert @visual`.
+
 ## Gotchas
 
 - `obsidian.d.ts` types `moment` as a non-callable namespace under TS 7; use `today()` from
   `src/obsidian/today.ts` instead of calling `moment` directly.
 - The esbuild options live in `esbuild.options.mjs` and are shared with
   `tests/characterization/bundle.test.ts`, which builds and loads the real bundle. Change them there.
+- `@playwright/test` is pinned to 1.56.1: its Chromium (build 1194) is the one preinstalled in cloud sessions
+  (`/opt/pw-browsers`). Bumping it means `npx playwright install chromium`, which cloud sessions can't rely on.
+- The obsidian mock (`tests/mocks/obsidian.ts`) has `Events`/`Component`/`FileView` that release registered events on
+  `unload()`, as Obsidian does; the view tests check no handler survives a closed tab.

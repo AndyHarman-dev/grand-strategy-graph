@@ -1,6 +1,6 @@
 import { copyFile, mkdir } from 'node:fs/promises';
 import esbuild from 'esbuild';
-import { buildOptions } from './esbuild.options.mjs';
+import { buildOptions, cssBuildOptions } from './esbuild.options.mjs';
 
 const production = process.argv[2] === 'production';
 const outdir = 'dist';
@@ -14,16 +14,18 @@ const copyStatic = {
       if (result.errors.length) return;
       await mkdir(outdir, { recursive: true });
       await copyFile('manifest.json', `${outdir}/manifest.json`);
-      await copyFile('src/styles.css', `${outdir}/styles.css`);
     });
   },
 };
 
-const context = await esbuild.context({ ...buildOptions({ production }), plugins: [copyStatic] });
+const contexts = await Promise.all([
+  esbuild.context({ ...buildOptions({ production }), plugins: [copyStatic] }),
+  esbuild.context(cssBuildOptions()),
+]);
 
 if (production) {
-  await context.rebuild();
-  await context.dispose();
+  await Promise.all(contexts.map((context) => context.rebuild()));
+  await Promise.all(contexts.map((context) => context.dispose()));
 } else {
-  await context.watch();
+  await Promise.all(contexts.map((context) => context.watch()));
 }
