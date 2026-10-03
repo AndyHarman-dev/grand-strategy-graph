@@ -23,7 +23,7 @@ plugin (plain JS, 883 lines, no build step), and a read-only survey of the real 
 | D1 | One merged plugin (bet creator + graph), rewritten in TypeScript + React, built with esbuild. |
 | D2 | All relationships live in **frontmatter**. Duplicate relationship sections in note bodies are removed. "Depended on by" is computed from frontmatter, never written. |
 | D3 | Node positions, viewport, free cards and frames live in a **vault file** `Strategy/Strategy.gsmap` (JSON), opened as the graph tab. |
-| D4 | Routes, milestones, ghosts and current position are **real notes** with a `type`. |
+| D4 | Milestones and the current position are **real notes** with a `type`. (Routes and ghosts were in the original D4; see D16.) |
 | D5 | Serves is split in two: `serves` (direct parent) and `ultimately-serves` (the far fixed point). |
 | D6 | Statuses are **normalized to canvas_rules**: `asleep → dormant`, `cancelled → killed`. |
 | D7 | New bet→bet relation `requires` (prerequisites; the canvas "AND" diamond becomes several `requires` links). Assumptions can attach to any node type, including fixed points. |
@@ -35,34 +35,33 @@ plugin (plain JS, 883 lines, no build step), and a read-only survey of the real 
 | D13 | Assumption status `undeterminable` is kept (styled gray). Links to the phantom `FP-2 Multi-billion dollar AI company` are **left as they are**: no retargeting, only listed in the report. |
 | D14 | Canvas edges that touch a **group** (note→group, group→note, an "On Kill" to a group included) are **dropped** and listed in the report. The group itself still becomes a frame. (User, 2026-10-02, after the real-vault dry run found four.) |
 | D15 | `type: strategic-inbox` is a known **non-graph** type: such notes are left untouched by the migration and skipped by `buildGraph` without an issue. Other unknown types are still reported. (User, 2026-10-02.) |
+| D16 | **Routes are not a node type.** The "route" boxes on the old canvas were placeholders for starting something, with no strategic value of their own. What a route means in the strategy is a chain of `serves` links from bets up to a fixed point (B-1 serves B-2 serves FP-1). That chain is derived from the relations and never stored. So: no `route` type, no ghost routes, no `R-<n>` ids, no route commands. The canvas route labels migrate as free cards (D8) like any other text card, and stay free cards. (User, 2026-10-03.) |
 
 ### Schema v2 (target)
 
 ```yaml
 # Every strategy note
 id: B-10                  # stable key used for positions; never derived from the filename again
-type: bet | assumption | fixed-point | route | milestone | current-position
+type: bet | assumption | fixed-point | milestone | current-position
 status: ...               # per type, below
 
 # bet
 status: active | dormant | won | killed | extended
 started, deadline, expected-result      # unchanged
-serves: ["[[B-11 …]]"]                  # direct parents (bet | route | milestone | fixed-point)
+serves: ["[[B-11 …]]"]                  # direct parents (bet | milestone | fixed-point)
 ultimately-serves: ["[[FP-3 …]]"]       # far anchor(s); fixed points only
 requires: ["[[B-1 …]]"]                 # prerequisite bets
 next: "[[B-16 …]]"                      # sequel activated on kill (renamed from `next sequel`)
-assumptions: ["[[A-1 …]]"]              # also allowed on fixed-point / route / milestone
+assumptions: ["[[A-1 …]]"]              # also allowed on fixed-point / milestone
 
 # assumption
 status: unverified | confirmed | falsified | undeterminable   # undeterminable kept (D13)
 created, verify-by                       # unchanged; existing datetime values are left as they are
-
-# route
-status: active | ghost                   # ghost = suspected, unexplored route
-serves: ["[[FP-1 …]]"]
 ```
 
-Edges are drawn per canvas_rules. Bet→serves: solid. Ghost or unverified serve: dashed.
+A "route" is not a type (D16): it is any chain of `serves` links leading to a fixed point.
+
+Edges are drawn per canvas_rules. Bet→serves: solid. Unverified serve: dashed.
 `next`: dashed with an "on kill" label. Assumption leader: thin dashed with no arrowhead.
 `requires`: a distinct dotted style. `ultimately-serves`: hidden by default; shown when
 toggled, or when a bet has no `serves` chain reaching a fixed point.
@@ -237,7 +236,7 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - There are **no cross-note body writes**, and `insertIntoSection` is deleted.
   - Creating an assumption for existing bets appends to *the bet's* `assumptions` via `processFrontMatter`.
   - Modals gain optional fields `requires`, `next` and `ultimately-serves`.
-  - New commands: "New route", "New milestone", "New ghost route".
+  - New command: "New milestone".
 - **Solutions.** All creation goes through `src/core/actions.ts`, a set of pure "intent → planned writes" functions, executed by the adapter. The graph's quick actions in Phase 6 reuse exactly these.
 
 ## Phase 5a — Graph view integration (React Flow in Obsidian)
@@ -249,7 +248,7 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - The view re-derives the graph from `metadataCache` on every change, debounced.
   - Positions save to `.gsmap` on drag-end only.
   - Renames need no handling because positions are keyed by `id`. A note whose `id` changes is reported.
-  - Nodes with no position are placed by **ELK** (layered, left→right: current position → routes → bets → milestones → fixed points). Pinned positions are kept.
+  - Nodes with no position are placed by **ELK** (layered, left→right: current position → bets → milestones → fixed points, with bets layered along their `serves` chains). Pinned positions are kept.
   - Fixed points are locked (not draggable).
   - Commands: "Open strategy graph" and "Reveal note in graph".
 - **Solutions.**
@@ -267,7 +266,6 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - fixed point: distinct shape, locked
   - active / dormant / won / killed bets
   - assumption amber / green / red / gray
-  - ghost: dashed and mostly empty
   - current position: leftmost and neutral
 - Edge styles as in the Schema section.
 - Theme via Obsidian CSS variables.
@@ -299,15 +297,15 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
 
 - **Free cards:** create, edit and delete on the graph (stored only in `.gsmap`), with optional links between cards and to notes. The edge style can be set freely, since free cards carry no strategy semantics.
 - **Frames:** resizable labelled regions, the old canvas groups. Purely visual.
-- **"Promote to note":** a free card becomes a real note (route, ghost route, milestone, bet or assumption) via the Phase 4 actions. The card's position transfers to the new note's `id`.
-- Migrated canvas cards arrive here and can be promoted one by one.
+- **"Promote to note":** a free card becomes a real note (bet, assumption or milestone) via the Phase 4 actions. The card's position transfers to the new note's `id`.
+- Migrated canvas cards arrive here and can be promoted one by one. The old route labels stay free cards (D16).
 
 ## Phase 8 — Smell overlay + review walk
 
 **Model: Sonnet 5.** Renders Phase 1 smells that are already tested.
 
 - A badge on each node, plus a "Smells" panel listing orphans, unreached fixed points, gating violations, falsified dependencies and overdue bets. Clicking an item focuses the node.
-- **Review walk:** steps through fixed points → routes → bets in that fixed order (replaces canvas presentation mode).
+- **Review walk:** steps through each fixed point, then outward along the `serves` chains that lead to it (those chains are the strategy's routes, D16), in a fixed order (replaces canvas presentation mode).
 
 ## Phase 9 — Retire `The Map.canvas`
 
@@ -456,6 +454,12 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
     - New ids: routes `R-<n>`, milestones `M-<n>`, allocated from basenames like bets and assumptions. A note whose `id` differs from its basename isn't considered; the planner reports those as collisions.
     - `dependedOnByBlock` moved from the migration planner to `src/core/content.ts`, so notes created by the plugin and notes migrated by Phase 2 hold the same block.
   - **Verification:** `npm run typecheck`, `npm test` (185 tests, run with `CI=true` so no snapshot is written) and `npm run build` pass. `tests/characterization/v2-graph.test.ts` creates bets, assumptions, routes and milestones in the hand-written v2 vault and checks `buildGraph` reports no new issues and every chosen relation is an edge of its kind; three mutations (dropping `requires`, dropping the `add-link` writes, a misspelled `type`) each fail it. Unverified (user, local, needs Obsidian): real `processFrontMatter` — the fake re-dumps YAML its own way (e.g. `next sequel: null`), so whether Obsidian keeps empty keys and key order as written is a manual check on a throwaway copy; the new modals' layout; the three new commands.
+
+- **2026-10-03**:
+  - **Context:** the user clarified what the old canvas "routes" were: placeholders for starting something, not a step between bets, and of no strategic value. The strategy is bets, assumptions and their relations; the `serves` chain is what defines the routes.
+  - **Actions:** plan only. D4 narrowed, D16 added. Removed the `route` type and its schema block, the ghost status, the route/ghost-route commands (Phase 4), the routes layer in the ELK order (5a), the ghost node style (5b), "route"/"ghost route" as promote targets (7), and "ghost" from the dashed-edge rule. The review walk (8) now follows `serves` chains. Earlier change-log entries are left as written.
+  - **Decisions:** D16. `milestone` is unchanged, since the user only spoke about routes; it is an open question whether it stays.
+  - **Verification:** the plan and the code now disagree, on purpose and temporarily. Still implementing routes: `src/core/schema.ts` (type, `route` status, relation lists) on `main`; and, in PR 1, `planRoute`, `ROUTES_FOLDER`, the route/ghost-route commands and `NoteModal`, plus their goldens. Not yet removed.
 
 ## Decisions Log
 
