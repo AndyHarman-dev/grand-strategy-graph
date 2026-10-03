@@ -22,7 +22,7 @@ renders the strategy as a data-driven graph. The full plan, decisions (D1–D17)
   a phase deliberately changes output (Phase 4), and call out the golden diff in the commit message.
   `tests/migration/__golden__/` pins the migration planner's output over the test vault; same rule.
 - **Never run `--apply` in a cloud session.** `tools/migrate.ts --apply` (Phase 3) writes into a vault, so it is
-  user-run, local, on the real vault, with Obsidian closed. Tests apply only to throwaway copies of `test-vault/`
+  user-run, local, on the real vault, with Obsidian closed, and only once, at the cutover (Phase 9, D18). Tests apply only to throwaway copies of `test-vault/`
   in the OS temp dir. A legacy edge the classification rules don't cover comes out `unclassified` (exit code 2):
   that is a decision for the user (plan Phase 2, "Escalate/stop"), never something to settle in code. Apply stops
   if any touched file's hash differs from the reviewed dry run; never loosen that guard.
@@ -53,7 +53,7 @@ npm run typecheck   # tsc --noEmit (TypeScript 7)
 npm run build       # esbuild -> dist/main.js + manifest.json + styles.css
 npm run dev         # esbuild watch
 npm run migrate -- --vault <path> [--resolutions <file>] [--out <dir>]   # migration dry run (outputs outside the vault)
-npm run migrate -- --vault <path> --resolutions <file> --apply            # Phase 3, user-run only (backs up to ~/strategy-backups)
+npm run migrate -- --vault <path> --resolutions <file> --apply            # user-run, at the cutover only (backs up to ~/strategy-backups)
 ```
 
 Run `npm run typecheck && npm test && npm run build` before every push.
@@ -68,7 +68,8 @@ Run `npm run typecheck && npm test && npm run build` before every push.
 
 ## Releases (BRAT)
 
-The real vault only runs tagged releases. To release: bump `version` in both `manifest.json` and
+The real vault only runs tagged releases, and gets none before the cutover (Phase 9, D18): the plugin writes
+schema v2, which must not land in an unmigrated vault. To release: bump `version` in both `manifest.json` and
 `package.json`, commit, then push a tag equal to that version (no `v` prefix). `release.yml` checks the
 versions match, runs the checks, and attaches `main.js`, `manifest.json` and `styles.css` to a GitHub
 Release.

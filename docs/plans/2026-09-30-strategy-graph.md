@@ -37,6 +37,7 @@ plugin (plain JS, 883 lines, no build step), and a read-only survey of the real 
 | D15 | `type: strategic-inbox` is a known **non-graph** type: such notes are left untouched by the migration and skipped by `buildGraph` without an issue. Other unknown types are still reported. (User, 2026-10-02.) |
 | D16 | **Routes are not a node type.** The "route" boxes on the old canvas were placeholders for starting something, with no strategic value of their own. What a route means in the strategy is a chain of `serves` links from bets up to a fixed point (B-1 serves B-2 serves FP-1). That chain is derived from the relations and never stored. So: no `route` type, no ghost routes, no `R-<n>` ids, no route commands. The canvas route labels migrate as free cards (D8) like any other text card, and stay free cards. (User, 2026-10-03.) |
 | D17 | **Milestones are checkpoints** on the way to a fixed point: the place to begin from when paving further bets. A milestone `serves` a fixed point or another milestone. Bets that work toward it `serve` it. Bets that start from it list it in `requires`, which may now point at a bet or a milestone. So the chain reads: bets → milestone → further bets → fixed point. A milestone has `status: open | reached`; flipping it to `reached` is the moment those bets can start, and an active bet that requires a milestone still `open` is a smell. (User, 2026-10-03; the attached meta-framework has no milestone concept, so this is the user's own definition.) |
+| D18 | **The real vault is migrated once, at the very end** (Phase 9, cutover), after the graph is built and tested. Until then the real vault keeps changing and stays in the legacy format, so the dry runs on it so far are rehearsals: the cutover starts with a fresh dry run on a fresh copy. For the same reason **no tagged release goes to the real vault before the cutover**: the plugin has written schema v2 since Phase 4, and v2 notes must not land in an unmigrated vault. Phases 5a–8 are built and tested on `test-vault/` and its migrated form. (User, 2026-10-03.) |
 
 ### Schema v2 (target)
 
@@ -209,7 +210,7 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
      - Groups become **frames** (label, rect, color).
      - Labelled edges between cards and notes become free card links.
      - The non-strategy note node (`argentine-citizenship-affects-us-path.md`) becomes a **note-reference card**.
-- **Parity gate (named step, must pass before Phase 3).** Run the planner on the test vault (`test-vault/`) and on a **copy** of the real vault. Then run `buildGraph` (Phase 1) over the *planned* output and check:
+- **Parity gate (named step, must pass before any apply; re-run at the cutover, Phase 9, D18).** Run the planner on the test vault (`test-vault/`) and on a **copy** of the real vault. Then run `buildGraph` (Phase 1) over the *planned* output and check:
   - every oracle edge is either present as its classified relation or listed in the report as dropped with a reason
   - **zero unaccounted edges**
   - the prose diff outside the three sections is empty
@@ -217,20 +218,19 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
 
   The user reviews `migration-report.md` and fills in `resolutions.yaml`. The planner is re-run until the report has no open ambiguities.
 
-## Phase 3 — Apply migration to the real vault (user-run, local)
+## Phase 3 — Apply tooling (built and tested; the real-vault run is Phase 9)
 
 **Model: Sonnet 5.** The planner did the thinking. Apply only writes planned content, and a full backup outside the vault makes it reversible.
 **Escalate/stop if:** apply sees any file whose content hash differs from the dry-run plan, which means the vault changed in between.
 
 - **Current State.** Reviewed dry-run, filled-in resolutions.
-- **Desired State.** The real vault is in schema v2, `Strategy/Strategy.gsmap` exists, and `The Map.canvas` is untouched.
-- **Solutions.**
-  1. Close Obsidian, or pause Sync.
-  2. `--apply` first copies `Strategy/`, `Templates/`, `The Map.canvas` and the phantom root file to `~/strategy-backups/<timestamp>/`. **This is outside the vault on purpose:** a copy inside the vault would duplicate basenames and break link resolution.
-  3. Apply writes are hash-guarded against the dry-run.
-  4. Update `Templates/Bet Template.md` and `Templates/Assumption Template.md` to schema v2.
-  5. Re-run the parity check on the live result.
-- **Verify:** the user opens a few migrated notes in Obsidian. The Properties panel shows the relations, and the Dataview "dependents" block renders.
+- **Desired State.** `--apply` exists and is tested on throwaway copies of `test-vault/`. **It is not run on the real vault here** (D18): that happens once, in Phase 9.
+- **What `--apply` does** (used in Phase 9):
+  1. Requires Obsidian closed, or Sync paused (user step).
+  2. Copies `Strategy/`, `Templates/`, `The Map.canvas` and the phantom root file to `~/strategy-backups/<timestamp>/` first. **This is outside the vault on purpose:** a copy inside the vault would duplicate basenames and break link resolution.
+  3. Hash-guards every write against the dry run.
+  4. Updates `Templates/Bet Template.md` and `Templates/Assumption Template.md` to schema v2 (they are part of the plan).
+  5. Re-plans the live result as a post-check.
 
 ## Phase 4 — Creation flows write schema v2
 
@@ -315,12 +315,18 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
 - **New smell (D17):** an active bet that requires a milestone still `open` (`requires-open-milestone`). Already in `src/core/smells.ts` with tests (added 2026-10-03 with the D16/D17 code); this phase only renders it.
 - **Review walk:** steps through each fixed point, then outward along the `serves` chains that lead to it (those chains are the strategy's routes, D16), in a fixed order (replaces canvas presentation mode).
 
-## Phase 9 — Retire `The Map.canvas`
+## Phase 9 — Cutover: migrate the real vault, release, retire `The Map.canvas`
 
-**Model: Sonnet 5.** No code. This is a gate plus one user action.
+**Model: Sonnet 5.** Mostly user steps, run locally, once, at the very end (D18). The graph is built and tested by now, so the real vault goes straight from the legacy format to the finished plugin.
+**Escalate/stop if:** the fresh dry run has `unclassified` edges (exit 2), the parity gate fails, or `--apply` refuses on a hash mismatch. Each is a decision for the user, never settled in code.
 
-- **Parity gate:** re-run the Phase 2 oracle against `The Map.canvas` and the live graph. Every canvas edge must be present as a relation or free-card link, or explicitly dropped in the report. Every canvas node must have a position, card or frame.
-- Then the **user** moves the canvas into an archive folder. It is never deleted by tooling.
+1. **Keep the planner current.** Any schema change in Phases 5a–8 must keep `tests/migration/` green, so the planner still turns a legacy vault into what the plugin expects.
+2. **Fresh dry run.** Copy the real vault to a new folder and run `npm run migrate -- --vault <copy> --resolutions <file>`. Reuse the old `resolutions.yaml`: answers are keyed by note path, link and canvas edge id, so the ones still valid carry over, and answers to questions no longer asked are kept under `stale`. Answer whatever is new, until exit 0 and the parity gate passes.
+3. **Apply.** Close Obsidian (or pause Sync), then run the same command on the real vault with `--apply`. It backs up to `~/strategy-backups/` and refuses if anything changed since the dry run; if it refuses, repeat step 2.
+4. **Release.** Bump the version, push a tag; BRAT installs the release in Main Vault. This is the first release the real vault gets (D18).
+5. **Verify in Obsidian:** a few migrated notes show their relations in the Properties panel, the Dataview "dependents" block renders, the graph opens with the canvas positions, and the creation commands write notes the graph accepts.
+6. **Canvas parity gate:** re-run the Phase 2 oracle against `The Map.canvas` and the live graph. Every canvas edge must be present as a relation or free-card link, or explicitly dropped in the report. Every canvas node must have a position, card or frame.
+7. Then the **user** moves the canvas into an archive folder. It is never deleted by tooling.
 
 **Routing:** Phases 0, 1, 3, 4, 5b, 6, 7, 8, 9 → Sonnet 5 · Phases 2, 5a → Opus 5
 
@@ -338,15 +344,16 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
 
   | Cloud (any session) | Local (user only) |
   |---|---|
-  | core, migration planner, fixtures, React UI via the dev page, Playwright screenshots, CI | dry-run on the real vault, filling in `resolutions.yaml`, `--apply`, and clicking through the plugin in real Obsidian |
+  | core, migration planner, fixtures, React UI via the dev page, Playwright screenshots, CI | clicking through the plugin in real Obsidian; at the cutover (Phase 9): the dry run on a real-vault copy, `resolutions.yaml`, `--apply` |
 
 - **Install loop:**
   1. A cloud session pushes to `main`, or opens a PR you merge.
   2. Locally: `git pull && npm run build`, or keep `npm run dev` (esbuild watch) running.
   3. In Obsidian's vault switcher, open `~/dev/grand-strategy-graph/test-vault`. It loads `dist/` through the symlink. The hot-reload community plugin picks up rebuilds without restarting. On first open, Obsidian asks you to trust community plugins.
-  4. When it's good, push a tag. CI builds a GitHub Release, and **BRAT** updates the plugin in Main Vault.
+  4. When it's good, push a tag. CI builds a GitHub Release, and **BRAT** updates the plugin in Main Vault. **Not before the cutover (Phase 9, D18):** until then, test in `test-vault/` only.
 
   The real vault never runs an untagged build.
+- **Optional real-data preview (local, user-run).** To see the graph on real data before the cutover, run the migration with `--apply` on a **copy** of the real vault, outside the real vault, and open that copy in Obsidian. The copy is disposable; the real vault stays untouched until Phase 9.
 - **Resetting the test vault:** `git checkout -- test-vault && git clean -fd test-vault`. Note that `git clean` deletes *untracked* files there, so check `git status test-vault` first.
 - **Privacy:** the repo's `.gitignore` excludes `migration-report.md`, `resolutions.yaml` and `legacy-edges.json`, because they contain real strategy content. The repo `CLAUDE.md` states that real-vault outputs are never committed.
 
@@ -480,6 +487,12 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Actions:** `schema.ts`: no `route` type; milestones get `status: open | reached`; `RELATIONS` now lists allowed targets per holder type (`to: { bet: [...], milestone: [...] }`), so a bet `requires` a bet or a milestone and a milestone `serves` only milestones and fixed points. `graph.ts` and the migration planner read it through `targetsOf`. `smells.ts`: new `requires-open-milestone` (active bet, required milestone with status exactly `open`; `related` lists the milestones). PR 1: removed `planRoute`, `buildRouteContent`, `RouteFormData`, `ROUTES_FOLDER`, the Route and Ghost Route commands and `NoteModal`; added `MilestoneModal`; the milestone note is created `status: open`; the bet form's "Requires" offers bets and milestones. The form pickers and the planners' folder checks now come from `RELATIONS` (`pickFolders`), which also settles review finding 3. `addLinkToField` matches folder-qualified links and YAML's nested list for an unquoted `[[link]]`. `sanitizeTitle` also replaces `? " < >`.
   - **Decisions:** none new. The smell landed now, not in Phase 8, because the user asked for it with the schema change.
   - **Verification:** typecheck, 197 tests, build. Characterization goldens changed on purpose: route goldens deleted; milestone content gains `status: open`; plugin registrations lose the two route commands; refusal messages no longer list `Strategy/Routes`; `pure.json` gains a `? " < >` case; new milestone, bet-requires-milestone and `MilestoneModal` goldens. Migration goldens unchanged. Mutation checks on the new smell and the link matching all fail at least one test.
+
+- **2026-10-03**:
+  - **Context:** the user wants the real-vault migration postponed to the very end: the vault keeps changing while the later phases are built, so re-running the migration after every phase is impractical.
+  - **Actions:** plan only. Added D18. Phase 3 is now the apply *tooling* (built and tested on `test-vault/` copies); the real-vault run moved into Phase 9, now "Cutover", which starts with a fresh dry run on a fresh copy, then applies, releases, verifies, and only then retires the canvas. The install loop says no tag before the cutover, and an optional local preview (apply to a disposable copy) is described. `CLAUDE.md` updated to match.
+  - **Decisions:** D18. The no-release-before-cutover rule follows from it: since Phase 4 the plugin writes schema v2, which must not land in an unmigrated vault. No tag has been pushed yet, so the real vault still runs the old plugin.
+  - **Verification:** none needed for a plan edit. The Phase 2 dry run that passed on 2026-10-02 is now a rehearsal; its `resolutions.yaml` should be kept for the cutover.
 
 ## Decisions Log
 
