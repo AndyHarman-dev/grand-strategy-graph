@@ -107,6 +107,8 @@ function Flow({ graph, placed, viewport, onMove, onOpenNote, reveal, notices }: 
   const revealed = useRef<number | null>(null);
 
   // New data or positions: rebuild the nodes, keeping selection, and keeping a node that is mid-drag where the pointer has it.
+  // `measured` is React Flow's: a node without it loses its measured handles, and its edges are not
+  // drawn until it is measured again, so a rebuild after every save would blank out every edge.
   const first = useRef(true);
   useEffect(() => {
     if (first.current) {
@@ -118,7 +120,7 @@ function Flow({ graph, placed, viewport, onMove, onOpenNote, reveal, notices }: 
       return build().map((n) => {
         const old = before.get(n.id);
         if (!old) return n;
-        const kept = { ...n, selected: old.selected };
+        const kept = { ...n, selected: old.selected, ...(old.measured && !old.hidden ? { measured: old.measured } : {}) };
         return old.dragging ? { ...kept, position: old.position, dragging: true } : kept;
       });
     });

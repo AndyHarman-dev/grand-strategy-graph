@@ -83,6 +83,27 @@ test('a dragged bet takes its assumptions along, and both are saved in one write
   expect(after['B-2']).toEqual(before['B-2']);
 });
 
+test('edges stay drawn through drags and saves, every frame', async ({ page }) => {
+  // React Flow draws an edge only once both ends are measured; rebuilding the nodes after a save
+  // must not throw those measurements away, or every edge drops out until it re-measures.
+  await expect(page.locator('.react-flow__edge')).toHaveCount(19);
+  await page.evaluate(() => {
+    const w = window as unknown as { minEdges: number };
+    w.minEdges = Infinity;
+    const sample = () => {
+      w.minEdges = Math.min(w.minEdges, document.querySelectorAll('.react-flow__edge').length);
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  for (const [i, key] of ['B-3', 'B-1', 'A-5', 'B-4'].entries()) {
+    await drag(page, key, 40, 30);
+    await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(i + 1);
+    await page.waitForTimeout(100);
+  }
+  expect(await page.evaluate(() => (window as unknown as { minEdges: number }).minEdges)).toBe(19);
+});
+
 test('without saved positions, assumptions sit above their host and the sequel below its bet (D19)', async ({ page }) => {
   await page.goto('/?layout=auto');
   await expect(page.locator('.react-flow__node')).toHaveCount(18);
