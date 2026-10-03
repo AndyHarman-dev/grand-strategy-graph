@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { GraphState } from '../core/graph-session';
 import type { GsPosition } from '../core/gsmap';
+import type { Graph } from '../core/schema';
 import { StrategyGraph } from './StrategyGraph';
 
 export interface GraphHost {
@@ -17,8 +18,13 @@ export interface MountedGraph {
   unmount(): void;
 }
 
+export interface MountOptions {
+  /** Replaces the automatic layout (ELK). The dev page uses it to show a failing layout. */
+  autoLayout?: (graph: Graph) => Promise<Record<string, GsPosition>>;
+}
+
 /** Mount the graph into an element. The Obsidian view and the dev page both use this. */
-export function mountGraph(el: HTMLElement, host: GraphHost): MountedGraph {
+export function mountGraph(el: HTMLElement, host: GraphHost, options: MountOptions = {}): MountedGraph {
   const root = createRoot(el);
   const onMove = (updates: Record<string, GsPosition>) => void host.move(updates);
   const onResetPositions = () => void host.resetPositions();
@@ -40,6 +46,7 @@ export function mountGraph(el: HTMLElement, host: GraphHost): MountedGraph {
             onOpenNote={onOpenNote}
             reveal={reveal}
             notices={state.notices}
+            autoLayout={options.autoLayout}
           />
         </StrictMode>
       );

@@ -113,6 +113,118 @@ async function layoutOf(page: Page) {
   return Object.fromEntries(boxes.map((b) => [b.id, { dx: Math.round(b.x - b1.x), dy: Math.round(b.y - b1.y) }]));
 }
 
+test('the first drag in an unsaved layout pins everything, so nothing else moves', async ({ page }) => {
+  await page.goto('/?layout=auto&saveDelay=200');
+  await expect(page.locator('.react-flow__node')).toHaveCount(18);
+  const before = await layoutOf(page);
+  await drag(page, 'B-3', 60, 120);
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(1);
+  await page.waitForTimeout(300);
+  const after = await layoutOf(page);
+  // Offsets are from B-1, which stayed: only B-3 and the assumptions it hosts moved.
+  const moved = Object.keys(after).filter((k) => after[k].dx !== before[k].dx || after[k].dy !== before[k].dy);
+  expect(moved.sort()).toEqual(['A-3', 'A-4', 'B-3']);
+  expect(Object.keys(await positions(page)).sort()).toEqual(Object.keys(after).sort());
+  // The next drag writes only what moved.
+  const saved = await positions(page);
+  await drag(page, 'B-5', 40, 40);
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(2);
+  const next = await positions(page);
+  expect(Object.keys(next).filter((k) => next[k].x !== saved[k].x || next[k].y !== saved[k].y).sort()).toEqual(['A-5', 'B-5']); // B-5 and its assumption
+});
+
+const selected = (page: Page) =>
+  page.locator('.react-flow__node.selected').evaluateAll((els) => els.map((el) => el.getAttribute('data-id')!).sort());
+
+const rectOf = async (page: Page, key: string) => (await node(page, key).boundingBox())!;
+
+test.describe('selecting several nodes, as on a canvas', () => {
+  test('dragging on empty space draws a selection box; dragging one selected node moves them all, saved in one write', async ({ page }) => {
+    const [b7, b8] = [await rectOf(page, 'B-7'), await rectOf(page, 'B-8')];
+    const box = { x1: Math.min(b7.x, b8.x) - 12, y1: Math.min(b7.y, b8.y) - 12, x2: Math.max(b7.x + b7.width, b8.x + b8.width) + 12, y2: Math.max(b7.y + b7.height, b8.y + b8.height) + 12 };
+    expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.classList.contains('react-flow__pane'), [box.x1, box.y1])).toBe(true);
+    // Every node the box touches gets selected (partial overlap counts).
+    const touched = await page.locator('.react-flow__node').evaluateAll(
+      (els, b) => els.filter((el) => { const r = el.getBoundingClientRect(); return r.x < b.x2 && r.right > b.x1 && r.y < b.y2 && r.bottom > b.y1; }).map((el) => el.getAttribute('data-id')!).sort(),
+      box
+    );
+    expect(touched).toEqual(expect.arrayContaining(['B-7', 'B-8']));
+    const before = await positions(page);
+    await page.mouse.move(box.x1, box.y1);
+    await page.mouse.down();
+    await page.mouse.move(box.x2, box.y2, { steps: 8 });
+    await page.mouse.up();
+    expect(await selected(page)).toEqual(touched);
+    expect(await page.evaluate(() => window.gsDev.writes())).toBe(0); // selecting moves nothing
+
+    await drag(page, 'B-7', 90, 70);
+    await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(1);
+    const after = await positions(page);
+    const delta = (k: string) => ({ dx: after[k].x - before[k].x, dy: after[k].y - before[k].y });
+    for (const key of touched) if (key !== 'FP-1' && key !== 'FP-2') expect(delta(key)).toEqual(delta('B-7'));
+    expect(delta('B-7').dx).toBeGreaterThan(0);
+    expect(after['B-1']).toEqual(before['B-1']);
+  });
+
+  test('Shift-click adds and removes, Escape clears, Cmd/Ctrl+A selects every node', async ({ page }) => {
+    await node(page, 'B-1').click();
+    await node(page, 'B-3').click({ modifiers: ['Shift'] });
+    await node(page, 'B-5').click({ modifiers: ['Shift'] });
+    expect(await selected(page)).toEqual(['B-1', 'B-3', 'B-5']);
+    await node(page, 'B-3').click({ modifiers: ['Shift'] });
+    expect(await selected(page)).toEqual(['B-1', 'B-5']);
+
+    const before = await positions(page);
+    await drag(page, 'B-5', -50, 60);
+    await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(1);
+    const after = await positions(page);
+    // B-1 and B-5 moved together, with the assumptions they host (A-1, A-2; A-5); nothing else.
+    const moved = Object.keys(after).filter((k) => after[k].x !== before[k].x || after[k].y !== before[k].y).sort();
+    expect(moved).toEqual(['A-1', 'A-2', 'A-5', 'B-1', 'B-5']);
+    for (const key of moved) expect(after[key].x - before[key].x).toBe(after['B-5'].x - before['B-5'].x);
+
+    await page.keyboard.press('Escape');
+    expect(await selected(page)).toEqual([]);
+    await page.keyboard.press('ControlOrMeta+a');
+    await expect(page.locator('.react-flow__node.selected')).toHaveCount(18);
+    // Selecting all and pressing Escape works after a click on the empty pane, too.
+    const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+    await page.mouse.click(pane.x + 5, pane.y + pane.height - 5);
+    expect(await selected(page)).toEqual([]);
+    await page.keyboard.press('ControlOrMeta+a');
+    await expect(page.locator('.react-flow__node.selected')).toHaveCount(18);
+    await page.keyboard.press('Escape');
+    expect(await selected(page)).toEqual([]);
+  });
+
+  test('arrow keys nudge the selection, its assumptions along, and save it', async ({ page }) => {
+    await node(page, 'B-1').click();
+    await node(page, 'B-8').click({ modifiers: ['Shift'] });
+    const before = await positions(page);
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Shift+ArrowDown');
+    await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(1);
+    const after = await positions(page);
+    for (const key of ['B-1', 'B-8', 'A-1', 'A-2']) expect({ key, dx: after[key].x - before[key].x, dy: after[key].y - before[key].y }).toEqual({ key, dx: 5, dy: 20 });
+    expect(after['B-3']).toEqual(before['B-3']);
+  });
+
+  test('scroll pans, Cmd/Ctrl+scroll zooms', async ({ page }) => {
+    const a = await rectOf(page, 'B-1');
+    await page.mouse.move(700, 450);
+    await page.mouse.wheel(0, 200);
+    await page.waitForTimeout(200);
+    const b = await rectOf(page, 'B-1');
+    expect(b.y).toBeLessThan(a.y - 50);
+    expect(b.width).toBeCloseTo(a.width, 0);
+    await page.keyboard.down('Control');
+    await page.mouse.wheel(0, -300);
+    await page.keyboard.up('Control');
+    await page.waitForTimeout(200);
+    expect((await rectOf(page, 'B-1')).width).toBeGreaterThan(b.width * 1.1);
+  });
+});
+
 test('the reset button forgets every saved position, after a confirmation, and shows the automatic layout', async ({ page }) => {
   await page.goto('/?layout=auto');
   await expect(page.locator('.react-flow__node')).toHaveCount(18);
@@ -145,6 +257,20 @@ test('the reset button forgets every saved position, after a confirmation, and s
     expect(box.y + box.height).toBeLessThanOrEqual(pane.y + pane.height);
   }
   await expect(page.getByRole('button', { name: 'Reset layout' })).toBeDisabled();
+});
+
+test('a reset right after a drag in the automatic layout fits the layout, not the dragged one', async ({ page }) => {
+  // ELK's layout is already known here, so the reset's layout is ready at once.
+  await page.goto('/?layout=auto&saveDelay=100');
+  await expect(page.locator('.react-flow__node')).toHaveCount(18);
+  const auto = await layoutOf(page);
+  await drag(page, 'B-8', 0, 400); // far down: the dragged layout is taller
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(1);
+  await page.getByRole('button', { name: 'Reset layout' }).click();
+  await page.getByRole('dialog', { name: 'Reset layout' }).getByRole('button', { name: 'Reset' }).click();
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(2);
+  await page.waitForTimeout(500);
+  expect(await layoutOf(page)).toEqual(auto);
 });
 
 test('without saved positions, assumptions sit above their host and the sequel below its bet (D19)', async ({ page }) => {
@@ -186,6 +312,25 @@ test('a new note appears, placed where it overlaps nothing, without being saved'
   expect(b9.x).toBeLessThan(fp2.x);
 });
 
+test('a failed automatic layout shows the saved nodes and says what it left out', async ({ page }) => {
+  await page.goto('/?elk=fail&layout=auto');
+  // Nothing is saved, so nothing can be placed: no endless "Laying out…", but the reason.
+  await expect(page.locator('.gs-graph-loading')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /issues?$/ })).toBeVisible();
+  await page.getByRole('button', { name: /issues?$/ }).click();
+  await expect(page.locator('.gs-notices-list')).toContainText('The automatic layout failed (simulated ELK failure), so 18 notes');
+
+  await page.goto('/?elk=fail');
+  await expect(page.locator('.react-flow__node')).toHaveCount(18);
+  await page.evaluate(() =>
+    window.gsDev.setFile('Strategy/Bets/B-9 Open a studio.md', '---\nid: B-9\ntype: bet\nstatus: active\n---\n')
+  );
+  await page.getByRole('button', { name: /issues?$/ }).click();
+  await expect(page.locator('.gs-notices-list')).toContainText('so 1 note without a saved position is not shown');
+  await expect(node(page, 'B-1')).toBeVisible();
+  await expect(node(page, 'B-9')).toBeHidden();
+});
+
 test('a changed status re-renders the node', async ({ page }) => {
   await page.evaluate(() => {
     const path = 'Strategy/Bets/B-7  Part-time barista job.md';
@@ -217,6 +362,10 @@ test('a changed id is reported', async ({ page }) => {
   await expect(node(page, 'B-21')).toBeVisible();
   await page.getByRole('button', { name: /issues?$/ }).click();
   await expect(page.locator('.gs-notices-list')).toContainText('changed id from "B-1" to "B-21"');
+  // Each notice about a note opens it, by keyboard too.
+  await page.locator('.gs-notices-list').getByRole('button', { name: /changed id/ }).focus();
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.gsDev.opened())).toEqual(['Strategy/Bets/B-1 Get a D7 visa.md']);
 });
 
 test('the legacy vault lists its problems and still lays out every node', async ({ page }) => {

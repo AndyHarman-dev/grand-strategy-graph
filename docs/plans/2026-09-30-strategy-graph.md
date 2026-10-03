@@ -541,6 +541,16 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Decisions:** the reset asks for confirmation first, because it can't be undone from the graph (the positions migrated from the canvas go too). Not changed, for the user to decide: unsaved nodes are still re-placed around saved ones on every move (the snapping; see the review).
   - **Verification:** `npm run typecheck`, `npm test` (289) and `npm run build` pass; `npm run test:e2e` (16, 3 of them `@visual`; the baselines still match within 1% with the extra control button, so they were not rewritten). Mutations (no fit after reset, old positions shown during a reset, a failed pre-reset write re-pended) each fail a test. **Unverified (user, local):** the button and the edge fix in Obsidian.
 
+- **2026-10-03**:
+  - **Context:** the user checked the edge fix and the reset button in Obsidian (both work), chose to save every position on the first drag, asked for the other review findings to be fixed, and asked for canvas-style multi-select.
+  - **Actions:**
+    - Every drag end also saves each shown node that has no saved position yet, fixed points included (`unsavedPositions`, `src/ui/model.ts`), so unsaved nodes are never re-placed around a dropped one. After the first drag only new notes are left to pin.
+    - Multi-select as on an Obsidian canvas: a selection box on empty space (partial overlap selects), Shift/Cmd/Ctrl-click to toggle, Cmd/Ctrl+A and Escape; panning moves to Space+drag, middle-drag and scroll, zoom to Cmd/Ctrl+scroll and pinch. Dragging any selected node moves the whole selection, with the assumptions each member hosts, in one write. Arrow-key nudges (React Flow's 5 px, 20 with Shift) take the hosted assumptions along and are saved too; before, they moved nodes without saving them.
+    - A failed automatic layout no longer leaves the graph on "Laying out the graph…": it shows what is saved and an error notice naming how many notes it left out. The dev page's `?elk=fail` simulates the failure (`mountGraph`'s `autoLayout` option).
+    - The issue list's note links are buttons, reachable by keyboard. The fit after a reset is cancelled when saved positions come back (the reset couldn't be written, or a drag came first).
+  - **Decisions:** reverses the 5a decision "ELK positions are never saved": a drag pins the whole shown layout (user, 2026-10-03). Saved positions are still never changed by the layout (D19). Arrow-key nudges count as moves.
+  - **Verification:** `npm run typecheck`, `npm test` (290) and `npm run build` pass; `npm run test:e2e` (23, 3 of them `@visual`; baselines unchanged). Mutations (no pinning of unsaved nodes, no failed-layout state) each fail a test; the arrow-key save and Escape focus were found failing by their tests and fixed. **Unverified (user, local):** the selection gestures, trackpad pan/zoom and Cmd+A/Escape inside Obsidian (Obsidian's own hotkeys could take a key first).
+
 ## Decisions Log
 
 *(For the user's own hand only.)*

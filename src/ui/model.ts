@@ -123,3 +123,21 @@ export function movedPositions(nodes: readonly Pick<StrategyFlowNode, 'id' | 'po
   }
   return out;
 }
+
+/**
+ * Positions to save along with a drag so that nothing else moves: every node on screen that can
+ * be pinned and has no saved position yet, fixed points included, where it is drawn now. Without
+ * them, the layout re-places unsaved nodes around the dropped ones.
+ */
+export function unsavedPositions(
+  nodes: readonly Pick<StrategyFlowNode, 'position' | 'hidden' | 'data'>[],
+  saved: Readonly<Record<string, GsPosition>>
+): Record<string, GsPosition> {
+  const out: Record<string, GsPosition> = {};
+  for (const node of nodes) {
+    const id = node.data.node.id;
+    if (node.hidden || !node.data.pinnable || id === null || Object.prototype.hasOwnProperty.call(saved, id)) continue;
+    out[id] = { x: node.position.x, y: node.position.y };
+  }
+  return out;
+}

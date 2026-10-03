@@ -30,7 +30,7 @@ const mounted = mountGraph(document.getElementById('content')!, {
     opened.push(path);
     status.textContent = `open ${path}`;
   },
-});
+}, params.get('elk') === 'fail' ? { autoLayout: () => Promise.reject(new Error('simulated ELK failure')) } : {});
 
 const session = new GraphSession({
   adapter: { readNotes: () => new MemoryAdapter(files).readNotes() },

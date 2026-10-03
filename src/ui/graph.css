@@ -158,9 +158,20 @@
   color: var(--text-warning, var(--text-normal));
 }
 
-.gs-notice a {
+.gs-graph .gs-notice-link {
+  all: unset;
   cursor: pointer;
   color: inherit;
+  text-align: left;
+}
+
+.gs-graph .gs-notice-link:hover {
+  text-decoration: underline;
+}
+
+.gs-graph .gs-notice-link:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 1px;
 }
 
 /* Reset layout: the circular arrow in the controls, and its confirmation. */
@@ -183,4 +194,9 @@
 .gs-confirm .mod-warning {
   background: var(--background-modifier-error, #e93147);
   color: var(--text-on-accent, #fff);
+}
+
+/* The graph takes focus when clicked (for Cmd/Ctrl+A and Escape); no focus ring for that. */
+.gs-graph .react-flow:focus {
+  outline: none;
 }

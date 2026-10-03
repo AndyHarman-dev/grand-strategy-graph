@@ -6,16 +6,28 @@ import {
   Panel,
   ReactFlow,
   ReactFlowProvider,
+  SelectionMode,
   useReactFlow,
+  useStoreApi,
   type NodeChange,
+  type NodePositionChange,
   type ReactFlowInstance,
 } from '@xyflow/react';
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import type { GraphNotice } from '../core/graph-session';
 import type { GsMap, GsPosition } from '../core/gsmap';
 import { elkPositions, layoutKey, needsElk as needsElkFor, NODE_SIZES, pinnedPositions, placeNodes, structureOf } from '../core/layout';
 import type { Graph } from '../core/schema';
-import { followersOf, movedPositions, NODE_TYPE, toFlowEdges, toFlowNodes, type StrategyFlowNode } from './model';
+import { followersOf, movedPositions, NODE_TYPE, toFlowEdges, toFlowNodes, unsavedPositions, type StrategyFlowNode } from './model';
 import { StrategyNode } from './StrategyNode';
 
 export interface StrategyGraphProps {
@@ -34,46 +46,72 @@ export interface StrategyGraphProps {
   reveal?: { key: string; nonce: number } | null;
   /** Problems to list on the graph (graph issues, changed ids, an unreadable `.gsmap`). */
   notices?: readonly GraphNotice[];
+  /** The automatic layout of the time axis. ELK (`elkPositions`); the dev page swaps it to test a failure. */
+  autoLayout?: (graph: Graph) => Promise<Record<string, GsPosition>>;
 }
 
 const nodeTypes = { [NODE_TYPE]: StrategyNode };
+
+/** Keys React Flow moves the selected nodes with (5 px, 20 with Shift). */
+const ARROW_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+/** Pan with the middle button (and any button while Space is held, React Flow's pan key). */
+const PAN_BUTTONS = [1];
+/** Shift-click adds to the selection or takes a node out of it, as on a canvas; so do Cmd/Ctrl-click. */
+const MULTI_SELECT_KEYS = ['Shift', 'Meta', 'Control'];
 
 /**
  * Final positions for every node: saved ones as they are, the rest from ELK. ELK runs only when
  * the nodes or visible edges change and something is unsaved; a drag only re-places. While ELK
  * runs, nodes it has not placed yet are left out (hidden), never drawn at a guessed spot.
  */
-function useLayout(graph: Graph, saved: Readonly<Record<string, GsPosition>>) {
+function useLayout(graph: Graph, saved: Readonly<Record<string, GsPosition>>, autoLayout = elkPositions) {
   const key = useMemo(() => layoutKey(graph), [graph]);
   const pinned = useMemo(() => pinnedPositions(graph, saved), [graph, saved]);
   const needsElk = useMemo(() => needsElkFor(graph, pinned), [graph, pinned]);
   const [layered, setLayered] = useState<{ key: string; positions: Record<string, GsPosition> } | null>(null);
+  const [failed, setFailed] = useState<{ key: string; message: string } | null>(null);
   const current = layered?.key === key;
+  const error = failed?.key === key && !current ? failed.message : null;
 
   useEffect(() => {
-    if (!needsElk || current) return;
+    if (!needsElk || current || error !== null) return;
     let cancelled = false;
-    elkPositions(graph).then(
+    autoLayout(graph).then(
       (positions) => {
         if (!cancelled) setLayered({ key, positions });
       },
-      (error) => console.error('strategy graph: layout failed', error)
+      (reason: unknown) => {
+        console.error('strategy graph: layout failed', reason);
+        if (!cancelled) setFailed({ key, message: reason instanceof Error ? reason.message : String(reason) });
+      }
     );
     return () => {
       cancelled = true;
     };
     // `key` stands for `graph` here: a new graph object with the same nodes and edges needs no new layout.
-  }, [key, needsElk, current]);
+  }, [key, needsElk, current, error]);
 
-  // placeNodes leaves out what it can't place yet (no saved position, ELK not done).
+  // placeNodes leaves out what it can't place yet (no saved position, ELK not done or failed).
+  // A failed layout is complete too: the graph shows what it can, and says what it left out.
   return useMemo(() => {
-    if (!needsElk) return { positions: placeNodes(graph, {}, pinned), complete: true };
-    return { positions: placeNodes(graph, layered?.positions ?? {}, pinned), complete: current };
-  }, [graph, pinned, needsElk, layered, current]);
+    if (!needsElk) return { positions: placeNodes(graph, {}, pinned), complete: true, error: null };
+    const positions = placeNodes(graph, current ? layered!.positions : {}, pinned);
+    return { positions, complete: current || error !== null, error };
+  }, [graph, pinned, needsElk, layered, current, error]);
 }
 
 export function StrategyGraph(props: StrategyGraphProps) {
-  const layout = useLayout(props.graph, props.positions);
+  const layout = useLayout(props.graph, props.positions, props.autoLayout);
+  const unplaced = props.graph.nodes.length - Object.keys(layout.positions).length;
+  const notices: readonly GraphNotice[] = layout.error
+    ? [
+        {
+          severity: 'error',
+          message: `The automatic layout failed (${layout.error}), so ${unplaced} ${unplaced === 1 ? 'note' : 'notes'} without a saved position ${unplaced === 1 ? 'is' : 'are'} not shown.`,
+        },
+        ...(props.notices ?? []),
+      ]
+    : props.notices ?? [];
   // Mount React Flow once the first layout is complete, so its first frame is the real one.
   const [started, setStarted] = useState(layout.complete);
   useEffect(() => {
@@ -83,7 +121,7 @@ export function StrategyGraph(props: StrategyGraphProps) {
     <div className="gs-graph">
       {started ? (
         <ReactFlowProvider>
-          <Flow {...props} placed={layout.positions} complete={layout.complete} />
+          <Flow {...props} notices={notices} placed={layout.positions} complete={layout.complete} />
         </ReactFlowProvider>
       ) : (
         <div className="gs-graph-loading">Laying out the graph…</div>
@@ -105,12 +143,18 @@ function Flow({
   notices,
 }: StrategyGraphProps & { placed: Record<string, GsPosition>; complete: boolean }) {
   const flow = useReactFlow<StrategyFlowNode>();
+  const store = useStoreApi<StrategyFlowNode>();
   const editable = onMove !== null;
   const build = useCallback(
     () => toFlowNodes(graph, placed).map((n) => (editable ? n : { ...n, draggable: false })),
     [graph, placed, editable]
   );
   const [nodes, setNodes] = useState<StrategyFlowNode[]>(build);
+  /** `nodes` as last rendered, for handlers React Flow calls synchronously. */
+  const nodesRef = useRef(nodes);
+  nodesRef.current = nodes;
+  /** Set while an arrow key is being handled: the position changes it causes are a move to save. */
+  const arrowKey = useRef(false);
   // Edges follow the nodes as drawn, mid-drag included, so they always leave by the facing side.
   const drawn = useMemo(() => Object.fromEntries(nodes.filter((n) => !n.hidden).map((n) => [n.id, n.position])), [nodes]);
   const edges = useMemo(() => toFlowEdges(graph, drawn), [graph, drawn]);
@@ -120,8 +164,8 @@ function Flow({
   const [ready, setReady] = useState(false);
   const revealed = useRef<number | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
-  /** A reset is waiting for its new layout, to fit the view to it. */
-  const fitAfterReset = useRef(false);
+  /** While a reset waits for its new layout, to fit the view to it: the saved positions it was asked on. */
+  const resetFrom = useRef<StrategyGraphProps['positions'] | null>(null);
   const hasSaved = Object.keys(positions).length > 0;
 
   // New data or positions: rebuild the nodes, keeping selection, and keeping a node that is mid-drag where the pointer has it.
@@ -144,8 +188,67 @@ function Flow({
     });
   }, [build]);
 
-  const onNodesChange = useCallback((changes: NodeChange<StrategyFlowNode>[]) => {
-    setNodes((current) => applyNodeChanges(changes, current));
+  /** Save moved nodes, and pin everything else where it is, so nothing that wasn't moved moves (unsaved nodes are placed around saved ones). */
+  const save = useCallback(
+    (moved: readonly Pick<StrategyFlowNode, 'id' | 'position' | 'data'>[]) => {
+      const updates = movedPositions(moved);
+      if (!Object.keys(updates).length) return;
+      onMove?.({ ...unsavedPositions(nodesRef.current, positions), ...updates });
+    },
+    [onMove, positions]
+  );
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange<StrategyFlowNode>[]) => {
+      const nudged = arrowKey.current ? changes.filter((c): c is NodePositionChange => c.type === 'position' && !!c.position) : [];
+      if (!nudged.length) {
+        setNodes((current) => applyNodeChanges(changes, current));
+        return;
+      }
+      // Arrow keys move the selection without a drag: take the hosted assumptions along and save, as a drag does.
+      const before = new Map(nodesRef.current.map((n) => [n.id, n]));
+      const to = new Map(nudged.map((c) => [c.id, c.position!]));
+      for (const [key, host] of followersOf(satellites, Array.from(to.keys()))) {
+        const [node, from, at] = [before.get(key), before.get(host), to.get(host)];
+        if (node && from && at && !node.hidden) to.set(key, { x: node.position.x + at.x - from.position.x, y: node.position.y + at.y - from.position.y });
+      }
+      setNodes((current) => applyNodeChanges(changes, current).map((n) => (to.has(n.id) ? { ...n, position: to.get(n.id)! } : n)));
+      save(Array.from(to).flatMap(([id, position]) => (before.has(id) ? [{ ...before.get(id)!, position }] : [])));
+    },
+    [satellites, save]
+  );
+
+  const onKeyDownCapture = useCallback((event: ReactKeyboardEvent) => {
+    if (!ARROW_KEYS.has(event.key)) return;
+    // React Flow moves the nodes while this keydown is dispatched. React runs capture and bubble
+    // handlers from separate native listeners, with microtasks in between, so clear after a task.
+    arrowKey.current = true;
+    setTimeout(() => (arrowKey.current = false));
+  }, []);
+
+  // Canvas keys: Cmd/Ctrl+A selects every node, Escape clears the selection.
+  const onKeyDown = useCallback(
+    (event: ReactKeyboardEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest('input, textarea, [contenteditable="true"]')) return;
+      if (event.key === 'Escape') {
+        setConfirmingReset(false);
+        store.setState({ nodesSelectionActive: false });
+        store.getState().resetSelectedElements();
+        // React Flow blurs a focused node that Escape unselects: keep the keys coming to the graph.
+        (event.currentTarget as HTMLElement).focus({ preventScroll: true });
+      } else if (event.key.toLowerCase() === 'a' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
+        event.preventDefault();
+        store.getState().addSelectedNodes(nodesRef.current.filter((n) => !n.hidden).map((n) => n.id));
+      }
+    },
+    [store]
+  );
+
+  // Clicking the empty pane doesn't move focus by itself: take it, so the keys above reach the graph.
+  const onPointerDownCapture = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    const el = event.currentTarget;
+    if (!el.contains(el.ownerDocument.activeElement)) el.focus({ preventScroll: true });
   }, []);
 
   const onNodeDragStart = useCallback(
@@ -186,10 +289,9 @@ function Flow({
           return { ...n, position: { x: f.start.x + host.x - f.hostStart.x, y: f.start.y + host.y - f.hostStart.y } };
         });
       following.current = new Map();
-      const updates = movedPositions([...dragged, ...followers]);
-      if (onMove && Object.keys(updates).length) onMove(updates);
+      save([...dragged, ...followers]);
     },
-    [onMove, nodes]
+    [save, nodes]
   );
 
   const onNodeDoubleClick = useCallback(
@@ -220,16 +322,23 @@ function Flow({
   const resetPositions = useCallback(() => {
     setConfirmingReset(false);
     if (!onResetPositions) return;
-    fitAfterReset.current = true;
+    resetFrom.current = positions;
     onResetPositions();
-  }, [onResetPositions]);
+  }, [onResetPositions, positions]);
 
-  // After a reset, show the whole new layout once every node has a place.
+  // After a reset, show the whole new layout once it is complete. Positions that come back (the reset
+  // couldn't be saved) or a drag before the layout is done cancel the fit.
   useEffect(() => {
-    if (!fitAfterReset.current || hasSaved || !complete || nodes.some((n) => n.hidden)) return;
-    fitAfterReset.current = false;
+    if (resetFrom.current === null || positions === resetFrom.current) return;
+    if (hasSaved) {
+      resetFrom.current = null;
+      return;
+    }
+    if (!complete) return;
+    resetFrom.current = null;
+    // React Flow fits once the nodes it is given next are in: the rebuilt ones, at their new places.
     void flow.fitView({ padding: 0.1, duration: 300 });
-  }, [nodes, complete, hasSaved, flow]);
+  }, [complete, positions, hasSaved, flow]);
 
   return (
     <ReactFlow<StrategyFlowNode>
@@ -249,6 +358,17 @@ function Flow({
       edgesFocusable={false}
       deleteKeyCode={null}
       zoomOnDoubleClick={false}
+      // As on an Obsidian canvas: drag on empty space to select, Space+drag, middle-drag or scroll to
+      // pan, Cmd/Ctrl+scroll or pinch to zoom. Dragging any selected node moves the whole selection.
+      selectionOnDrag
+      selectionMode={SelectionMode.Partial}
+      panOnDrag={PAN_BUTTONS}
+      panOnScroll
+      multiSelectionKeyCode={MULTI_SELECT_KEYS}
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
+      onKeyDownCapture={onKeyDownCapture}
+      onPointerDownCapture={onPointerDownCapture}
     >
       <Background gap={20} />
       <Controls showInteractive={false}>
@@ -306,7 +426,9 @@ function Notices({ notices, onOpenNote }: { notices: readonly GraphNotice[]; onO
           {notices.map((notice, i) => (
             <li key={i} className={`gs-notice gs-notice--${notice.severity}`}>
               {notice.path && onOpenNote ? (
-                <a onClick={() => onOpenNote(notice.path!, false)}>{notice.message}</a>
+                <button className="gs-notice-link" onClick={() => onOpenNote(notice.path!, false)}>
+                  {notice.message}
+                </button>
               ) : (
                 notice.message
               )}

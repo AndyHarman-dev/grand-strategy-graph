@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { followersOf, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes } from '../../src/ui/model';
+import { followersOf, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions } from '../../src/ui/model';
 import { graphOf, md } from '../support/v2';
 
 const files = {
@@ -94,5 +94,18 @@ describe('movedPositions', () => {
     const graph = await graphOf(files);
     const nodes = toFlowNodes(graph, Object.fromEntries(graph.nodes.map((n) => [n.key, { x: 7, y: 8 }])));
     expect(movedPositions(nodes)).toEqual({ CP: { x: 7, y: 8 }, 'A-1': { x: 7, y: 8 }, 'B-10': { x: 7, y: 8 }, 'B-2': { x: 7, y: 8 } });
+  });
+});
+
+describe('unsavedPositions', () => {
+  it('pins every shown node with a usable id and no saved position, fixed points included', async () => {
+    const graph = await graphOf(files);
+    const shown = Object.fromEntries(graph.nodes.filter((n) => n.key !== 'B-2').map((n) => [n.key, { x: 7, y: 8 }]));
+    const nodes = toFlowNodes(graph, shown); // B-2 has no place yet: hidden
+    expect(unsavedPositions(nodes, { 'B-10': { x: 0, y: 0 } })).toEqual({
+      CP: { x: 7, y: 8 },
+      'FP-1': { x: 7, y: 8 },
+      'A-1': { x: 7, y: 8 },
+    });
   });
 });
