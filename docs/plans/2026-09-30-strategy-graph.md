@@ -26,7 +26,7 @@ plugin (plain JS, 883 lines, no build step), and a read-only survey of the real 
 | D4 | Milestones and the current position are **real notes** with a `type`. (Routes and ghosts were in the original D4; see D16.) |
 | D5 | Serves is split in two: `serves` (direct parent) and `ultimately-serves` (the far fixed point). |
 | D6 | Statuses are **normalized to canvas_rules**: `asleep → dormant`, `cancelled → killed`. |
-| D7 | New bet→bet relation `requires` (prerequisites; the canvas "AND" diamond becomes several `requires` links). Assumptions can attach to any node type, including fixed points. |
+| D7 | New bet→bet relation `requires` (prerequisites; the canvas "AND" diamond becomes several `requires` links). Assumptions can attach to any node type, including fixed points. A bet may also require a milestone (D17). |
 | D8 | Canvas migration: copy positions into `.gsmap`, migrate canvas text cards and groups, and support **free cards**. Free cards exist only on the graph (stored in `.gsmap`) and can be promoted to a real note. |
 | D9 | Development happens in a GitHub repo using Claude on GitHub / Claude Code on the web. **The real vault never goes into the repo**; cloud work runs against synthetic fixtures only. |
 | D10 | The repo lives at `~/dev/grand-strategy-graph`, remote `https://github.com/AndyHarman-dev/grand-strategy-graph.git`, branch `main`. No feature branch (user instruction, 2026-09-30). esbuild writes to `dist/` (gitignored). The real vault's plugin folder is **not** the repo: it gets tagged releases only, via BRAT. |
@@ -36,6 +36,7 @@ plugin (plain JS, 883 lines, no build step), and a read-only survey of the real 
 | D14 | Canvas edges that touch a **group** (note→group, group→note, an "On Kill" to a group included) are **dropped** and listed in the report. The group itself still becomes a frame. (User, 2026-10-02, after the real-vault dry run found four.) |
 | D15 | `type: strategic-inbox` is a known **non-graph** type: such notes are left untouched by the migration and skipped by `buildGraph` without an issue. Other unknown types are still reported. (User, 2026-10-02.) |
 | D16 | **Routes are not a node type.** The "route" boxes on the old canvas were placeholders for starting something, with no strategic value of their own. What a route means in the strategy is a chain of `serves` links from bets up to a fixed point (B-1 serves B-2 serves FP-1). That chain is derived from the relations and never stored. So: no `route` type, no ghost routes, no `R-<n>` ids, no route commands. The canvas route labels migrate as free cards (D8) like any other text card, and stay free cards. (User, 2026-10-03.) |
+| D17 | **Milestones are checkpoints** on the way to a fixed point: the place to begin from when paving further bets. A milestone `serves` a fixed point or another milestone. Bets that work toward it `serve` it. Bets that start from it list it in `requires`, which may now point at a bet or a milestone. So the chain reads: bets → milestone → further bets → fixed point. A milestone has `status: open | reached`; flipping it to `reached` is the moment those bets can start, and an active bet that requires a milestone still `open` is a smell. (User, 2026-10-03; the attached meta-framework has no milestone concept, so this is the user's own definition.) |
 
 ### Schema v2 (target)
 
@@ -50,13 +51,18 @@ status: active | dormant | won | killed | extended
 started, deadline, expected-result      # unchanged
 serves: ["[[B-11 …]]"]                  # direct parents (bet | milestone | fixed-point)
 ultimately-serves: ["[[FP-3 …]]"]       # far anchor(s); fixed points only
-requires: ["[[B-1 …]]"]                 # prerequisite bets
+requires: ["[[B-1 …]]"]                 # prerequisites: bets, or milestones that must be reached first (D17)
 next: "[[B-16 …]]"                      # sequel activated on kill (renamed from `next sequel`)
 assumptions: ["[[A-1 …]]"]              # also allowed on fixed-point / milestone
 
 # assumption
 status: unverified | confirmed | falsified | undeterminable   # undeterminable kept (D13)
 created, verify-by                       # unchanged; existing datetime values are left as they are
+
+# milestone
+status: open | reached                   # reached = the checkpoint the bets that require it start from
+serves: ["[[FP-1 …]]"]                  # fixed point | another milestone
+assumptions: ["[[A-1 …]]"]
 ```
 
 A "route" is not a type (D16): it is any chain of `serves` links leading to a fixed point.
@@ -236,7 +242,7 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - There are **no cross-note body writes**, and `insertIntoSection` is deleted.
   - Creating an assumption for existing bets appends to *the bet's* `assumptions` via `processFrontMatter`.
   - Modals gain optional fields `requires`, `next` and `ultimately-serves`.
-  - New command: "New milestone".
+  - New command: "New milestone" (`status: open`). The bet form's `requires` picker offers bets and milestones.
 - **Solutions.** All creation goes through `src/core/actions.ts`, a set of pure "intent → planned writes" functions, executed by the adapter. The graph's quick actions in Phase 6 reuse exactly these.
 
 ## Phase 5a — Graph view integration (React Flow in Obsidian)
@@ -264,6 +270,7 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
 
 - Node components per type and status:
   - fixed point: distinct shape, locked
+  - milestone: checkpoint shape, open vs reached
   - active / dormant / won / killed bets
   - assumption amber / green / red / gray
   - current position: leftmost and neutral
@@ -305,6 +312,7 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
 **Model: Sonnet 5.** Renders Phase 1 smells that are already tested.
 
 - A badge on each node, plus a "Smells" panel listing orphans, unreached fixed points, gating violations, falsified dependencies and overdue bets. Clicking an item focuses the node.
+- **New smell (D17):** an active bet that requires a milestone still `open`. Added to `src/core/smells.ts` with tests first, then rendered here.
 - **Review walk:** steps through each fixed point, then outward along the `serves` chains that lead to it (those chains are the strategy's routes, D16), in a fixed order (replaces canvas presentation mode).
 
 ## Phase 9 — Retire `The Map.canvas`
@@ -460,6 +468,12 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Actions:** plan only. D4 narrowed, D16 added. Removed the `route` type and its schema block, the ghost status, the route/ghost-route commands (Phase 4), the routes layer in the ELK order (5a), the ghost node style (5b), "route"/"ghost route" as promote targets (7), and "ghost" from the dashed-edge rule. The review walk (8) now follows `serves` chains. Earlier change-log entries are left as written.
   - **Decisions:** D16. `milestone` is unchanged, since the user only spoke about routes; it is an open question whether it stays.
   - **Verification:** the plan and the code now disagree, on purpose and temporarily. Still implementing routes: `src/core/schema.ts` (type, `route` status, relation lists) on `main`; and, in PR 1, `planRoute`, `ROUTES_FOLDER`, the route/ghost-route commands and `NoteModal`, plus their goldens. Not yet removed.
+
+- **2026-10-03**:
+  - **Context:** the user asked how milestones work and wanted them kept as checkpoints to begin further bets from. The plan had no definition (only the type, `serves`/`assumptions` fields, layout order and a creation command), and the attached `Grand_Strategy_Meta-Framework.md` has no milestone concept either (its closest line is "a general outline of big actions and directions").
+  - **Actions:** plan only. Added D17 and a milestone schema block; widened `requires` to point at bets or milestones (D7 note); added the milestone node style (5b), the bet form's milestone picker (4) and the `requires-open-milestone` smell (8). The user confirmed the dashed-edge rule stays as "Unverified serve: dashed".
+  - **Decisions:** D17: bets serve a milestone, later bets `require` it, the milestone serves a fixed point or another milestone, and it has `status: open | reached`.
+  - **Verification:** none needed for a plan edit. Code not yet changed, so it disagrees with the plan: `src/core/schema.ts` has no milestone status, `requires` is bet→bet only, and `serves` from a milestone may point at a bet (the relation table needs per-source targets for that). In PR 1, `planMilestone` and the milestone form write no status and don't offer milestones under `requires`. With D16 this is one batch of code changes still to make.
 
 ## Decisions Log
 
