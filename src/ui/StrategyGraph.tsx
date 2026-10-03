@@ -12,9 +12,9 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type { GraphNotice } from '../core/graph-session';
 import type { GsMap, GsPosition } from '../core/gsmap';
-import { elkPositions, layoutKey, NODE_SIZES, pinnedPositions, placeNodes } from '../core/layout';
+import { elkPositions, layoutKey, needsElk as needsElkFor, NODE_SIZES, pinnedPositions, placeNodes, structureOf } from '../core/layout';
 import type { Graph } from '../core/schema';
-import { movedPositions, NODE_TYPE, toFlowEdges, toFlowNodes, type StrategyFlowNode } from './model';
+import { followersOf, movedPositions, NODE_TYPE, toFlowEdges, toFlowNodes, type StrategyFlowNode } from './model';
 import { StrategyNode } from './StrategyNode';
 
 export interface StrategyGraphProps {
@@ -43,7 +43,7 @@ const nodeTypes = { [NODE_TYPE]: StrategyNode };
 function useLayout(graph: Graph, saved: Readonly<Record<string, GsPosition>>) {
   const key = useMemo(() => layoutKey(graph), [graph]);
   const pinned = useMemo(() => pinnedPositions(graph, saved), [graph, saved]);
-  const needsElk = graph.nodes.some((n) => !pinned[n.key]);
+  const needsElk = useMemo(() => needsElkFor(graph, pinned), [graph, pinned]);
   const [layered, setLayered] = useState<{ key: string; positions: Record<string, GsPosition> } | null>(null);
   const current = layered?.key === key;
 
@@ -62,13 +62,10 @@ function useLayout(graph: Graph, saved: Readonly<Record<string, GsPosition>>) {
     // `key` stands for `graph` here: a new graph object with the same nodes and edges needs no new layout.
   }, [key, needsElk, current]);
 
+  // placeNodes leaves out what it can't place yet (no saved position, ELK not done).
   return useMemo(() => {
     if (!needsElk) return { positions: placeNodes(graph, {}, pinned), complete: true };
-    if (!layered) return { positions: pinned, complete: false };
-    const known = (k: string) => Boolean(pinned[k] || layered.positions[k]);
-    const placed = placeNodes(graph, layered.positions, pinned);
-    const positions = Object.fromEntries(Object.entries(placed).filter(([k]) => known(k)));
-    return { positions, complete: current };
+    return { positions: placeNodes(graph, layered?.positions ?? {}, pinned), complete: current };
   }, [graph, pinned, needsElk, layered, current]);
 }
 
@@ -100,7 +97,12 @@ function Flow({ graph, placed, viewport, onMove, onOpenNote, reveal, notices }: 
     [graph, placed, editable]
   );
   const [nodes, setNodes] = useState<StrategyFlowNode[]>(build);
-  const edges = useMemo(() => toFlowEdges(graph), [graph]);
+  // Edges follow the nodes as drawn, mid-drag included, so they always leave by the facing side.
+  const drawn = useMemo(() => Object.fromEntries(nodes.filter((n) => !n.hidden).map((n) => [n.id, n.position])), [nodes]);
+  const edges = useMemo(() => toFlowEdges(graph, drawn), [graph, drawn]);
+  const satellites = useMemo(() => structureOf(graph).satellites, [graph]);
+  /** Assumptions moving with the current drag: where each started, and its host's start (D19). */
+  const following = useRef<Map<string, { start: { x: number; y: number }; host: string; hostStart: { x: number; y: number } }>>(new Map());
   const [ready, setReady] = useState(false);
   const revealed = useRef<number | null>(null);
 
@@ -126,12 +128,48 @@ function Flow({ graph, placed, viewport, onMove, onOpenNote, reveal, notices }: 
     setNodes((current) => applyNodeChanges(changes, current));
   }, []);
 
+  const onNodeDragStart = useCallback(
+    (_event: unknown, _node: StrategyFlowNode, dragged: StrategyFlowNode[]) => {
+      const byId = new Map(nodes.map((n) => [n.id, n]));
+      const hosts = new Map(dragged.map((n) => [n.id, n.position]));
+      following.current = new Map();
+      for (const [key, host] of followersOf(satellites, dragged.map((n) => n.id))) {
+        const node = byId.get(key);
+        if (node && !node.hidden) following.current.set(key, { start: node.position, host, hostStart: hosts.get(host)! });
+      }
+    },
+    [nodes, satellites]
+  );
+
+  const onNodeDrag = useCallback((_event: unknown, _node: StrategyFlowNode, dragged: StrategyFlowNode[]) => {
+    if (!following.current.size) return;
+    const now = new Map(dragged.map((n) => [n.id, n.position]));
+    setNodes((current) =>
+      current.map((n) => {
+        const f = following.current.get(n.id);
+        const host = f && now.get(f.host);
+        if (!f || !host) return n;
+        return { ...n, position: { x: f.start.x + host.x - f.hostStart.x, y: f.start.y + host.y - f.hostStart.y } };
+      })
+    );
+  }, []);
+
   const onNodeDragStop = useCallback(
     (_event: unknown, _node: StrategyFlowNode, dragged: StrategyFlowNode[]) => {
-      const updates = movedPositions(dragged);
+      // The hosted assumptions moved too: save them with their host.
+      const now = new Map(dragged.map((n) => [n.id, n.position]));
+      const followers = nodes
+        .filter((n) => following.current.has(n.id))
+        .map((n) => {
+          const f = following.current.get(n.id)!;
+          const host = now.get(f.host)!;
+          return { ...n, position: { x: f.start.x + host.x - f.hostStart.x, y: f.start.y + host.y - f.hostStart.y } };
+        });
+      following.current = new Map();
+      const updates = movedPositions([...dragged, ...followers]);
       if (onMove && Object.keys(updates).length) onMove(updates);
     },
-    [onMove]
+    [onMove, nodes]
   );
 
   const onNodeDoubleClick = useCallback(
@@ -165,6 +203,8 @@ function Flow({ graph, placed, viewport, onMove, onOpenNote, reveal, notices }: 
       edges={edges}
       nodeTypes={nodeTypes}
       onNodesChange={onNodesChange}
+      onNodeDragStart={onNodeDragStart}
+      onNodeDrag={onNodeDrag}
       onNodeDragStop={onNodeDragStop}
       onNodeDoubleClick={onNodeDoubleClick}
       onInit={onInit}

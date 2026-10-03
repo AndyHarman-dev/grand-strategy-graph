@@ -47,7 +47,7 @@ test('shows every strategy note of the migrated test vault', async ({ page }) =>
   await expect(page.locator('.react-flow__edge')).toHaveCount(19);
 });
 
-test('saves a dragged bet once, on drag end, leaving other positions alone', async ({ page }) => {
+test('saves a dragged bet once, on drag end, leaving the rest alone', async ({ page }) => {
   const before = await positions(page);
   await drag(page, 'B-3', 120, 60, { release: false });
   await page.waitForTimeout(400);
@@ -57,10 +57,43 @@ test('saves a dragged bet once, on drag end, leaving other positions alone', asy
   const after = await positions(page);
   expect(after['B-3'].x).toBeGreaterThan(before['B-3'].x);
   expect(after['B-3'].y).toBeGreaterThan(before['B-3'].y);
-  expect({ ...after, 'B-3': before['B-3'] }).toEqual(before);
+  // Only B-3 and the assumptions it hosts (A-3, A-4) moved.
+  expect({ ...after, 'B-3': before['B-3'], 'A-3': before['A-3'], 'A-4': before['A-4'] }).toEqual(before);
+  expect(after['A-3'].x - before['A-3'].x).toBe(after['B-3'].x - before['B-3'].x);
   // The node stays where it was dropped.
   await page.waitForTimeout(400);
   expect(await page.evaluate(() => window.gsDev.writes())).toBe(1);
+});
+
+test('a dragged bet takes its assumptions along, and both are saved in one write (D19)', async ({ page }) => {
+  // In the migrated test vault A-1 is held by B-1 only; A-2 is shared with B-4 but B-1 comes first, so B-1 hosts both.
+  const before = await positions(page);
+  const a1 = await offset(page, 'A-1', 'B-1');
+  await drag(page, 'B-1', 80, 140, { release: false });
+  expect(await offset(page, 'A-1', 'B-1')).toEqual(a1); // follows during the drag, not only after
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(1);
+  expect(await offset(page, 'A-1', 'B-1')).toEqual(a1);
+  const after = await positions(page);
+  const moved = (key: string) => ({ dx: after[key].x - before[key].x, dy: after[key].y - before[key].y });
+  expect(moved('A-1')).toEqual(moved('B-1'));
+  expect(moved('A-2')).toEqual(moved('B-1'));
+  expect(moved('B-1').dy).toBeGreaterThan(0);
+  // B-2, B-1's sequel, is not an assumption: it stays.
+  expect(after['B-2']).toEqual(before['B-2']);
+});
+
+test('without saved positions, assumptions sit above their host and the sequel below its bet (D19)', async ({ page }) => {
+  await page.goto('/?layout=auto');
+  await expect(page.locator('.react-flow__node')).toHaveCount(18);
+  const box = async (key: string) => (await node(page, key).boundingBox())!;
+  const [b1, a1, b2] = [await box('B-1'), await box('A-1'), await box('B-2')];
+  expect(a1.y + a1.height).toBeLessThan(b1.y);
+  expect(Math.abs(a1.x + a1.width / 2 - (b1.x + b1.width / 2))).toBeLessThan(2);
+  expect(b2.x).toBeCloseTo(b1.x, 0);
+  expect(b2.y).toBeGreaterThan(b1.y + b1.height);
+  const all = await page.locator('.react-flow__node').evaluateAll((els) => els.map((el) => JSON.parse(JSON.stringify(el.getBoundingClientRect()))));
+  for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) expect(overlap(all[i], all[j])).toBe(false);
 });
 
 test('fixed points are locked', async ({ page }) => {
@@ -140,6 +173,13 @@ test.describe('screenshots @visual', () => {
   test('migrated test vault, light', async ({ page }) => {
     await page.waitForTimeout(300);
     await expect(page).toHaveScreenshot('migrated-light.png');
+  });
+
+  test('migrated test vault, automatic layout', async ({ page }) => {
+    await page.goto('/?layout=auto');
+    await expect(page.locator('.react-flow__node')).toHaveCount(18);
+    await page.waitForTimeout(300);
+    await expect(page).toHaveScreenshot('migrated-auto.png');
   });
 
   test('legacy test vault, dark', async ({ page }) => {

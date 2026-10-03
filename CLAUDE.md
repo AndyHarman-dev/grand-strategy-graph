@@ -1,7 +1,7 @@
 # grand-strategy-graph
 
 Obsidian plugin `strategy-bet-creator`: creates Grand Strategy bets and assumptions, and (from Phase 5)
-renders the strategy as a data-driven graph. The full plan, decisions (D1–D17) and phase list live in
+renders the strategy as a data-driven graph. The full plan, decisions (D1–D19) and phase list live in
 `docs/plans/2026-09-30-strategy-graph.md`. Read it before starting a phase.
 
 ## Hard rules
@@ -85,6 +85,8 @@ Release.
 - Positions are written only after a drag ends (400 ms quiet, flushed on tab close), through `vault.process`, and only
   the moved ids change (`writePositions`). A `.gsmap` that doesn't parse, or has a newer `version`, is never written.
 - Auto-placed (ELK) positions are not saved. Fixed points and notes without a unique `id` can't be dragged.
+- Layout rule (plan D19): left → right is time; assumptions are never on the time axis but above their host (below if
+  no room, aside if a sequel is below); a `next` sequel sits under its bet; a dragged bet takes its hosted assumptions.
 - Playwright screenshot baselines (`tests/e2e/graph.spec.ts-snapshots/`, tagged `@visual`) are like goldens: update
   them (`npx playwright test -g @visual --update-snapshots`) only for a deliberate visual change, and say so in the
   commit. They are Linux/Chromium baselines from cloud sessions; CI runs `--grep-invert @visual`.

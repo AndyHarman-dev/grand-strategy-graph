@@ -7,14 +7,16 @@ import vaults from 'virtual:test-vault';
 import '../src/styles.css';
 import './obsidian-theme.css';
 import { GraphSession, type GraphState } from '../src/core/graph-session';
-import { GSMAP_PATH } from '../src/core/gsmap';
+import { GSMAP_PATH, parseGsMap, serializeGsMap } from '../src/core/gsmap';
 import { MemoryAdapter } from '../src/core/memory-adapter';
 import { mountGraph } from '../src/ui/mount';
 
 const params = new URLSearchParams(location.search);
 const vaultName = params.get('vault') === 'legacy' ? 'legacy' : 'planned';
 const files: Record<string, string> = { ...vaults[vaultName] };
-let gsmapText = files[GSMAP_PATH] ?? '';
+// ?layout=auto drops the saved positions, to see the automatic layout (D19) on the whole vault.
+let gsmapText = params.get('layout') === 'auto' ? withoutPositions(files[GSMAP_PATH] ?? '') : files[GSMAP_PATH] ?? '';
+files[GSMAP_PATH] = gsmapText;
 let writes = 0;
 let state: GraphState | null = null;
 let reveal: { key: string; nonce: number } | null = null;
@@ -55,6 +57,13 @@ select.onchange = () => {
   params.set('vault', select.value);
   location.search = params.toString();
 };
+const auto = document.getElementById('auto') as HTMLInputElement;
+auto.checked = params.get('layout') === 'auto';
+auto.onchange = () => {
+  if (auto.checked) params.set('layout', 'auto');
+  else params.delete('layout');
+  location.search = params.toString();
+};
 const dark = document.getElementById('dark') as HTMLInputElement;
 dark.checked = params.get('theme') === 'dark';
 document.body.classList.toggle('theme-dark', dark.checked);
@@ -91,3 +100,8 @@ const api = {
   flush: () => session.flush(),
 };
 window.gsDev = api;
+
+function withoutPositions(text: string): string {
+  const read = parseGsMap(text);
+  return read.ok ? serializeGsMap({ ...read.map, positions: {} }) : text;
+}
