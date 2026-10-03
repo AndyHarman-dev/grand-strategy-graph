@@ -533,6 +533,14 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Decisions:** Phase 5a is done and goes to `main` with D19. Colours and node styles are Phase 5b. The old design branch `claude/peaceful-bardeen-1emx74` is not the design and stays unmerged.
   - **Verification:** confirmed by the user: the graph renders and reads well, with canvas positions and with the automatic layout. Not reported either way: live updates while editing properties, drag-and-save across tab close, Reveal, double-click to open, a changed id, theme switching, popout windows, mobile.
 
+- **2026-10-03**:
+  - **Context:** a code review of Phase 5a with two bug reports from the user's manual check: (1) after enough dragging every edge disappears until the graph is reopened; (2) dragging makes a mess and nodes snap unpredictably, so the user asked for a reset button (a circular arrow) that forgets every custom position.
+  - **Actions:**
+    - (1) `src/ui/StrategyGraph.tsx`: every position change (the drop, the write, its modify echo) rebuilt the React Flow nodes without React Flow's `measured`, which makes React Flow throw away the nodes' measured handles and draw no edge until they are measured again; a drag that began in that window started on an uninitialized node (React Flow warning 015). Rebuilds now keep `measured`. A Playwright test samples the edge count every animation frame through four drag-and-save cycles: it saw 0 before, 19 throughout after.
+    - (2) A "Reset layout" control button (circular arrow) with an inline confirmation. `clearPositions` (`gsmap.ts`) empties `positions` and keeps every other key; `GsMapStore.resetPositions` shows no saved position at once, drops moves not written yet, queues the write after any write under way, keeps moves made after it, and a failed earlier write can't bring a move back. The view fits the new layout once every node is placed. The button is off when nothing is saved or the `.gsmap` can't be read.
+  - **Decisions:** the reset asks for confirmation first, because it can't be undone from the graph (the positions migrated from the canvas go too). Not changed, for the user to decide: unsaved nodes are still re-placed around saved ones on every move (the snapping; see the review).
+  - **Verification:** `npm run typecheck`, `npm test` (289) and `npm run build` pass; `npm run test:e2e` (16, 3 of them `@visual`; the baselines still match within 1% with the extra control button, so they were not rewritten). Mutations (no fit after reset, old positions shown during a reset, a failed pre-reset write re-pended) each fail a test. **Unverified (user, local):** the button and the edge fix in Obsidian.
+
 ## Decisions Log
 
 *(For the user's own hand only.)*

@@ -85,6 +85,10 @@ Release.
 - Positions are written only after a drag ends (400 ms quiet, flushed on tab close), through `vault.process`, and only
   the moved ids change (`writePositions`). A `.gsmap` that doesn't parse, or has a newer `version`, is never written.
 - Auto-placed (ELK) positions are not saved. Fixed points and notes without a unique `id` can't be dragged.
+- The reset button (circular arrow in the controls) empties `positions` after a confirmation (`clearPositions`, through the
+  same write queue as moves), and the view fits the new automatic layout.
+- Rebuilt React Flow nodes must keep `measured`: without it React Flow drops the node's measured handles and draws none of
+  its edges until it re-measures (the "all edges vanish while dragging" bug).
 - Layout rule (plan D19): left → right is time; assumptions are never on the time axis but above their host (below if
   no room, aside if a sequel is below); a `next` sequel sits under its bet; a dragged bet takes its hosted assumptions.
 - Playwright screenshot baselines (`tests/e2e/graph.spec.ts-snapshots/`, tagged `@visual`) are like goldens: update

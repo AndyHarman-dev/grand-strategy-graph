@@ -25,6 +25,7 @@ const opened: string[] = [];
 const status = document.getElementById('status')!;
 const mounted = mountGraph(document.getElementById('content')!, {
   move: (updates) => session.move(updates),
+  resetPositions: () => session.resetPositions(),
   openNote: (path) => {
     opened.push(path);
     status.textContent = `open ${path}`;

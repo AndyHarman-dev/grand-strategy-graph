@@ -1,4 +1,4 @@
-import { parseGsMap, writePositions, type GsMap, type GsPosition } from './gsmap';
+import { clearPositions, parseGsMap, writePositions, type GsMap, type GsPosition } from './gsmap';
 
 /**
  * Applies an edit to the file as it is on disk at write time (`vault.process` in Obsidian),
@@ -30,6 +30,10 @@ export class GsMapStore {
   private pending = new Map<string, GsPosition>();
   /** Handed to the writer, not yet confirmed. */
   private inflight = new Map<string, GsPosition>();
+  /** Resets queued or being written. While there is one, positions from before it are not shown. */
+  private resets = 0;
+  /** Counts resets: a write from before the latest one that fails must not bring its moves back. */
+  private epoch = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private queue: Promise<void> = Promise.resolve();
   private readonly delayMs: number;
@@ -54,15 +58,16 @@ export class GsMapStore {
   /** The map to display: disk state with unsaved moves on top. Null before a load or on a read error. */
   get map(): GsMap | null {
     if (!this.base) return null;
-    if (!this.inflight.size && !this.pending.size) return this.base;
-    const positions = { ...this.base.positions };
+    if (!this.resets && !this.inflight.size && !this.pending.size) return this.base;
+    // After a reset, the disk still has the old positions until its write lands: show none of them.
+    const positions = this.resets ? {} : { ...this.base.positions };
     for (const [id, position] of this.inflight) positions[id] = position;
     for (const [id, position] of this.pending) positions[id] = position;
     return { ...this.base, positions };
   }
 
   get hasUnsaved(): boolean {
-    return this.pending.size > 0 || this.inflight.size > 0;
+    return this.pending.size > 0 || this.inflight.size > 0 || this.resets > 0;
   }
 
   /** Record moved node positions (by note id). Returns false, changing nothing, while the file can't be read. */
@@ -80,6 +85,39 @@ export class GsMapStore {
     return true;
   }
 
+  /**
+   * Forget every saved position, so every node is laid out automatically again. Shows at once and
+   * is written now, after any write already under way; moves not written yet are dropped. Moves
+   * made after this are kept. Returns false, changing nothing, while the file can't be read.
+   */
+  resetPositions(): boolean {
+    if (!this.base) return false;
+    if (this.timer !== null) {
+      clearTimeout(this.timer);
+      this.timer = null;
+    }
+    this.pending.clear();
+    this.inflight.clear(); // still written, but the reset is queued after them and wipes them
+    this.resets++;
+    this.epoch++;
+    this.options.onChange?.();
+    this.queue = this.queue.then(async () => {
+      try {
+        const written = await this.options.write(clearPositions);
+        const read = typeof written === 'string' ? parseGsMap(written) : null;
+        if (read?.ok) this.base = read.map;
+        else if (this.base) this.base = { ...this.base, positions: {} };
+      } catch (error) {
+        // The old positions are still on disk, so they show again.
+        this.options.onWriteError?.(error);
+      } finally {
+        this.resets--;
+        this.options.onChange?.();
+      }
+    });
+    return true;
+  }
+
   /** Write every pending move now. Resolves when everything moved so far has been written or has failed. */
   flush(): Promise<void> {
     if (this.timer !== null) {
@@ -91,6 +129,7 @@ export class GsMapStore {
       this.pending.clear();
       for (const [id, position] of batch) this.inflight.set(id, position);
       const updates = Object.fromEntries(batch);
+      const epoch = this.epoch;
       this.queue = this.queue.then(async () => {
         try {
           const written = await this.options.write((text) => writePositions(text, updates));
@@ -100,8 +139,8 @@ export class GsMapStore {
             if (read.ok) this.base = read.map;
           }
         } catch (error) {
-          // Back to pending, unless a newer move of the same node is already waiting.
-          for (const [id, position] of batch) if (!this.pending.has(id)) this.pending.set(id, position);
+          // Back to pending, unless a newer move of the same node is already waiting or the positions were reset since.
+          if (epoch === this.epoch) for (const [id, position] of batch) if (!this.pending.has(id)) this.pending.set(id, position);
           this.options.onWriteError?.(error);
         } finally {
           for (const [id, position] of batch) if (this.inflight.get(id) === position) this.inflight.delete(id);

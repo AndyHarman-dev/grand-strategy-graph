@@ -185,6 +185,30 @@ describe('saving positions', () => {
   });
 });
 
+describe('resetting positions', () => {
+  it('empties positions in the .gsmap through vault.process, at once, changing nothing else', async () => {
+    const { mount } = await open();
+    const before = JSON.parse(app.vault.text(GSMAP_PATH));
+    expect(Object.keys(before.positions).length).toBeGreaterThan(0);
+    mount.host.move({ 'B-1': { x: 1, y: 1 } });
+    expect(mount.host.resetPositions()).toBe(true);
+    expect(lastState(mount).map!.positions).toEqual({});
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(app.vault.processed).toHaveLength(1);
+    expect(JSON.parse(app.vault.text(GSMAP_PATH))).toEqual({ ...before, positions: {} });
+    expect(lastState(mount).map!.positions).toEqual({});
+  });
+
+  it('refuses to reset a .gsmap it cannot read, and says so', async () => {
+    app.vault.files.get(GSMAP_PATH)!.text = '{"version": 2, "positions": {}}';
+    const { mount } = await open();
+    expect(mount.host.resetPositions()).toBe(false);
+    expect(notices.map((n) => n.message)).toEqual(["Strategy graph: Strategy.gsmap can't be read, so positions can't be reset."]);
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(app.vault.processed).toHaveLength(0);
+  });
+});
+
 describe('closing the tab', () => {
   it('writes a pending move, unmounts React and releases every event handler', async () => {
     const idle = listeners();

@@ -147,6 +147,11 @@ export class GraphSession {
     return this.store.move(updates);
   }
 
+  /** Forget every saved position (the graph's reset button). False when the `.gsmap` can't be written. */
+  resetPositions(): boolean {
+    return this.store.resetPositions();
+  }
+
   /** Write pending moves now. */
   flush(): Promise<void> {
     return this.store.flush();

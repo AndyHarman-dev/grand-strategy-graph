@@ -81,6 +81,11 @@ export class StrategyGraphView extends FileView {
         if (!saved) new Notice(`Strategy graph: ${file.name} can't be read, so positions are not saved.`);
         return saved;
       },
+      resetPositions: () => {
+        const saved = session.resetPositions();
+        if (!saved) new Notice(`Strategy graph: ${file.name} can't be read, so positions can't be reset.`);
+        return saved;
+      },
       openNote: (path, newTab) => this.openNote(path, newTab),
     });
     session.loadMap(await this.app.vault.read(file));

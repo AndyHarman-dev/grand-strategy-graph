@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyGsMap, parseGsMap, serializeGsMap, writePositions } from '../../src/core/gsmap';
+import { clearPositions, emptyGsMap, parseGsMap, serializeGsMap, writePositions } from '../../src/core/gsmap';
 import { plannedTestVault } from '../../tools/test-vault';
 
 const planned = plannedTestVault()['Strategy/Strategy.gsmap'];
@@ -68,5 +68,22 @@ describe('writePositions', () => {
   it('throws, writing nothing, on a file it cannot read', () => {
     expect(() => writePositions('{"version":2}', { CP: { x: 0, y: 0 } })).toThrow(/newer plugin/);
     expect(() => writePositions('not json', { CP: { x: 0, y: 0 } })).toThrow(/not valid JSON/);
+  });
+});
+
+describe('clearPositions', () => {
+  it('empties positions and keeps every other key, unknown ones included, in order', () => {
+    const text = '{\n\t"version": 1,\n\t"extra": 1,\n\t"positions": {\n\t\t"B-1": {"x": 1, "y": 2}\n\t},\n\t"cards": []\n}\n';
+    expect(clearPositions(text)).toBe('{\n\t"version": 1,\n\t"extra": 1,\n\t"positions": {},\n\t"cards": []\n}\n');
+  });
+
+  it('keeps the viewport, cards, frames and links of the planned test vault', () => {
+    const after = JSON.parse(clearPositions(planned));
+    expect(after.positions).toEqual({});
+    expect({ ...after, positions: undefined }).toEqual({ ...JSON.parse(planned), positions: undefined });
+  });
+
+  it('throws, writing nothing, on a file it cannot read', () => {
+    expect(() => clearPositions('{"version":2}')).toThrow(/newer plugin/);
   });
 });

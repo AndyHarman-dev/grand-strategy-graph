@@ -144,6 +144,90 @@ describe('GsMapStore', () => {
     expect(String(errors[0])).toMatch(/can't be read/);
   });
 
+  it('reset shows no position at once, drops unwritten moves, and writes once', async () => {
+    const { file, write } = disk(start);
+    const store = new GsMapStore({ write });
+    store.load(file.text);
+    store.move({ 'B-2': { x: 5, y: 5 } });
+    expect(store.resetPositions()).toBe(true);
+    expect(store.map!.positions).toEqual({});
+    expect(store.hasUnsaved).toBe(true);
+    await store.flush();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(file.writes).toBe(1);
+    expect(positionsOn(file.text)).toEqual({});
+    expect(store.map!.positions).toEqual({});
+    expect(store.hasUnsaved).toBe(false);
+  });
+
+  it('reset lands after a write already under way, and old positions never show again meanwhile', async () => {
+    const { file, write } = disk(start);
+    let release!: () => void;
+    file.hold = new Promise((r) => (release = r));
+    const store = new GsMapStore({ write });
+    store.load(file.text);
+    store.move({ 'B-2': { x: 5, y: 5 } });
+    const flushed = store.flush();
+    store.resetPositions();
+    expect(store.map!.positions).toEqual({});
+    store.load(file.text); // the file as it is before either write (e.g. a modify echo)
+    expect(store.map!.positions).toEqual({});
+    release();
+    await flushed;
+    expect(store.map!.positions).toEqual({}); // the move's write landed, the reset's not yet
+    await store.flush();
+    expect(file.writes).toBe(2);
+    expect(positionsOn(file.text)).toEqual({});
+    expect(store.map!.positions).toEqual({});
+  });
+
+  it('keeps a move made after the reset, written after it', async () => {
+    const { file, write } = disk(start);
+    let release!: () => void;
+    file.hold = new Promise((r) => (release = r));
+    const store = new GsMapStore({ write });
+    store.load(file.text);
+    store.resetPositions();
+    store.move({ 'B-3': { x: 3, y: 3 } });
+    expect(store.map!.positions).toEqual({ 'B-3': { x: 3, y: 3 } });
+    release();
+    await store.flush();
+    expect(positionsOn(file.text)).toEqual({ 'B-3': { x: 3, y: 3 } });
+  });
+
+  it('a write from before a reset that fails does not bring its move back', async () => {
+    const { file, write } = disk(start);
+    let release!: () => void;
+    file.hold = new Promise((r) => (release = r));
+    file.fail = true;
+    const errors: unknown[] = [];
+    const store = new GsMapStore({ write, onWriteError: (e) => errors.push(e) });
+    store.load(file.text);
+    store.move({ 'B-2': { x: 5, y: 5 } });
+    const flushed = store.flush();
+    store.resetPositions();
+    release();
+    await flushed;
+    await store.flush();
+    expect(errors).toHaveLength(2); // the move and the reset
+    expect(store.hasUnsaved).toBe(false);
+    // The reset failed too, so the disk positions show again, without B-2's move.
+    expect(store.map!.positions).toEqual({ 'B-1': { x: 0, y: 0 } });
+    file.fail = false;
+    file.hold = null;
+    await store.flush();
+    expect(positionsOn(file.text)).toEqual({ 'B-1': { x: 0, y: 0 } });
+  });
+
+  it('refuses a reset while the file cannot be read', async () => {
+    const { file, write } = disk('{"version": 9}');
+    const store = new GsMapStore({ write });
+    store.load(file.text);
+    expect(store.resetPositions()).toBe(false);
+    await store.flush();
+    expect(file.writes).toBe(0);
+  });
+
   it('tells its owner about every change', async () => {
     const { file, write } = disk(start);
     let changes = 0;

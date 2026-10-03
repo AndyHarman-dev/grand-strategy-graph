@@ -139,3 +139,16 @@ export function writePositions(text: string, updates: Readonly<Record<string, Gs
   for (const [id, { x, y }] of Object.entries(updates)) positions[id] = { x: Math.round(x), y: Math.round(y) };
   return JSON.stringify(raw, null, '\t') + '\n';
 }
+
+/**
+ * Remove every saved node position from a `.gsmap`'s text, so every node is laid out automatically
+ * again. Everything else (viewport, cards, frames, links, unknown keys) keeps its value and order.
+ * Throws when the text is not a `.gsmap` this version reads.
+ */
+export function clearPositions(text: string): string {
+  const read = parseGsMap(text);
+  if (!read.ok) throw new Error(`Strategy.gsmap can't be read: ${read.error}`);
+  const raw = (text.trim() ? JSON.parse(text) : emptyGsMap()) as Record<string, unknown>;
+  raw.positions = {};
+  return JSON.stringify(raw, null, '\t') + '\n';
+}

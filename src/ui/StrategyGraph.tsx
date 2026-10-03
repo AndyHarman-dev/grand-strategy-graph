@@ -1,6 +1,7 @@
 import {
   applyNodeChanges,
   Background,
+  ControlButton,
   Controls,
   Panel,
   ReactFlow,
@@ -25,6 +26,8 @@ export interface StrategyGraphProps {
   viewport?: GsMap['viewport'];
   /** Called on drag end with the moved nodes' positions by note id. Null when nothing can be saved: dragging is off. */
   onMove: ((updates: Record<string, GsPosition>) => void) | null;
+  /** The reset button: forget every saved position. Null when nothing can be saved: the button is off. */
+  onResetPositions?: (() => void) | null;
   /** Double-click on a node. `newTab` when Ctrl/Cmd was held. */
   onOpenNote?: (path: string, newTab: boolean) => void;
   /** Center on and select this node; a new `nonce` repeats the request. */
@@ -80,7 +83,7 @@ export function StrategyGraph(props: StrategyGraphProps) {
     <div className="gs-graph">
       {started ? (
         <ReactFlowProvider>
-          <Flow {...props} placed={layout.positions} />
+          <Flow {...props} placed={layout.positions} complete={layout.complete} />
         </ReactFlowProvider>
       ) : (
         <div className="gs-graph-loading">Laying out the graph…</div>
@@ -89,7 +92,18 @@ export function StrategyGraph(props: StrategyGraphProps) {
   );
 }
 
-function Flow({ graph, placed, viewport, onMove, onOpenNote, reveal, notices }: StrategyGraphProps & { placed: Record<string, GsPosition> }) {
+function Flow({
+  graph,
+  positions,
+  placed,
+  complete,
+  viewport,
+  onMove,
+  onResetPositions,
+  onOpenNote,
+  reveal,
+  notices,
+}: StrategyGraphProps & { placed: Record<string, GsPosition>; complete: boolean }) {
   const flow = useReactFlow<StrategyFlowNode>();
   const editable = onMove !== null;
   const build = useCallback(
@@ -105,6 +119,10 @@ function Flow({ graph, placed, viewport, onMove, onOpenNote, reveal, notices }: 
   const following = useRef<Map<string, { start: { x: number; y: number }; host: string; hostStart: { x: number; y: number } }>>(new Map());
   const [ready, setReady] = useState(false);
   const revealed = useRef<number | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  /** A reset is waiting for its new layout, to fit the view to it. */
+  const fitAfterReset = useRef(false);
+  const hasSaved = Object.keys(positions).length > 0;
 
   // New data or positions: rebuild the nodes, keeping selection, and keeping a node that is mid-drag where the pointer has it.
   // `measured` is React Flow's: a node without it loses its measured handles, and its edges are not
@@ -199,6 +217,20 @@ function Flow({ graph, placed, viewport, onMove, onOpenNote, reveal, notices }: 
     void flow.setCenter(at.x + size.width / 2, at.y + size.height / 2, { zoom: Math.max(flow.getZoom(), 1), duration: 300 });
   }, [ready, reveal, graph, placed, flow]);
 
+  const resetPositions = useCallback(() => {
+    setConfirmingReset(false);
+    if (!onResetPositions) return;
+    fitAfterReset.current = true;
+    onResetPositions();
+  }, [onResetPositions]);
+
+  // After a reset, show the whole new layout once every node has a place.
+  useEffect(() => {
+    if (!fitAfterReset.current || hasSaved || !complete || nodes.some((n) => n.hidden)) return;
+    fitAfterReset.current = false;
+    void flow.fitView({ padding: 0.1, duration: 300 });
+  }, [nodes, complete, hasSaved, flow]);
+
   return (
     <ReactFlow<StrategyFlowNode>
       nodes={nodes}
@@ -219,13 +251,44 @@ function Flow({ graph, placed, viewport, onMove, onOpenNote, reveal, notices }: 
       zoomOnDoubleClick={false}
     >
       <Background gap={20} />
-      <Controls showInteractive={false} />
+      <Controls showInteractive={false}>
+        <ControlButton
+          className="gs-reset-layout"
+          onClick={() => setConfirmingReset(!confirmingReset)}
+          disabled={!onResetPositions || !hasSaved}
+          title="Reset layout: forget every saved position"
+          aria-label="Reset layout"
+        >
+          <ResetIcon />
+        </ControlButton>
+      </Controls>
+      {confirmingReset && (
+        <Panel position="bottom-center">
+          <div className="gs-confirm" role="dialog" aria-label="Reset layout">
+            <span>Forget every saved position and lay the whole graph out automatically?</span>
+            <button className="mod-warning" onClick={resetPositions}>
+              Reset
+            </button>
+            <button onClick={() => setConfirmingReset(false)}>Cancel</button>
+          </div>
+        </Panel>
+      )}
       {notices && notices.length > 0 && (
         <Panel position="top-left">
           <Notices notices={notices} onOpenNote={onOpenNote} />
         </Panel>
       )}
     </ReactFlow>
+  );
+}
+
+/** A circular arrow (Lucide's rotate-ccw), drawn with strokes: React Flow's control CSS fills icons, so fill is off here. */
+function ResetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" style={{ fill: 'none' }} stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
   );
 }
 

@@ -104,6 +104,49 @@ test('edges stay drawn through drags and saves, every frame', async ({ page }) =
   expect(await page.evaluate(() => (window as unknown as { minEdges: number }).minEdges)).toBe(19);
 });
 
+/** Every node's offset from B-1, independent of the viewport. */
+async function layoutOf(page: Page) {
+  const boxes = await page.locator('.react-flow__node').evaluateAll((els) =>
+    els.map((el) => ({ id: el.getAttribute('data-id')!, ...JSON.parse(JSON.stringify(el.getBoundingClientRect())) }))
+  );
+  const b1 = boxes.find((b) => b.id === 'B-1')!;
+  return Object.fromEntries(boxes.map((b) => [b.id, { dx: Math.round(b.x - b1.x), dy: Math.round(b.y - b1.y) }]));
+}
+
+test('the reset button forgets every saved position, after a confirmation, and shows the automatic layout', async ({ page }) => {
+  await page.goto('/?layout=auto');
+  await expect(page.locator('.react-flow__node')).toHaveCount(18);
+  await expect(page.getByRole('button', { name: 'Reset layout' })).toBeDisabled(); // nothing saved
+  const auto = await layoutOf(page);
+
+  await page.goto('/?saveDelay=200');
+  await expect(node(page, 'B-1')).toBeVisible();
+  await drag(page, 'B-3', 200, 150);
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(1);
+  await page.getByRole('button', { name: 'Reset layout' }).click();
+  await page.getByRole('dialog', { name: 'Reset layout' }).getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.waitForTimeout(300);
+  expect(await page.evaluate(() => window.gsDev.writes())).toBe(1);
+
+  await page.getByRole('button', { name: 'Reset layout' }).click();
+  await page.getByRole('dialog', { name: 'Reset layout' }).getByRole('button', { name: 'Reset' }).click();
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(2);
+  expect(await positions(page)).toEqual({});
+  await expect(page.locator('.react-flow__edge')).toHaveCount(19);
+  await page.waitForTimeout(400); // the fit
+  expect(await layoutOf(page)).toEqual(auto);
+  // The view is fitted to the new layout: every node is inside the pane.
+  const pane = (await page.locator('.react-flow').boundingBox())!;
+  for (const box of await page.locator('.react-flow__node').evaluateAll((els) => els.map((el) => JSON.parse(JSON.stringify(el.getBoundingClientRect()))))) {
+    expect(box.x).toBeGreaterThanOrEqual(pane.x);
+    expect(box.y).toBeGreaterThanOrEqual(pane.y);
+    expect(box.x + box.width).toBeLessThanOrEqual(pane.x + pane.width);
+    expect(box.y + box.height).toBeLessThanOrEqual(pane.y + pane.height);
+  }
+  await expect(page.getByRole('button', { name: 'Reset layout' })).toBeDisabled();
+});
+
 test('without saved positions, assumptions sit above their host and the sequel below its bet (D19)', async ({ page }) => {
   await page.goto('/?layout=auto');
   await expect(page.locator('.react-flow__node')).toHaveCount(18);

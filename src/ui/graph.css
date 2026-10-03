@@ -162,3 +162,25 @@
   cursor: pointer;
   color: inherit;
 }
+
+/* Reset layout: the circular arrow in the controls, and its confirmation. */
+.gs-graph .react-flow__controls-button.gs-reset-layout:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.gs-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-confirm .mod-warning {
+  background: var(--background-modifier-error, #e93147);
+  color: var(--text-on-accent, #fff);
+}

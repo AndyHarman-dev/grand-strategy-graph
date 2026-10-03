@@ -7,6 +7,8 @@ import { StrategyGraph } from './StrategyGraph';
 export interface GraphHost {
   /** Positions dragged on the graph, by note id. Returns false when they can't be saved. */
   move(updates: Record<string, GsPosition>): boolean;
+  /** Forget every saved position, so the whole graph is laid out automatically again. Returns false when that can't be saved. */
+  resetPositions(): boolean;
   openNote?(path: string, newTab: boolean): void;
 }
 
@@ -19,6 +21,7 @@ export interface MountedGraph {
 export function mountGraph(el: HTMLElement, host: GraphHost): MountedGraph {
   const root = createRoot(el);
   const onMove = (updates: Record<string, GsPosition>) => void host.move(updates);
+  const onResetPositions = () => void host.resetPositions();
   const onOpenNote = host.openNote?.bind(host);
   return {
     render(state, reveal = null) {
@@ -33,6 +36,7 @@ export function mountGraph(el: HTMLElement, host: GraphHost): MountedGraph {
             positions={state.map?.positions ?? EMPTY}
             viewport={state.map?.viewport}
             onMove={state.map ? onMove : null}
+            onResetPositions={state.map ? onResetPositions : null}
             onOpenNote={onOpenNote}
             reveal={reveal}
             notices={state.notices}
