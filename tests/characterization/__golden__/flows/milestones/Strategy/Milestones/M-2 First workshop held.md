@@ -1,8 +1,9 @@
 ---
-id: M-1
+id: M-2
 type: milestone
 status: open
 serves:
+  - "[[M-1 Studio lease signed]]"
 assumptions:
 ---
 ## The Milestone

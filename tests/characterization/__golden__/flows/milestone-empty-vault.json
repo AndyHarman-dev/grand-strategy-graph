@@ -1,0 +1,25 @@
+{
+  "ops": [
+    {
+      "op": "createFolder",
+      "path": "Strategy/Milestones"
+    },
+    {
+      "op": "create",
+      "path": "Strategy/Milestones/M-1 First.md"
+    },
+    {
+      "op": "openFile",
+      "path": "Strategy/Milestones/M-1 First.md"
+    }
+  ],
+  "notices": [
+    {
+      "message": "Created M-1 First."
+    }
+  ],
+  "console": [],
+  "changed": [
+    "Strategy/Milestones/M-1 First.md"
+  ]
+}

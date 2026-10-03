@@ -312,7 +312,7 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
 **Model: Sonnet 5.** Renders Phase 1 smells that are already tested.
 
 - A badge on each node, plus a "Smells" panel listing orphans, unreached fixed points, gating violations, falsified dependencies and overdue bets. Clicking an item focuses the node.
-- **New smell (D17):** an active bet that requires a milestone still `open`. Added to `src/core/smells.ts` with tests first, then rendered here.
+- **New smell (D17):** an active bet that requires a milestone still `open` (`requires-open-milestone`). Already in `src/core/smells.ts` with tests (added 2026-10-03 with the D16/D17 code); this phase only renders it.
 - **Review walk:** steps through each fixed point, then outward along the `serves` chains that lead to it (those chains are the strategy's routes, D16), in a fixed order (replaces canvas presentation mode).
 
 ## Phase 9 — Retire `The Map.canvas`
@@ -474,6 +474,12 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Actions:** plan only. Added D17 and a milestone schema block; widened `requires` to point at bets or milestones (D7 note); added the milestone node style (5b), the bet form's milestone picker (4) and the `requires-open-milestone` smell (8). The user confirmed the dashed-edge rule stays as "Unverified serve: dashed".
   - **Decisions:** D17: bets serve a milestone, later bets `require` it, the milestone serves a fixed point or another milestone, and it has `status: open | reached`.
   - **Verification:** none needed for a plan edit. Code not yet changed, so it disagrees with the plan: `src/core/schema.ts` has no milestone status, `requires` is bet→bet only, and `serves` from a milestone may point at a bet (the relation table needs per-source targets for that). In PR 1, `planMilestone` and the milestone form write no status and don't offer milestones under `requires`. With D16 this is one batch of code changes still to make.
+
+- **2026-10-03**:
+  - **Context:** the user asked for the D16/D17 code changes in PR 1 before merging it, plus two review findings: a duplicate link appended when the existing one is unquoted or folder-qualified, and `?` left in filenames.
+  - **Actions:** `schema.ts`: no `route` type; milestones get `status: open | reached`; `RELATIONS` now lists allowed targets per holder type (`to: { bet: [...], milestone: [...] }`), so a bet `requires` a bet or a milestone and a milestone `serves` only milestones and fixed points. `graph.ts` and the migration planner read it through `targetsOf`. `smells.ts`: new `requires-open-milestone` (active bet, required milestone with status exactly `open`; `related` lists the milestones). PR 1: removed `planRoute`, `buildRouteContent`, `RouteFormData`, `ROUTES_FOLDER`, the Route and Ghost Route commands and `NoteModal`; added `MilestoneModal`; the milestone note is created `status: open`; the bet form's "Requires" offers bets and milestones. The form pickers and the planners' folder checks now come from `RELATIONS` (`pickFolders`), which also settles review finding 3. `addLinkToField` matches folder-qualified links and YAML's nested list for an unquoted `[[link]]`. `sanitizeTitle` also replaces `? " < >`.
+  - **Decisions:** none new. The smell landed now, not in Phase 8, because the user asked for it with the schema change.
+  - **Verification:** typecheck, 197 tests, build. Characterization goldens changed on purpose: route goldens deleted; milestone content gains `status: open`; plugin registrations lose the two route commands; refusal messages no longer list `Strategy/Routes`; `pure.json` gains a `? " < >` case; new milestone, bet-requires-milestone and `MilestoneModal` goldens. Migration goldens unchanged. Mutation checks on the new smell and the link matching all fail at least one test.
 
 ## Decisions Log
 

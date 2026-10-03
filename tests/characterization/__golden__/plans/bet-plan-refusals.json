@@ -21,13 +21,13 @@
     "error": "\"Ultimately serves\" must be notes in Strategy/Fixed Points (not B-1 Get a D7 visa). Nothing was created."
   },
   "requiresAFixedPoint": {
-    "error": "\"Requires\" must be notes in Strategy/Bets (not FP-1 Live in Portugal). Nothing was created."
+    "error": "\"Requires\" must be notes in Strategy/Bets, Strategy/Milestones (not FP-1 Live in Portugal). Nothing was created."
   },
   "nextAnAssumption": {
     "error": "\"Next\" must be notes in Strategy/Bets (not A-1 D7 accepts freelance income). Nothing was created."
   },
   "servesAnAssumption": {
-    "error": "\"Serves\" must be notes in Strategy/Fixed Points, Strategy/Bets, Strategy/Routes, Strategy/Milestones (not A-1 D7 accepts freelance income). Nothing was created."
+    "error": "\"Serves\" must be notes in Strategy/Bets, Strategy/Milestones, Strategy/Fixed Points (not A-1 D7 accepts freelance income). Nothing was created."
   },
   "existingAssumptionIsABet": {
     "error": "Existing assumptions must be notes in Strategy/Assumptions (not B-1 Get a D7 visa). Nothing was created."

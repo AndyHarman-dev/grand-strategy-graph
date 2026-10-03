@@ -31,24 +31,10 @@
       ]
     },
     {
-      "id": "create-route",
-      "name": "Create new Route",
-      "opens": [
-        "NoteModal"
-      ]
-    },
-    {
-      "id": "create-ghost-route",
-      "name": "Create new Ghost Route",
-      "opens": [
-        "NoteModal"
-      ]
-    },
-    {
       "id": "create-milestone",
       "name": "Create new Milestone",
       "opens": [
-        "NoteModal"
+        "MilestoneModal"
       ]
     }
   ],

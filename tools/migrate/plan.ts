@@ -13,7 +13,7 @@ import { emptyGsMap, GSMAP_PATH, serializeGsMap, type GsEndpoint, type GsLink, t
 import { parseIds } from '../../src/core/ids';
 import { linkpathOf, resolveLinkpath } from '../../src/core/links';
 import { STRATEGY_ROOT } from '../../src/core/memory-adapter';
-import { isIgnoredType, isNodeType, RELATIONS, statusesFor, type NodeType } from '../../src/core/schema';
+import { isIgnoredType, isNodeType, relationFor, RELATIONS, statusesFor, targetsOf, type NodeType } from '../../src/core/schema';
 import { eolOf, joinNote, sameHeading, sections, splitNote, type SplitNote } from './markdown';
 import type {
   Ambiguity,
@@ -344,9 +344,8 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
   const problemOf = (t: Target) =>
     t.kind === 'malformed' ? `malformed (${t.why})` : t.kind === 'dangling' ? 'dangling (resolves to no note)' : t.kind === 'self' ? 'a self-loop' : '';
 
-  const ruleFor = (field: RelField) => RELATIONS.find((r) => r.field === field)!;
   const allowed = (field: RelField, holder: NodeType | null, target: NodeType | null) =>
-    holder !== null && target !== null && ruleFor(field).from.includes(holder) && (ruleFor(field).to as readonly NodeType[]).includes(target);
+    holder !== null && target !== null && !!targetsOf(relationFor(field), holder)?.includes(target);
 
   // ---------------------------------------------------------------- field plans
   const fieldPlans = new Map<string, Map<RelField, FieldPlan>>();
@@ -594,7 +593,7 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
           continue;
         }
         const answer = askLink(note, 'body:depended-on-by', raw, t, (nt) =>
-          allowed('assumptions', nt.type, 'assumption') ? null : 'must be a bet, fixed point, route or milestone'
+          allowed('assumptions', nt.type, 'assumption') ? null : 'must be a bet, fixed point or milestone'
         );
         if (answer.kind === 'open') record(base, open(answer.a));
         else if (answer.kind === 'drop') record(base, { kind: 'dropped', reason: `${problemOf(t)}; dropped (resolution)` });

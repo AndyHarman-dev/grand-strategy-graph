@@ -1,13 +1,12 @@
 import { App, Notice, TFile } from 'obsidian';
-import { addLinkToField, planAssumption, planBet, planMilestone, planRoute, type ActionPlan } from '../core/actions';
-import { ASSUMPTIONS_FOLDER, BETS_FOLDER, MILESTONES_FOLDER, ROUTES_FOLDER } from '../core/constants';
+import { addLinkToField, planAssumption, planBet, planMilestone, type ActionPlan } from '../core/actions';
+import { ASSUMPTIONS_FOLDER, BETS_FOLDER, MILESTONES_FOLDER } from '../core/constants';
 import {
   isPlanError,
   type AssumptionFormData,
   type BetFormData,
   type MilestoneFormData,
   type PlanError,
-  type RouteFormData,
 } from '../core/plan';
 import { today as todayIso } from './today';
 
@@ -85,11 +84,6 @@ export async function createBetFromForm(app: App, data: BetFormData<TFile>): Pro
 export async function createAssumptionFromForm(app: App, data: AssumptionFormData<TFile>): Promise<void> {
   await ensureFolder(app, ASSUMPTIONS_FOLDER);
   await execute(app, planAssumption(app.vault, data, todayIso()), 'assumption');
-}
-
-export async function createRouteFromForm(app: App, data: RouteFormData<TFile>): Promise<void> {
-  await ensureFolder(app, ROUTES_FOLDER);
-  await execute(app, planRoute(app.vault, data, todayIso()), 'route');
 }
 
 export async function createMilestoneFromForm(app: App, data: MilestoneFormData<TFile>): Promise<void> {

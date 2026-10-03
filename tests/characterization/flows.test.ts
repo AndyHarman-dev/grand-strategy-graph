@@ -8,7 +8,6 @@ import { json } from '../support/serialize';
 type Flow = (app: any, data: any) => Promise<void>;
 const createBetFromForm = create.createBetFromForm as Flow;
 const createAssumptionFromForm = create.createAssumptionFromForm as Flow;
-const createRouteFromForm = create.createRouteFromForm as Flow;
 const createMilestoneFromForm = create.createMilestoneFromForm as Flow;
 
 /**
@@ -162,26 +161,25 @@ describe('create flows (schema v2)', () => {
     await expectFlow('assumption-linked', vault, before);
   });
 
-  it('create route, ghost route and milestone', async () => {
+  it('create milestones: one serving a fixed point, one serving that milestone', async () => {
     const before = readTestVault();
     const vault = new FakeVault(before);
     const app = makeApp(vault) as any;
-    const fp1 = vault.file('Strategy/Fixed Points/FP-1 Live in Portugal.md');
-    await createRouteFromForm(app, { ghost: false, title: 'Study → H1B', description: 'US study path', servesFiles: [fp1] });
-    await createRouteFromForm(app, { ghost: true, title: 'O1 visa?', description: '', servesFiles: [fp1] });
-    await createMilestoneFromForm(app, { title: 'First workshop held', description: '', servesFiles: [vault.file('Strategy/Bets/B-8 Teach pottery workshops.md')] });
-    await expectFlow('route-milestone', vault, before);
+    const fp2 = vault.file('Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md');
+    await createMilestoneFromForm(app, { title: 'Studio lease signed', description: 'Keys in hand', servesFiles: [fp2] });
+    await createMilestoneFromForm(app, { title: 'First workshop held?', description: '', servesFiles: [vault.file('Strategy/Milestones/M-1 Studio lease signed.md')] });
+    await expectFlow('milestones', vault, before);
   });
 
-  it('create route in an empty vault creates the folder first; a refused plan writes nothing', async () => {
+  it('create milestone in an empty vault creates the folder first; a refused plan writes nothing', async () => {
     const vault = new FakeVault();
-    await createRouteFromForm(makeApp(vault) as any, { ghost: false, title: 'First', description: '', servesFiles: [] });
-    await expectFlow('route-empty-vault', vault, {});
+    await createMilestoneFromForm(makeApp(vault) as any, { title: 'First', description: '', servesFiles: [] });
+    await expectFlow('milestone-empty-vault', vault, {});
 
-    const before = { ...readTestVault(), 'Strategy/Routes/R-1 A.md': '', 'Strategy/Routes/R-1 B.md': '' };
+    const before = { ...readTestVault(), 'Strategy/Milestones/M-1 A.md': '', 'Strategy/Milestones/M-1 B.md': '' };
     const dup = new FakeVault(before);
-    await createRouteFromForm(makeApp(dup) as any, { ghost: false, title: 'T', description: '', servesFiles: [] });
-    await expectFlow('route-refused', dup, before);
+    await createMilestoneFromForm(makeApp(dup) as any, { title: 'T', description: '', servesFiles: [] });
+    await expectFlow('milestone-refused', dup, before);
   });
 
   it('create assumption reports the notes already written when a link append fails', async () => {

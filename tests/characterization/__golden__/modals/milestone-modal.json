@@ -1,0 +1,26 @@
+{
+  "missingTitle": {
+    "submitted": [],
+    "closed": false,
+    "notices": [
+      {
+        "message": "A title is required."
+      }
+    ]
+  },
+  "milestone": {
+    "submitted": [
+      {
+        "title": "Lease signed",
+        "description": "d",
+        "servesFiles": [
+          {
+            "file": "Strategy/Fixed Points/FP-1 Live in Portugal.md"
+          }
+        ]
+      }
+    ],
+    "closed": true,
+    "notices": []
+  }
+}

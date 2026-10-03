@@ -1,7 +1,7 @@
 # grand-strategy-graph
 
 Obsidian plugin `strategy-bet-creator`: creates Grand Strategy bets and assumptions, and (from Phase 5)
-renders the strategy as a data-driven graph. The full plan, decisions (D1–D13) and phase list live in
+renders the strategy as a data-driven graph. The full plan, decisions (D1–D17) and phase list live in
 `docs/plans/2026-09-30-strategy-graph.md`. Read it before starting a phase.
 
 ## Hard rules

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { notices, openedModals, resetObsidianMock } from '../mocks/obsidian';
 import { makeApp, testVault } from '../support/fake-app';
 import StrategyBetCreator from '../../src/main';
-import { AssumptionModal, BetModal, NoteModal } from '../../src/obsidian/modals';
+import { AssumptionModal, BetModal, MilestoneModal } from '../../src/obsidian/modals';
 import { json } from '../support/serialize';
 
 /**
@@ -116,23 +116,21 @@ describe('modals and plugin wiring (schema v2)', () => {
     await expect(json(results)).toMatchFileSnapshot('__golden__/modals/assumption-modal.json');
   });
 
-  it('NoteModal.handleCreate validation and submitted data, per kind', async () => {
+  it('MilestoneModal.handleCreate validation and submitted data', async () => {
     const vault = testVault();
     const fp1 = vault.file('Strategy/Fixed Points/FP-1 Live in Portugal.md');
-    const submit = (kind: 'route' | 'ghost-route' | 'milestone', fields: Record<string, unknown>) => {
+    const submit = (fields: Record<string, unknown>) => {
       const submitted: unknown[] = [];
-      const modal: any = new NoteModal(makeApp(vault) as any, kind, (data) => submitted.push(data));
+      const modal: any = new MilestoneModal(makeApp(vault) as any, (data: unknown) => submitted.push(data));
       Object.assign(modal, fields);
       modal.handleCreate();
       return { submitted, closed: modal.closed, notices: notices.splice(0) };
     };
     const results = {
-      missingTitle: submit('route', { title: '  ' }),
-      route: submit('route', { title: ' Study ', description: ' d ', servesFiles: [fp1] }),
-      ghost: submit('ghost-route', { title: 'O1?', servesFiles: [fp1] }),
-      milestone: submit('milestone', { title: 'Done', description: '', servesFiles: [] }),
+      missingTitle: submit({ title: '  ' }),
+      milestone: submit({ title: ' Lease signed ', description: ' d ', servesFiles: [fp1] }),
     };
-    await expect(json(results)).toMatchFileSnapshot('__golden__/modals/note-modal.json');
+    await expect(json(results)).toMatchFileSnapshot('__golden__/modals/milestone-modal.json');
   });
 
   it('plugin registers the same ribbon icons and commands', async () => {

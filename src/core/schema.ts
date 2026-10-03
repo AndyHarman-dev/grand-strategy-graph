@@ -1,19 +1,21 @@
 /**
- * Schema v2 as types and tables (plan decisions D2–D7, D13).
+ * Schema v2 as types and tables (plan decisions D2–D7, D13, D16, D17).
  * Pure data: no `obsidian` import, no behavior beyond lookups.
  */
 
-export const NODE_TYPES = ['bet', 'assumption', 'fixed-point', 'route', 'milestone', 'current-position'] as const;
+/** No `route` type (D16): a route is a `serves` chain from bets up to a fixed point. */
+export const NODE_TYPES = ['bet', 'assumption', 'fixed-point', 'milestone', 'current-position'] as const;
 export type NodeType = (typeof NODE_TYPES)[number];
 
 /**
- * Allowed `status` values per type. Types without an entry (fixed points,
- * milestones, the current position) carry no status, so nothing is checked.
+ * Allowed `status` values per type. Types without an entry (fixed points, the
+ * current position) carry no status, so nothing is checked. A milestone is a
+ * checkpoint that is `open` until it is `reached` (D17).
  */
 export const STATUSES = {
   bet: ['active', 'dormant', 'won', 'killed', 'extended'],
   assumption: ['unverified', 'confirmed', 'falsified', 'undeterminable'],
-  route: ['active', 'ghost'],
+  milestone: ['open', 'reached'],
 } as const satisfies Partial<Record<NodeType, readonly string[]>>;
 
 export const EDGE_KINDS = ['serves', 'ultimately-serves', 'requires', 'next', 'assumption'] as const;
@@ -23,20 +25,35 @@ export interface RelationRule {
   /** Frontmatter field that holds the links. */
   field: string;
   kind: EdgeKind;
-  /** Types that may carry the field. */
-  from: readonly NodeType[];
-  /** Types the links may point at. */
-  to: readonly NodeType[];
+  /**
+   * Per type that may carry the field, the types its links may point at.
+   * A type without an entry cannot carry the field.
+   */
+  to: Readonly<Partial<Record<NodeType, readonly NodeType[]>>>;
 }
 
 /** One row per relationship field: which edge it makes, from whom, to what. */
 export const RELATIONS: readonly RelationRule[] = [
-  { field: 'serves', kind: 'serves', from: ['bet', 'route', 'milestone'], to: ['bet', 'route', 'milestone', 'fixed-point'] },
-  { field: 'ultimately-serves', kind: 'ultimately-serves', from: ['bet'], to: ['fixed-point'] },
-  { field: 'requires', kind: 'requires', from: ['bet'], to: ['bet'] },
-  { field: 'next', kind: 'next', from: ['bet'], to: ['bet'] },
-  { field: 'assumptions', kind: 'assumption', from: ['bet', 'fixed-point', 'route', 'milestone'], to: ['assumption'] },
+  // A bet serves a bet, a milestone or a fixed point; a milestone serves the checkpoint or fixed point beyond it (D17).
+  { field: 'serves', kind: 'serves', to: { bet: ['bet', 'milestone', 'fixed-point'], milestone: ['milestone', 'fixed-point'] } },
+  { field: 'ultimately-serves', kind: 'ultimately-serves', to: { bet: ['fixed-point'] } },
+  // Prerequisites: bets, or milestones that must be reached first (D17).
+  { field: 'requires', kind: 'requires', to: { bet: ['bet', 'milestone'] } },
+  { field: 'next', kind: 'next', to: { bet: ['bet'] } },
+  { field: 'assumptions', kind: 'assumption', to: { bet: ['assumption'], 'fixed-point': ['assumption'], milestone: ['assumption'] } },
 ];
+
+/** The rule for a field. Throws on a field that is not in RELATIONS (a programming error). */
+export function relationFor(field: string): RelationRule {
+  const rule = RELATIONS.find((r) => r.field === field);
+  if (!rule) throw new Error(`Not a relation field: ${field}`);
+  return rule;
+}
+
+/** The types `holder` may link to through `rule`, or null when a `holder` cannot carry the field. */
+export function targetsOf(rule: RelationRule, holder: NodeType): readonly NodeType[] | null {
+  return rule.to[holder] ?? null;
+}
 
 /**
  * Types that are known but are not graph nodes (D15): such notes are skipped like notes

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildAssumptionContent, buildBetContent, buildMilestoneContent, buildRouteContent } from '../../src/core/content';
+import { buildAssumptionContent, buildBetContent, buildMilestoneContent } from '../../src/core/content';
 
 const BET_CASES: Record<string, any> = {
   'bet-minimal': {
@@ -48,15 +48,9 @@ const ASSUMPTION_CASES: Record<string, any> = {
   },
 };
 
-const ROUTE_CASES: Record<string, any> = {
-  'route-minimal': { today: '2026-10-01', id: 'R-1', ghost: false, description: '', servesBasenames: [] },
-  'route-full': { today: '2026-10-01', id: 'R-2', ghost: false, description: 'Study in the US, then H1B.', servesBasenames: ['FP-1 Live in Portugal', 'B-4 Save 20000 for kiln and lease'] },
-  'route-ghost': { today: '2026-10-01', id: 'R-3', ghost: true, description: '', servesBasenames: ['FP-2 Own a profitable ceramics studio'] },
-};
-
 const MILESTONE_CASES: Record<string, any> = {
   'milestone-minimal': { today: '2026-10-01', id: 'M-1', description: '', servesBasenames: [] },
-  'milestone-full': { today: '2026-10-01', id: 'M-2', description: 'First paid workshop held.', servesBasenames: ['B-8 Teach pottery workshops'] },
+  'milestone-full': { today: '2026-10-01', id: 'M-2', description: 'First paid workshop held.', servesBasenames: ['M-1 Studio lease signed', 'FP-2 Own a profitable ceramics studio'] },
 };
 
 describe('note content builders (schema v2)', () => {
@@ -66,10 +60,6 @@ describe('note content builders (schema v2)', () => {
 
   it.each(Object.keys(ASSUMPTION_CASES))('buildAssumptionContent: %s', async (name) => {
     await expect(buildAssumptionContent(ASSUMPTION_CASES[name])).toMatchFileSnapshot(`__golden__/content/${name}.md`);
-  });
-
-  it.each(Object.keys(ROUTE_CASES))('buildRouteContent: %s', async (name) => {
-    await expect(buildRouteContent(ROUTE_CASES[name])).toMatchFileSnapshot(`__golden__/content/${name}.md`);
   });
 
   it.each(Object.keys(MILESTONE_CASES))('buildMilestoneContent: %s', async (name) => {

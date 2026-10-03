@@ -6,14 +6,15 @@ export type SmellCode =
   | 'gating-violation'
   | 'falsified-dependency'
   | 'overdue-bet'
-  | 'dormant-not-next';
+  | 'dormant-not-next'
+  | 'requires-open-milestone';
 
 export interface Smell {
   code: SmellCode;
   /** Key of the node the smell is on. */
   node: string;
   message: string;
-  /** Keys of the nodes that cause it (assumptions, for the two assumption smells). */
+  /** Keys of the nodes that cause it (assumptions for the two assumption smells, milestones for `requires-open-milestone`). */
   related: string[];
 }
 
@@ -33,6 +34,8 @@ const datePart = (value: string) => value.slice(0, 10);
  * - `falsified-dependency`: an active bet leans on a falsified assumption
  * - `overdue-bet`: an active bet's deadline is before today
  * - `dormant-not-next`: a dormant bet that no bet names as its `next`
+ * - `requires-open-milestone`: an active bet requires a milestone still `open` (D17): it started
+ *   from a checkpoint that was not reached
  *
  * "Active" means status `active` exactly. Output order: by node key, then code.
  */
@@ -40,6 +43,7 @@ export function findSmells(graph: Graph, { today }: SmellOptions): Smell[] {
   const nodes = new Map(graph.nodes.map((n) => [n.key, n]));
   const serves = new Map<string, string[]>();
   const assumptions = new Map<string, string[]>();
+  const requires = new Map<string, string[]>();
   const sequels = new Set<string>();
   const served = new Set<string>();
   for (const edge of graph.edges) {
@@ -48,6 +52,8 @@ export function findSmells(graph: Graph, { today }: SmellOptions): Smell[] {
       serves.set(edge.from, [...(serves.get(edge.from) ?? []), edge.to]);
     } else if (edge.kind === 'assumption') {
       assumptions.set(edge.from, [...(assumptions.get(edge.from) ?? []), edge.to]);
+    } else if (edge.kind === 'requires') {
+      requires.set(edge.from, [...(requires.get(edge.from) ?? []), edge.to]);
     } else if (edge.kind === 'next') sequels.add(edge.to);
   }
 
@@ -94,6 +100,12 @@ export function findSmells(graph: Graph, { today }: SmellOptions): Smell[] {
     const falsified = deps.filter((a) => a.status === 'falsified');
     if (falsified.length) {
       add('falsified-dependency', node, `${label(node)} is active but depends on falsified assumptions: ${falsified.map(label).join(', ')}.`, falsified.map((a) => a.key));
+    }
+    const openMilestones = (requires.get(node.key) ?? [])
+      .map((k) => nodes.get(k))
+      .filter((n): n is GraphNode => !!n && n.type === 'milestone' && n.status === 'open');
+    if (openMilestones.length) {
+      add('requires-open-milestone', node, `${label(node)} is active but requires milestones not reached yet: ${openMilestones.map(label).join(', ')}.`, openMilestones.map((m) => m.key));
     }
   }
 

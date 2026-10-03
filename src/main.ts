@@ -1,7 +1,6 @@
 import { Notice, Plugin } from 'obsidian';
-import type { MilestoneFormData, RouteFormData } from './core/plan';
-import { createAssumptionFromForm, createBetFromForm, createMilestoneFromForm, createRouteFromForm } from './obsidian/create';
-import { AssumptionModal, BetModal, NoteModal } from './obsidian/modals';
+import { createAssumptionFromForm, createBetFromForm, createMilestoneFromForm } from './obsidian/create';
+import { AssumptionModal, BetModal, MilestoneModal } from './obsidian/modals';
 
 export default class StrategyBetCreator extends Plugin {
   onload(): void {
@@ -24,15 +23,11 @@ export default class StrategyBetCreator extends Plugin {
       }).open();
     };
 
-    const openNoteModal = (kind: 'route' | 'ghost-route' | 'milestone') => () => {
-      new NoteModal(this.app, kind, (data) => {
-        const create =
-          kind === 'milestone'
-            ? createMilestoneFromForm(this.app, data as MilestoneFormData<any>)
-            : createRouteFromForm(this.app, data as RouteFormData<any>);
-        create.catch((err) => {
+    const openMilestoneModal = () => {
+      new MilestoneModal(this.app, (data) => {
+        createMilestoneFromForm(this.app, data).catch((err) => {
           console.error('strategy-bet-creator: unexpected error', err);
-          new Notice('Creation failed unexpectedly — see the developer console.');
+          new Notice('Milestone creation failed unexpectedly — see the developer console.');
         });
       }).open();
     };
@@ -43,8 +38,6 @@ export default class StrategyBetCreator extends Plugin {
     this.addRibbonIcon('link', 'New strategy assumption', openAssumptionModal);
     this.addCommand({ id: 'create-assumption', name: 'Create new Assumption', callback: openAssumptionModal });
 
-    this.addCommand({ id: 'create-route', name: 'Create new Route', callback: openNoteModal('route') });
-    this.addCommand({ id: 'create-ghost-route', name: 'Create new Ghost Route', callback: openNoteModal('ghost-route') });
-    this.addCommand({ id: 'create-milestone', name: 'Create new Milestone', callback: openNoteModal('milestone') });
+    this.addCommand({ id: 'create-milestone', name: 'Create new Milestone', callback: openMilestoneModal });
   }
 }

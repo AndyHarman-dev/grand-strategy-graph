@@ -1,0 +1,16 @@
+{
+  "ops": [],
+  "notices": [
+    {
+      "message": "Created M-1 First."
+    },
+    {
+      "message": "Duplicate milestone ids in Strategy/Milestones: M-1. Nothing was created.",
+      "timeout": 15000
+    }
+  ],
+  "console": [
+    "error: strategy-bet-creator: aborted before writing — Duplicate milestone ids in Strategy/Milestones: M-1. Nothing was created."
+  ],
+  "changed": []
+}

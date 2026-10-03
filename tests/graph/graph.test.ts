@@ -85,7 +85,16 @@ describe('buildGraph issues', () => {
     expect(codes([bet('B-1', { status: undefined })])).toEqual(['missing-status']);
     expect(codes([bet('B-1', { status: 'asleep' })])).toEqual(['unknown-status']);
     expect(codes([note('Strategy/F.md', { id: 'FP-1', type: 'fixed-point' })])).toEqual([]);
-    expect(codes([note('Strategy/R.md', { id: 'R-1', type: 'route', status: 'ghost' })])).toEqual([]);
+    expect(codes([note('Strategy/C.md', { id: 'CP', type: 'current-position' })])).toEqual([]);
+  });
+
+  it('gives milestones a status (D17) and knows no route type (D16)', () => {
+    const milestone = (status: unknown) => note('Strategy/M.md', { id: 'M-1', type: 'milestone', status });
+    expect(codes([milestone('open')])).toEqual([]);
+    expect(codes([milestone('reached')])).toEqual([]);
+    expect(codes([milestone(undefined)])).toEqual(['missing-status']);
+    expect(codes([milestone('active')])).toEqual(['unknown-status']);
+    expect(codes([note('Strategy/R.md', { id: 'R-1', type: 'route', status: 'ghost' })])).toEqual(['unknown-type']);
   });
 
   it('flags missing and duplicate ids, keying the node by path then', () => {
@@ -123,6 +132,22 @@ describe('buildGraph issues', () => {
   it('flags a relation field on a type that cannot have it', () => {
     const fixed = note('Strategy/F.md', { id: 'FP-1', type: 'fixed-point', serves: '[[B-1]]' }, { 'B-1': 'Strategy/B-1.md' });
     expect(codes([fixed, bet('B-1')])).toEqual(['field-not-allowed']);
+  });
+
+  it('lets a bet require a milestone, and a milestone serve only milestones and fixed points (D17)', () => {
+    const fp = note('Strategy/FP-1.md', { id: 'FP-1', type: 'fixed-point' });
+    const m2 = note('Strategy/M-2.md', { id: 'M-2', type: 'milestone', status: 'open' });
+    const links = { 'FP-1': fp.path, 'M-2': m2.path, 'B-2': 'Strategy/B-2.md', 'M-1': 'Strategy/M-1.md' };
+    const m1 = note('Strategy/M-1.md', { id: 'M-1', type: 'milestone', status: 'open', serves: ['[[M-2]]', '[[FP-1]]', '[[B-2]]'], requires: '[[M-2]]' }, links);
+    const b1 = bet('B-1', { serves: '[[M-1]]', requires: ['[[M-1]]', '[[B-2]]'] }, links);
+    const graph = buildGraph([fp, m1, m2, b1, bet('B-2')]);
+    expect(graph.issues.map((i) => `${i.code} ${i.path} ${i.field}`).sort()).toEqual([
+      'field-not-allowed Strategy/M-1.md requires',
+      'invalid-target-type Strategy/M-1.md serves',
+    ]);
+    expect(graph.edges.map((e) => e.key).sort()).toEqual([
+      'requires:B-1>B-2', 'requires:B-1>M-1', 'serves:B-1>M-1', 'serves:M-1>FP-1', 'serves:M-1>M-2',
+    ]);
   });
 
   it('accepts scalar or list values and dedupes repeated links', () => {

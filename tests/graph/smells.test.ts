@@ -13,6 +13,9 @@ const vault = (extra: Record<string, string>): Record<string, string> => ({
 const bet = (id: string, fm: Record<string, unknown> = {}) => ({
   [`Strategy/${id}.md`]: md({ id, type: 'bet', status: 'active', serves: ['[[FP-1]]'], ...fm }),
 });
+const milestone = (id: string, fm: Record<string, unknown> = {}) => ({
+  [`Strategy/${id}.md`]: md({ id, type: 'milestone', status: 'open', serves: ['[[FP-1]]'], ...fm }),
+});
 const assumption = (id: string, fm: Record<string, unknown> = {}) => ({
   [`Strategy/${id}.md`]: md({ id, type: 'assumption', status: 'unverified', 'verify-by': '2026-12-01', ...fm }),
 });
@@ -39,12 +42,12 @@ describe('findSmells over the migrated test vault', () => {
 });
 
 describe('orphan-bet', () => {
-  it('follows serves chains through bets, routes and milestones', async () => {
+  it('follows serves chains through bets and milestones', async () => {
     const smells = await smellsOf(vault({
       ...bet('B-1'),
       ...bet('B-2', { serves: ['[[B-1]]'] }),
-      'Strategy/R-1.md': md({ id: 'R-1', type: 'route', status: 'active', serves: ['[[FP-1]]'] }),
-      'Strategy/M-1.md': md({ id: 'M-1', type: 'milestone', serves: ['[[R-1]]'] }),
+      ...milestone('M-2'),
+      ...milestone('M-1', { serves: ['[[M-2]]'] }),
       ...bet('B-3', { serves: ['[[M-1]]'] }),
     }));
     expect(brief(smells)).toEqual([]);
@@ -59,14 +62,19 @@ describe('orphan-bet', () => {
     expect(brief(smells)).toEqual(['orphan-bet B-1', 'orphan-bet B-2', 'orphan-bet B-3', 'unreached-fixed-point FP-1']);
   });
 
-  it('flags a bet whose chain dead-ends at a route or milestone that serves nothing', async () => {
+  it('flags a bet whose chain dead-ends at a milestone that serves nothing', async () => {
     const smells = await smellsOf(vault({
-      'Strategy/R-1.md': md({ id: 'R-1', type: 'route', status: 'active' }),
-      'Strategy/M-1.md': md({ id: 'M-1', type: 'milestone' }),
-      ...bet('B-1', { serves: ['[[R-1]]'] }),
-      ...bet('B-2', { serves: ['[[M-1]]'] }),
+      ...milestone('M-1', { serves: null }),
+      ...milestone('M-2', { serves: ['[[M-1]]'] }),
+      ...bet('B-1', { serves: ['[[M-1]]'] }),
+      ...bet('B-2', { serves: ['[[M-2]]'] }),
     }));
     expect(brief(smells)).toEqual(['orphan-bet B-1', 'orphan-bet B-2', 'unreached-fixed-point FP-1']);
+  });
+
+  it('does not count `requires` as a chain: starting from a milestone is not serving it', async () => {
+    const smells = await smellsOf(vault({ ...milestone('M-1', { status: 'reached' }), ...bet('B-1', { serves: null, requires: ['[[M-1]]'] }) }));
+    expect(brief(smells)).toEqual(['orphan-bet B-1']);
   });
 
   it('terminates on a serves cycle', async () => {
@@ -84,11 +92,8 @@ describe('unreached-fixed-point', () => {
     expect(brief(smells)).toEqual(['unreached-fixed-point FP-2']);
   });
 
-  it('is satisfied by a route that serves it', async () => {
-    const smells = await smellsOf({
-      'Strategy/FP-1.md': md({ id: 'FP-1', type: 'fixed-point' }),
-      'Strategy/R-1.md': md({ id: 'R-1', type: 'route', status: 'ghost', serves: ['[[FP-1]]'] }),
-    });
+  it('is satisfied by a milestone that serves it', async () => {
+    const smells = await smellsOf(vault(milestone('M-1')));
     expect(brief(smells)).toEqual([]);
   });
 });
@@ -152,5 +157,41 @@ describe('dormant-not-next', () => {
   it('flags a dormant bet that no bet names as next', async () => {
     const smells = await smellsOf(vault({ ...bet('B-1', { status: 'dormant' }), ...bet('B-2', { next: '[[B-1]]' }), ...bet('B-3', { status: 'dormant' }) }));
     expect(brief(smells)).toEqual(['dormant-not-next B-3']);
+  });
+});
+
+describe('requires-open-milestone', () => {
+  it('flags an active bet that requires a milestone still open, naming the milestones', async () => {
+    const smells = await smellsOf(vault({
+      ...milestone('M-1'),
+      ...milestone('M-2', { status: 'reached' }),
+      ...milestone('M-3'),
+      ...bet('B-1', { serves: ['[[M-1]]'] }),
+      ...bet('B-2', { requires: ['[[M-1]]', '[[M-2]]', '[[M-3]]', '[[B-1]]'] }),
+    }));
+    expect(brief(smells)).toEqual(['requires-open-milestone B-2']);
+    expect(smells[0].related).toEqual(['M-1', 'M-3']);
+  });
+
+  it('accepts a reached milestone, a required bet, and a bet that is not active', async () => {
+    const smells = await smellsOf(vault({
+      ...milestone('M-1'),
+      ...milestone('M-2', { status: 'reached' }),
+      ...bet('B-1', { requires: ['[[M-2]]'] }),
+      ...bet('B-2', { requires: ['[[B-1]]'] }),
+      ...bet('B-3', { status: 'dormant', requires: ['[[M-1]]'] }),
+      ...bet('B-4', { next: '[[B-3]]', serves: ['[[M-1]]'] }),
+    }));
+    expect(brief(smells)).toEqual([]);
+  });
+
+  it('ignores a milestone with a status that is not `open` (the graph reports it instead)', async () => {
+    const smells = await smellsOf(vault({ ...milestone('M-1', { status: 'someday' }), ...bet('B-1', { requires: ['[[M-1]]'] }) }));
+    expect(brief(smells)).toEqual([]);
+  });
+
+  it('only counts milestones: a required bet with a stray `status: open` is not one', async () => {
+    const smells = await smellsOf(vault({ ...bet('B-1', { status: 'open' }), ...bet('B-2', { requires: ['[[B-1]]'] }) }));
+    expect(brief(smells)).toEqual([]);
   });
 });

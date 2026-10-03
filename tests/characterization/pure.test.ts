@@ -7,6 +7,7 @@ const TITLES: unknown[] = [
   '  leading and trailing  ',
   'SaaS/PLG focus',
   'a#b[c]d^e|f/g\\h:i*j',
+  'O1 visa? "Maybe" <later>',
   'tabs\tand\nnewlines\r\nhere',
   'control\u0000\u001f\u007fchars',
   'multiple     spaces',

@@ -1,7 +1,8 @@
 import { ASSUMPTION_TITLE_MAX_LEN } from './constants';
 
-// Characters Obsidian refuses (or mangles) in note filenames.
-const FORBIDDEN_FILENAME_CHARS = /[#\[\]\^\|\/\\:\*]/g;
+// Characters Obsidian refuses (or mangles) in note filenames, plus the ones Windows and
+// Android refuse (`? " < >`), so a vault synced to them keeps every note.
+const FORBIDDEN_FILENAME_CHARS = /[#\[\]\^\|\/\\:\*?"<>]/g;
 
 /**
  * Remove filename-hostile characters, collapse whitespace runs, trim.

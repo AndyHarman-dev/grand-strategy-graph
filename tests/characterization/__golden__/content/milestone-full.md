@@ -1,8 +1,10 @@
 ---
 id: M-2
 type: milestone
+status: open
 serves:
-  - "[[B-8 Teach pottery workshops]]"
+  - "[[M-1 Studio lease signed]]"
+  - "[[FP-2 Own a profitable ceramics studio]]"
 assumptions:
 ---
 ## The Milestone

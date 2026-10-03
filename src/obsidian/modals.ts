@@ -1,14 +1,7 @@
 import { App, FuzzySuggestModal, Modal, Notice, Setting, TFile, type TextComponent } from 'obsidian';
-import { ASSUMPTION_HOLDER_FOLDERS, SERVES_FOLDERS } from '../core/actions';
-import { ASSUMPTIONS_FOLDER, BETS_FOLDER, FIXED_POINTS_FOLDER } from '../core/constants';
-import {
-  getFilesInFolders,
-  type AssumptionFormData,
-  type AssumptionRow,
-  type BetFormData,
-  type MilestoneFormData,
-  type RouteFormData,
-} from '../core/plan';
+import { ASSUMPTION_HOLDER_FOLDERS, pickFolders } from '../core/actions';
+import { ASSUMPTIONS_FOLDER } from '../core/constants';
+import { getFilesInFolders, type AssumptionFormData, type AssumptionRow, type BetFormData, type MilestoneFormData } from '../core/plan';
 
 export class FilePickerModal extends FuzzySuggestModal<TFile> {
   files: TFile[];
@@ -142,10 +135,17 @@ export class BetModal extends Modal {
         t.onChange((v) => (this.deadline = v));
       });
 
-    addFilePicker(this.app, contentEl, 'Serves', this.servesFiles, SERVES_FOLDERS, '+ Add link');
-    addFilePicker(this.app, contentEl, 'Ultimately serves (optional, a fixed point)', this.ultimatelyServesFiles, [FIXED_POINTS_FOLDER], '+ Add fixed point');
-    addFilePicker(this.app, contentEl, 'Requires (optional, prerequisite bets)', this.requiresFiles, [BETS_FOLDER], '+ Add bet');
-    addFilePicker(this.app, contentEl, 'Next (optional, the sequel activated on kill)', this.nextFiles, [BETS_FOLDER], '+ Choose bet', 1);
+    addFilePicker(this.app, contentEl, 'Serves', this.servesFiles, pickFolders('serves', 'bet'), '+ Add link');
+    addFilePicker(this.app, contentEl, 'Ultimately serves (optional, a fixed point)', this.ultimatelyServesFiles, pickFolders('ultimately-serves', 'bet'), '+ Add fixed point');
+    addFilePicker(
+      this.app,
+      contentEl,
+      'Requires (optional, prerequisite bets or milestones to reach first)',
+      this.requiresFiles,
+      pickFolders('requires', 'bet'),
+      '+ Add bet or milestone'
+    );
+    addFilePicker(this.app, contentEl, 'Next (optional, the sequel activated on kill)', this.nextFiles, pickFolders('next', 'bet'), '+ Choose bet', 1);
 
     contentEl.createEl('h3', { text: 'Assumptions this bet depends on' });
     const rowsContainer = contentEl.createDiv({ cls: 'sbc-assumption-rows' });
@@ -272,7 +272,7 @@ export class BetModal extends Modal {
 
 /**
  * Standalone assumption creation. Unlike the assumption rows inside BetModal, this adds the new
- * assumption to the `assumptions` of zero or more *existing* notes (bets, fixed points, routes,
+ * assumption to the `assumptions` of zero or more *existing* notes (bets, fixed points,
  * milestones). It never creates one of them.
  */
 export class AssumptionModal extends Modal {
@@ -342,18 +342,18 @@ export class AssumptionModal extends Modal {
 }
 
 /**
- * A route (`ghost` false), a ghost route (suspected, unexplored) or a milestone: a title, a
- * description and what it serves. The kind is fixed by the command that opened the modal.
+ * A milestone (D17): a checkpoint on the way to a fixed point, the place further bets start
+ * from. A title, a description and the fixed points or milestones it serves. It is created
+ * `open`; bets that start from it pick it under "Requires".
  */
-export class NoteModal extends Modal {
+export class MilestoneModal extends Modal {
   title = '';
   description = '';
   servesFiles: TFile[] = [];
 
   constructor(
     app: App,
-    readonly kind: 'route' | 'ghost-route' | 'milestone',
-    readonly onSubmit: (data: RouteFormData<TFile> | MilestoneFormData<TFile>) => void
+    readonly onSubmit: (data: MilestoneFormData<TFile>) => void
   ) {
     super(app);
   }
@@ -361,7 +361,7 @@ export class NoteModal extends Modal {
   onOpen(): void {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl('h2', { text: { route: 'New route', 'ghost-route': 'New ghost route', milestone: 'New milestone' }[this.kind] });
+    contentEl.createEl('h2', { text: 'New milestone' });
 
     new Setting(contentEl)
       .setName('Title')
@@ -369,9 +369,10 @@ export class NoteModal extends Modal {
       .addText((t) => t.onChange((v) => (this.title = v)));
     new Setting(contentEl)
       .setName('Description (optional)')
+      .setDesc('What will be true when it is reached?')
       .addText((t) => t.onChange((v) => (this.description = v)));
 
-    addFilePicker(this.app, contentEl, 'Serves', this.servesFiles, SERVES_FOLDERS, '+ Add link');
+    addFilePicker(this.app, contentEl, 'Serves (fixed points or milestones further along)', this.servesFiles, pickFolders('serves', 'milestone'), '+ Add link');
 
     const footer = new Setting(contentEl);
     footer.addButton((b) =>
@@ -388,9 +389,9 @@ export class NoteModal extends Modal {
       new Notice('A title is required.');
       return;
     }
-    const common = { title: this.title.trim(), description: this.description.trim(), servesFiles: this.servesFiles.slice() };
+    const data: MilestoneFormData<TFile> = { title: this.title.trim(), description: this.description.trim(), servesFiles: this.servesFiles.slice() };
     this.close();
-    this.onSubmit(this.kind === 'milestone' ? common : { ...common, ghost: this.kind === 'ghost-route' });
+    this.onSubmit(data);
   }
 
   onClose(): void {

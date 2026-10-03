@@ -4,12 +4,12 @@ import {
   isIgnoredType,
   isNodeType,
   statusesFor,
+  targetsOf,
   type Graph,
   type GraphEdge,
   type GraphNode,
   type Issue,
   type IssueCode,
-  type NodeType,
   type NoteRecord,
 } from './schema';
 
@@ -103,7 +103,8 @@ export function buildGraph(notes: readonly NoteRecord[]): Graph {
       const { linkpaths, malformed } = readLinkField(note.frontmatter[rule.field]);
       if (!linkpaths.length && !malformed.length) continue;
 
-      if (!rule.from.includes(from.type)) {
+      const allowedTargets = targetsOf(rule, from.type);
+      if (!allowedTargets) {
         report('field-not-allowed', 'warning', note, `A ${from.type} cannot have \`${rule.field}\`; ignored.`, rule.field);
         continue;
       }
@@ -126,7 +127,7 @@ export function buildGraph(notes: readonly NoteRecord[]): Graph {
           report('self-link', 'error', note, `\`${rule.field}\` links the note to itself.`, rule.field);
           continue;
         }
-        if (!(rule.to as readonly NodeType[]).includes(to.type)) {
+        if (!allowedTargets.includes(to.type)) {
           report('invalid-target-type', 'error', note, `\`${rule.field}\` cannot point at a ${to.type} (${label}).`, rule.field);
           continue;
         }

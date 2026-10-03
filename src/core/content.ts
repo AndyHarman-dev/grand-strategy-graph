@@ -121,30 +121,6 @@ export function buildBetContent(opts: BetContentOptions): string {
   return frontmatter.concat(body).join('\n');
 }
 
-export interface RouteContentOptions {
-  today: string;
-  /** `R-<n>`. */
-  id: string;
-  /** A ghost is a suspected, unexplored route. */
-  ghost: boolean;
-  description: string;
-  servesBasenames: string[];
-}
-
-export function buildRouteContent(opts: RouteContentOptions): string {
-  const frontmatter = ['---', 'id: ' + opts.id, 'type: route', 'status: ' + (opts.ghost ? 'ghost' : 'active')];
-  frontmatter.push(...linkList('serves', opts.servesBasenames), ...linkList('assumptions', []), '---');
-  const body = [
-    '## The Route',
-    opts.description || (opts.ghost ? '*Suspected, unexplored: what would make this a real route?*' : '*What is this route, and which fixed point does it lead to?*'),
-    '',
-    '## Log',
-    '- ' + opts.today + ': Created',
-    '',
-  ];
-  return frontmatter.concat(body).join('\n');
-}
-
 export interface MilestoneContentOptions {
   today: string;
   /** `M-<n>`. */
@@ -153,12 +129,13 @@ export interface MilestoneContentOptions {
   servesBasenames: string[];
 }
 
+/** Milestone note: a checkpoint (D17), `open` until it is reached. Bets that start from it list it in `requires`. */
 export function buildMilestoneContent(opts: MilestoneContentOptions): string {
-  const frontmatter = ['---', 'id: ' + opts.id, 'type: milestone'];
+  const frontmatter = ['---', 'id: ' + opts.id, 'type: milestone', 'status: open'];
   frontmatter.push(...linkList('serves', opts.servesBasenames), ...linkList('assumptions', []), '---');
   const body = [
     '## The Milestone',
-    opts.description || '*What will be true when this milestone is reached?*',
+    opts.description || '*What will be true when this milestone is reached? Set `status: reached` then: the bets that require it can start.*',
     '',
     '## Log',
     '- ' + opts.today + ': Created',

@@ -6,19 +6,8 @@
  * There are no cross-note body writes (D2). A relation is a frontmatter link on the note that
  * holds it, so the only write to an existing note is `add-link`: append one link to a list field.
  */
-import {
-  ASSUMPTIONS_FOLDER,
-  BETS_FOLDER,
-  FIXED_POINTS_FOLDER,
-  MILESTONES_FOLDER,
-  ROUTES_FOLDER,
-} from './constants';
-import {
-  buildAssumptionContent,
-  buildBetContent,
-  buildMilestoneContent,
-  buildRouteContent,
-} from './content';
+import { ASSUMPTIONS_FOLDER, BETS_FOLDER, FIXED_POINTS_FOLDER, MILESTONES_FOLDER } from './constants';
+import { buildAssumptionContent, buildBetContent, buildMilestoneContent } from './content';
 import { parseIds, type ParsedIds } from './ids';
 import { linkpathOf } from './links';
 import {
@@ -28,9 +17,9 @@ import {
   type FileRef,
   type MilestoneFormData,
   type PlanError,
-  type RouteFormData,
   type VaultLike,
 } from './plan';
+import { relationFor, targetsOf, type NodeType } from './schema';
 import { deriveAssumptionTitle, sanitizeTitle } from './text';
 
 export type PlannedWrite =
@@ -47,24 +36,49 @@ export interface ActionPlan {
   notice: string;
 }
 
-/** Folders a note may sit in to carry each relation field (mirrors RELATIONS in schema.ts). */
-const SERVES_TARGETS = [FIXED_POINTS_FOLDER, BETS_FOLDER, ROUTES_FOLDER, MILESTONES_FOLDER];
-/** Types that may carry `assumptions`. */
-export const ASSUMPTION_HOLDER_FOLDERS = [BETS_FOLDER, FIXED_POINTS_FOLDER, ROUTES_FOLDER, MILESTONES_FOLDER];
-export const SERVES_FOLDERS = SERVES_TARGETS;
+/** The folder the plugin creates each pickable type in. Every type in RELATIONS needs one. */
+export const FOLDER_OF: Partial<Record<NodeType, string>> = {
+  bet: BETS_FOLDER,
+  assumption: ASSUMPTIONS_FOLDER,
+  'fixed-point': FIXED_POINTS_FOLDER,
+  milestone: MILESTONES_FOLDER,
+};
+const foldersOf = (types: readonly NodeType[]) => types.flatMap((t) => (FOLDER_OF[t] ? [FOLDER_OF[t]] : []));
+
+/** Folders a form may pick from for `field` on a note of type `holder` (read off RELATIONS in schema.ts). */
+export function pickFolders(field: string, holder: NodeType): string[] {
+  return foldersOf(targetsOf(relationFor(field), holder) ?? []);
+}
+
+/** Folders of the types that may carry `assumptions`: the notes a new assumption can attach to. */
+export const ASSUMPTION_HOLDER_FOLDERS = foldersOf(Object.keys(relationFor('assumptions').to) as NodeType[]);
+
+/** Link path to compare by: lower case, no `.md`, no leading slash. */
+const comparable = (linkpath: string) => linkpath.trim().replace(/^\/+/, '').replace(/\.md$/i, '').toLowerCase();
 
 /**
  * `link` appended to a frontmatter list value, as Obsidian hands it over: nothing, one string
- * or a list. Returns the same value when the link is already there (matched by link path,
- * ignoring case, alias and heading), so callers can tell nothing changed.
+ * or a list. Returns the same value when the link is already there, so callers can tell
+ * nothing changed. A match ignores case, alias and heading, accepts a folder-qualified path to
+ * the same name (`[[Strategy/Bets/B-1 X]]` for `[[B-1 X]]`), and an unquoted `[[link]]`, which
+ * YAML reads as a nested list (`[['B-1 X']]`).
  */
 export function addLinkToField(value: unknown, link: string): unknown {
-  const target = linkpathOf(link.replace(/^\[\[|\]\]$/g, '')).toLowerCase();
-  const has = (item: unknown) =>
-    typeof item === 'string' && Array.from(item.matchAll(/\[\[([^\]]*)\]\]/g)).some((m) => linkpathOf(m[1]).toLowerCase() === target);
+  const target = comparable(linkpathOf(link.replace(/^\[\[|\]\]$/g, '')));
+  const same = (linkpath: string) => {
+    const p = comparable(linkpathOf(linkpath));
+    return p === target || p.endsWith('/' + target);
+  };
+  const has = (item: unknown, nested: boolean): boolean => {
+    if (Array.isArray(item)) return item.some((i) => has(i, true));
+    if (typeof item !== 'string') return false;
+    const links = Array.from(item.matchAll(/\[\[([^\]]*)\]\]/g));
+    // Inside a nested list the brackets were eaten by YAML, so the bare string is the link.
+    return links.length ? links.some((m) => same(m[1])) : nested && same(item);
+  };
   if (value == null || value === '') return [link];
-  if (Array.isArray(value)) return value.some(has) ? value : [...value, link];
-  if (typeof value === 'string') return has(value) ? value : [value, link];
+  if (Array.isArray(value)) return value.some((i) => has(i, false)) ? value : [...value, link];
+  if (typeof value === 'string') return has(value, false) ? value : [value, link];
   return [String(value), link];
 }
 
@@ -76,7 +90,6 @@ interface IdKind {
 
 const BET: IdKind = { label: 'bet', prefix: 'B', folder: BETS_FOLDER };
 const ASSUMPTION: IdKind = { label: 'assumption', prefix: 'A', folder: ASSUMPTIONS_FOLDER };
-const ROUTE: IdKind = { label: 'route', prefix: 'R', folder: ROUTES_FOLDER };
 const MILESTONE: IdKind = { label: 'milestone', prefix: 'M', folder: MILESTONES_FOLDER };
 
 /** The id spaces of the given kinds, or an error when one is ambiguous (never guess an id). */
@@ -147,14 +160,14 @@ export function planBet<F extends FileRef>(vault: VaultLike<F>, data: BetFormDat
   const requires = dedupe(data.requiresFiles);
   const next = data.nextFile ?? null;
   const folderError =
-    checkFolders('"Serves"', serves, SERVES_FOLDERS) ??
-    checkFolders('"Ultimately serves"', ultimatelyServes, [FIXED_POINTS_FOLDER]) ??
-    checkFolders('"Requires"', requires, [BETS_FOLDER]) ??
-    checkFolders('"Next"', next ? [next] : [], [BETS_FOLDER]) ??
+    checkFolders('"Serves"', serves, pickFolders('serves', 'bet')) ??
+    checkFolders('"Ultimately serves"', ultimatelyServes, pickFolders('ultimately-serves', 'bet')) ??
+    checkFolders('"Requires"', requires, pickFolders('requires', 'bet')) ??
+    checkFolders('"Next"', next ? [next] : [], pickFolders('next', 'bet')) ??
     checkFolders(
       'Existing assumptions',
       data.assumptionRows.flatMap((r) => (r.mode === 'existing' && r.existingFile ? [r.existingFile] : [])),
-      [ASSUMPTIONS_FOLDER]
+      pickFolders('assumptions', 'bet')
     );
   if (folderError) return folderError;
 
@@ -266,49 +279,30 @@ export function planAssumption<F extends FileRef>(vault: VaultLike<F>, data: Ass
   };
 }
 
-/** Shared by routes and milestones: next id in the folder, a sanitized title, collision check. */
-function planPlainNote<F extends FileRef>(
-  vault: VaultLike<F>,
-  kind: IdKind,
-  rawTitle: string,
-  servesFiles: F[],
-  build: (id: string, serves: string[]) => string
-): ActionPlan | PlanError {
-  const ids = loadIds(vault, [kind]);
+/** A milestone: a checkpoint further bets start from (D17). It is created `open`. */
+export function planMilestone<F extends FileRef>(vault: VaultLike<F>, data: MilestoneFormData<F>, today: string): ActionPlan | PlanError {
+  const ids = loadIds(vault, [MILESTONE]);
   if (isError(ids)) return ids;
   const [space] = ids;
 
-  const title = sanitizeTitle(rawTitle);
-  if (!title) return { error: 'The ' + kind.label + ' title is empty after removing illegal filename characters. Nothing was created.' };
+  const title = sanitizeTitle(data.title);
+  if (!title) return { error: 'The milestone title is empty after removing illegal filename characters. Nothing was created.' };
 
   const n = space.max + 1;
-  if (space.used.has(n)) return { error: 'Computed ' + kind.label + ' id ' + kind.prefix + '-' + n + ' already exists. Nothing was created.' };
+  if (space.used.has(n)) return { error: 'Computed milestone id M-' + n + ' already exists. Nothing was created.' };
 
-  const serves = dedupe(servesFiles);
-  const folderError = checkFolders('"Serves"', serves, SERVES_FOLDERS);
+  const serves = dedupe(data.servesFiles);
+  const folderError = checkFolders('"Serves"', serves, pickFolders('serves', 'milestone'));
   if (folderError) return folderError;
 
-  const basename = kind.prefix + '-' + n + ' ' + title;
-  const path = kind.folder + '/' + basename + '.md';
+  const basename = 'M-' + n + ' ' + title;
+  const path = MILESTONES_FOLDER + '/' + basename + '.md';
   const collision = checkTargets(vault, [path]);
   if (collision) return collision;
 
   return {
-    writes: [{ kind: 'create', path, content: build(kind.prefix + '-' + n, links(serves)) }],
+    writes: [{ kind: 'create', path, content: buildMilestoneContent({ today, id: 'M-' + n, description: data.description.trim(), servesBasenames: links(serves) }) }],
     open: path,
     notice: 'Created ' + basename + '.',
   };
-}
-
-/** A route, or with `ghost` a suspected, unexplored one. */
-export function planRoute<F extends FileRef>(vault: VaultLike<F>, data: RouteFormData<F>, today: string): ActionPlan | PlanError {
-  return planPlainNote(vault, ROUTE, data.title, data.servesFiles, (id, serves) =>
-    buildRouteContent({ today, id, ghost: data.ghost, description: data.description.trim(), servesBasenames: serves })
-  );
-}
-
-export function planMilestone<F extends FileRef>(vault: VaultLike<F>, data: MilestoneFormData<F>, today: string): ActionPlan | PlanError {
-  return planPlainNote(vault, MILESTONE, data.title, data.servesFiles, (id, serves) =>
-    buildMilestoneContent({ today, id, description: data.description.trim(), servesBasenames: serves })
-  );
 }

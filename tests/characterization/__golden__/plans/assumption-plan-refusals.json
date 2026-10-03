@@ -20,6 +20,6 @@
     "error": "A note already exists at \"Strategy/Assumptions/A-8 S.md\". Nothing was created."
   },
   "dependentIsAnAssumption": {
-    "error": "Notes that depend on an assumption must be notes in Strategy/Bets, Strategy/Fixed Points, Strategy/Routes, Strategy/Milestones (not A-1 D7 accepts freelance income). Nothing was created."
+    "error": "Notes that depend on an assumption must be notes in Strategy/Bets, Strategy/Fixed Points, Strategy/Milestones (not A-1 D7 accepts freelance income). Nothing was created."
   }
 }

@@ -27,11 +27,11 @@ export interface BetFormData<F extends FileRef = FileRef> {
   y: string;
   z: string;
   deadline: string;
-  /** Direct parents: bets, routes, milestones or fixed points. */
+  /** Direct parents: bets, milestones or fixed points. */
   servesFiles: F[];
   /** Far anchors: fixed points. Optional. */
   ultimatelyServesFiles?: F[];
-  /** Prerequisite bets. Optional. */
+  /** Prerequisites: bets, or milestones that must be reached first (D17). Optional. */
   requiresFiles?: F[];
   /** The sequel bet activated when this one is killed. Optional. */
   nextFile?: F | null;
@@ -42,21 +42,14 @@ export interface AssumptionFormData<F extends FileRef = FileRef> {
   statement: string;
   falsifier: string;
   verifyBy: string;
-  /** The bets, fixed points, routes or milestones that lean on this assumption: each gets it in its `assumptions`. */
+  /** The bets, fixed points or milestones that lean on this assumption: each gets it in its `assumptions`. */
   dependentFiles: F[];
-}
-
-export interface RouteFormData<F extends FileRef = FileRef> {
-  /** A ghost route is a suspected, unexplored one (`status: ghost`). */
-  ghost: boolean;
-  title: string;
-  description: string;
-  servesFiles: F[];
 }
 
 export interface MilestoneFormData<F extends FileRef = FileRef> {
   title: string;
   description: string;
+  /** Fixed points or milestones further along (D17). */
   servesFiles: F[];
 }
 

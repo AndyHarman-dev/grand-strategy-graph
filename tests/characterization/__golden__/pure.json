@@ -17,6 +17,10 @@
       "a b c d e f g h i j"
     ],
     [
+      "O1 visa? \"Maybe\" <later>",
+      "O1 visa Maybe later"
+    ],
+    [
       "tabs\tand\nnewlines\r\nhere",
       "tabs and newlines here"
     ],

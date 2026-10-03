@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { addLinkToField, planAssumption, planBet, planMilestone, planRoute } from '../../src/core/actions';
+import { addLinkToField, FOLDER_OF, pickFolders, planAssumption, planBet, planMilestone } from '../../src/core/actions';
+import { RELATIONS, type NodeType } from '../../src/core/schema';
 import { getFilesInFolders } from '../../src/core/plan';
 import { FakeVault, readTestVault, testVault } from '../support/fake-app';
 import { json } from '../support/serialize';
@@ -119,25 +120,42 @@ describe('write plans over the test vault (schema v2)', () => {
     await expect(json(results)).toMatchFileSnapshot('__golden__/plans/assumption-plan-refusals.json');
   });
 
-  it('route, ghost route and milestone plans', async () => {
+  it('bet plan that requires a milestone (D17)', async () => {
+    const vault = new FakeVault({ ...readTestVault(), 'Strategy/Milestones/M-1 Studio lease signed.md': '' });
+    const m1 = vault.file('Strategy/Milestones/M-1 Studio lease signed.md');
+    const data = { title: 'Fire the first kiln load', x: 'a', y: 'b', z: 'c', deadline: '', servesFiles: [m1], requiresFiles: [m1], assumptionRows: [] };
+    await expect(json(planBet(vault, data, TODAY))).toMatchFileSnapshot('__golden__/plans/bet-plan-requires-milestone.json');
+  });
+
+  it('milestone plans', async () => {
     const vault = testVault();
     const fp1 = vault.file('Strategy/Fixed Points/FP-1 Live in Portugal.md');
-    const withRoute = new FakeVault({ ...readTestVault(), 'Strategy/Routes/R-4 Existing.md': '', 'Strategy/Milestones/M-2 Existing.md': '' });
+    const withMilestone = new FakeVault({ ...readTestVault(), 'Strategy/Milestones/M-2 Existing.md': '' });
     const results = {
-      route: planRoute(vault, { ghost: false, title: 'Study → H1B', description: ' US study path ', servesFiles: [fp1, fp1] }, TODAY),
-      ghostRoute: planRoute(vault, { ghost: true, title: 'O1 visa?', description: '', servesFiles: [fp1] }, TODAY),
-      milestone: planMilestone(vault, { title: 'First workshop held', description: '', servesFiles: [vault.file('Strategy/Bets/B-8 Teach pottery workshops.md')] }, TODAY),
-      nextIdsAfterExisting: [
-        planRoute(withRoute, { ghost: false, title: 'Next', description: '', servesFiles: [] }, TODAY),
-        planMilestone(withRoute, { title: 'Next', description: '', servesFiles: [] }, TODAY),
-      ],
-      emptyVault: planRoute(new FakeVault(), { ghost: false, title: 'First', description: '', servesFiles: [] }, TODAY),
-      emptyTitle: planRoute(vault, { ghost: false, title: '#[]', description: '', servesFiles: [] }, TODAY),
+      milestone: planMilestone(vault, { title: 'Residence permit granted?', description: ' Card in hand ', servesFiles: [fp1, fp1] }, TODAY),
+      servesAMilestone: planMilestone(withMilestone, { title: 'Lease', description: '', servesFiles: [withMilestone.file('Strategy/Milestones/M-2 Existing.md'), fp1] }, TODAY),
+      nextIdAfterExisting: planMilestone(withMilestone, { title: 'Next', description: '', servesFiles: [] }, TODAY),
+      emptyVault: planMilestone(new FakeVault(), { title: 'First', description: '', servesFiles: [] }, TODAY),
+      emptyTitle: planMilestone(vault, { title: '#[]?', description: '', servesFiles: [] }, TODAY),
+      // A milestone serves fixed points and milestones only (D17).
+      servesABet: planMilestone(vault, { title: 'T', description: '', servesFiles: [vault.file('Strategy/Bets/B-8 Teach pottery workshops.md')] }, TODAY),
       servesAnAssumption: planMilestone(vault, { title: 'T', description: '', servesFiles: [vault.file('Strategy/Assumptions/A-1 D7 accepts freelance income.md')] }, TODAY),
-      pathTaken: planRoute(new FakeVault({}, ['Strategy/Routes/R-1 Taken.md']), { ghost: false, title: 'Taken', description: '', servesFiles: [] }, TODAY),
-      duplicateIds: planRoute(new FakeVault({ 'Strategy/Routes/R-1 A.md': '', 'Strategy/Routes/R-1 B.md': '' }), { ghost: false, title: 'T', description: '', servesFiles: [] }, TODAY),
+      pathTaken: planMilestone(new FakeVault({}, ['Strategy/Milestones/M-1 Taken.md']), { title: 'Taken', description: '', servesFiles: [] }, TODAY),
+      duplicateIds: planMilestone(new FakeVault({ 'Strategy/Milestones/M-1 A.md': '', 'Strategy/Milestones/M-1 B.md': '' }), { title: 'T', description: '', servesFiles: [] }, TODAY),
     };
-    await expect(json(results)).toMatchFileSnapshot('__golden__/plans/route-milestone-plans.json');
+    await expect(json(results)).toMatchFileSnapshot('__golden__/plans/milestone-plans.json');
+  });
+
+  it('form pickers offer exactly the folders of the types RELATIONS allows', () => {
+    for (const rule of RELATIONS) {
+      for (const [holder, targets] of Object.entries(rule.to) as [NodeType, NodeType[]][]) {
+        expect(FOLDER_OF[holder], `${holder} has a folder`).toBeTruthy();
+        expect(pickFolders(rule.field, holder), `${rule.field} on ${holder}`).toEqual(targets.map((t) => FOLDER_OF[t]));
+      }
+    }
+    expect(pickFolders('requires', 'bet')).toEqual(['Strategy/Bets', 'Strategy/Milestones']);
+    expect(pickFolders('serves', 'milestone')).toEqual(['Strategy/Milestones', 'Strategy/Fixed Points']);
+    expect(pickFolders('requires', 'milestone')).toEqual([]);
   });
 });
 
@@ -150,6 +168,8 @@ describe('addLinkToField', () => {
     ['empty list', [], [link]],
     ['a list', ['[[A-1 One]]'], ['[[A-1 One]]', link]],
     ['a scalar', '[[A-1 One]]', ['[[A-1 One]]', link]],
+    ['a list of unquoted links', [['A-1 One']], [['A-1 One'], link]],
+    ['a list with a different note of a longer name', ['[[XA-8 New]]', '[[A-8 New 2]]'], ['[[XA-8 New]]', '[[A-8 New 2]]', link]],
   ])('appends to %s', (_name, value, expected) => {
     expect(addLinkToField(value, link)).toEqual(expected);
   });
@@ -160,6 +180,11 @@ describe('addLinkToField', () => {
     ['an aliased link', ['[[A-8 New|alias]]']],
     ['a different case', ['[[a-8 new]]']],
     ['a heading link', ['[[A-8 New#Log]]']],
+    ['a folder-qualified link', ['[[Strategy/Assumptions/A-8 New]]']],
+    ['a folder-qualified link with .md', '[[Strategy/Assumptions/A-8 New.md|A-8]]'],
+    // An unquoted `- [[A-8 New]]` is read by YAML as a list inside the list.
+    ['an unquoted link in a list', [['A-1 One'], ['A-8 New']]],
+    ['an unquoted link as the whole value', [['A-8 New']]],
   ])('leaves %s alone (same value back, so nothing is written)', (_name, value) => {
     expect(addLinkToField(value, link)).toBe(value);
   });
