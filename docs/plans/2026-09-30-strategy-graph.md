@@ -527,6 +527,12 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Decisions:** D19. Hosting is decided from the links alone, never from positions, so it doesn't change while dragging. A shared assumption's leader to its other holders can be long; accepted. Only assumptions follow a drag, not sequels. An assumption nothing leans on stays on the time axis, as its own block.
   - **Verification:** `npm run typecheck`, `npm test` (279) and `npm run build` pass; `npm run test:e2e` (14, 3 of them `@visual`). The 5a layout test that put assumptions left of their bet was replaced, and so was the edge test that assumed left/right only; the e2e drag test now expects B-3's hosted A-3/A-4 to move with it. One screenshot baseline was added (`migrated-auto`); the two existing ones still match within their 1% tolerance, so they were not rewritten. Mutations (never above, never aside, latest host, no sequel column, no sequel under a saved bet, time edges by geometry, followers not saved, no live follow) each fail a test. **Unverified (user, local):** the look in Obsidian on the migrated copy; dragging a bet with its assumptions there.
 
+- **2026-10-03**:
+  - **Context:** Phase 5a manual check in Obsidian, run locally by the user on `gs-preview`, a migrated copy of `test-vault/` (dry run, then `--apply` with `--backup-dir` in a temp folder; the plugin folder re-linked to the repo's `dist/`).
+  - **Actions:** the user opened the graph with "Open strategy graph", then emptied `positions` in the copy's `Strategy.gsmap` by hand to see the automatic layout (D19).
+  - **Decisions:** Phase 5a is done and goes to `main` with D19. Colours and node styles are Phase 5b. The old design branch `claude/peaceful-bardeen-1emx74` is not the design and stays unmerged.
+  - **Verification:** confirmed by the user: the graph renders and reads well, with canvas positions and with the automatic layout. Not reported either way: live updates while editing properties, drag-and-save across tab close, Reveal, double-click to open, a changed id, theme switching, popout windows, mobile.
+
 ## Decisions Log
 
 *(For the user's own hand only.)*
