@@ -7,7 +7,7 @@
  *
  * Intents name notes by graph key, never by path, because that is what the graph knows.
  */
-import { planAssumption, planBet } from './actions';
+import { planAssumption, planBet, planMilestone } from './actions';
 import { BETS_FOLDER } from './constants';
 import { FALSIFIER_HEADING, FALSIFIER_PLACEHOLDER } from './content';
 import { readLinkField, resolveLinkpath } from './links';
@@ -47,6 +47,8 @@ export type Intent =
   | { kind: 'falsify'; key: string }
   /** A bet serving `serves`, or the sequel of `sequelOf` (which then gets it as `next`, and its `serves` when none are given). */
   | { kind: 'new-bet'; form: BetFields; serves: string[]; sequelOf?: string }
+  /** A milestone (D17), `open`, serving the given fixed points or milestones. */
+  | { kind: 'new-milestone'; form: { title: string; description: string }; serves: string[] }
   /** An assumption that the `dependents` (bets, fixed points, milestones) lean on. */
   | { kind: 'new-assumption'; form: AssumptionFields; dependents: string[] };
 
@@ -63,6 +65,13 @@ const label = (node: GraphNode) => node.id ?? node.basename;
 const linkTo = (node: GraphNode) => '[[' + node.basename + ']]';
 const refOf = (node: GraphNode): FileRef => ({ path: node.path, basename: node.basename });
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** The plan with the note it creates named (`B-9 Title.md` is `B-9`), and not opened: the graph stays in front. */
+function stayingPut(plan: ActionPlan): ActionPlan {
+  const made = plan.writes.find((w) => w.kind === 'create' && w.path === plan.open);
+  const id = made && /^[A-Z]+-\d+/.exec(made.path.slice(made.path.lastIndexOf('/') + 1));
+  return { ...plan, open: null, ...(made && id ? { created: { id: id[0], path: made.path } } : {}) };
+}
 
 /** What to do for an intent. A plan with no writes means nothing to change (the notice says why). */
 export function planIntent(intent: Intent, env: EditEnv): ActionPlan | PlanError {
@@ -216,14 +225,24 @@ export function planIntent(intent: Intent, env: EditEnv): ActionPlan | PlanError
       );
       if (isPlanError(plan)) return plan;
       const created = plan.writes.find((w) => w.kind === 'create' && w.path === plan.open);
-      if (!source) return { ...plan, open: null };
+      if (!source) return stayingPut(plan);
       const basename = created!.path.slice(BETS_FOLDER.length + 1).replace(/\.md$/, '');
       return {
-        ...plan,
-        open: null,
+        ...stayingPut(plan),
         writes: [...plan.writes, { kind: 'set-field', path: source.path, field: 'next', value: '[[' + basename + ']]' }],
         notice: `${plan.notice} It is ${label(source)}'s next sequel.`,
       };
+    }
+
+    case 'new-milestone': {
+      const serves: GraphNode[] = [];
+      for (const key of intent.serves) {
+        const n = need(key);
+        if (isPlanError(n)) return n;
+        serves.push(n);
+      }
+      const plan = planMilestone(env.vault, { title: intent.form.title, description: intent.form.description, servesFiles: serves.map(refOf) }, env.today);
+      return isPlanError(plan) ? plan : stayingPut(plan);
     }
 
     case 'new-assumption': {
@@ -243,7 +262,7 @@ export function planIntent(intent: Intent, env: EditEnv): ActionPlan | PlanError
         },
         env.today
       );
-      return isPlanError(plan) ? plan : { ...plan, open: null };
+      return isPlanError(plan) ? plan : stayingPut(plan);
     }
   }
 }

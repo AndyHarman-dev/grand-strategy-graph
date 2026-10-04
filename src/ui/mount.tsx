@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Intent } from '../core/edits';
 import type { GraphState } from '../core/graph-session';
-import type { GsPosition } from '../core/gsmap';
+import type { GsOp, GsPosition } from '../core/gsmap';
 import type { EditOutcome } from '../core/perform';
 import type { Graph } from '../core/schema';
 import { StrategyGraph } from './StrategyGraph';
@@ -10,6 +10,8 @@ import { StrategyGraph } from './StrategyGraph';
 export interface GraphHost {
   /** Positions dragged on the graph, by note id. Returns false when they can't be saved. */
   move(updates: Record<string, GsPosition>): boolean;
+  /** Change a free card, frame or link (Phase 7). Returns false when the `.gsmap` can't be written. */
+  editMap?(op: GsOp): boolean;
   /** Forget every saved position, so the whole graph is laid out automatically again. Returns false when that can't be saved. */
   resetPositions(): boolean;
   openNote?(path: string, newTab: boolean): void;
@@ -43,6 +45,7 @@ export function mountGraph(el: HTMLElement, host: GraphHost, options: MountOptio
   const onOpenNote = host.openNote?.bind(host);
   const onHoverNote = host.hoverNote?.bind(host);
   const onEdit = host.edit?.bind(host);
+  const onEditMap = host.editMap?.bind(host);
   const readNote = host.readNote?.bind(host);
   const renderNote = host.renderNote?.bind(host);
   return {
@@ -62,6 +65,10 @@ export function mountGraph(el: HTMLElement, host: GraphHost, options: MountOptio
             onOpenNote={onOpenNote}
             onHoverNote={onHoverNote}
             onEdit={onEdit}
+            cards={state.map?.cards}
+            frames={state.map?.frames}
+            links={state.map?.links}
+            onEditMap={state.map ? onEditMap : null}
             readNote={readNote}
             renderNote={renderNote}
             today={host.today?.()}

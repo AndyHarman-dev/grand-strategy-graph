@@ -72,3 +72,47 @@ describe('GraphSession', () => {
     expect(s.state.graph!.nodes).toHaveLength(1);
   });
 });
+
+describe('GraphSession: the free part of the map (Phase 7)', () => {
+  const gsmap = JSON.stringify({
+    version: 1,
+    positions: {},
+    cards: [{ id: 'c', kind: 'text', text: 'idea', x: 0, y: 0, width: 100, height: 50 }],
+    frames: [],
+    links: [
+      { id: 'ok', from: { card: 'c' }, to: { note: 'B-1' } },
+      { id: 'gone', label: 'old', from: { card: 'c' }, to: { note: 'B-404' } },
+      { id: 'both', from: { note: 'B-1' }, to: { note: 'B-405' } },
+    ],
+  });
+
+  it('warns about a link that ends on a note that is not on the graph, once per link, and only then', async () => {
+    const { s, states } = session(new MemoryAdapter({ 'Strategy/B-1.md': note('B-1') }));
+    s.loadMap(gsmap);
+    await s.rebuild();
+    const warnings = states[states.length - 1].notices.filter((n) => n.message.startsWith('A link on the graph'));
+    expect(warnings.map((n) => n.message)).toEqual([
+      'A link on the graph ("old") ends on "B-404", which is not a note on the graph; it is not drawn.',
+      'A link on the graph ends on "B-405", which is not a note on the graph; it is not drawn.',
+    ]);
+    expect(warnings.every((n) => n.severity === 'warning')).toBe(true);
+  });
+
+  it('has no such warning when every end is there', async () => {
+    const { s, states } = session(new MemoryAdapter({ 'Strategy/B-1.md': note('B-1'), 'Strategy/B-404.md': note('B-404'), 'Strategy/B-405.md': note('B-405') }));
+    s.loadMap(gsmap);
+    await s.rebuild();
+    expect(states[states.length - 1].notices).toEqual([]);
+  });
+
+  it('shows a card edit at once and writes it, and refuses while the map cannot be read', async () => {
+    const { s, states } = session(new MemoryAdapter({ 'Strategy/B-1.md': note('B-1') }));
+    s.loadMap(gsmap);
+    await s.rebuild();
+    expect(s.editMap({ op: 'delete-card', id: 'c' })).toBe(true);
+    expect(states[states.length - 1].map!.cards).toEqual([]);
+    expect(s.hasUnsaved).toBe(true);
+    s.loadMap('not json');
+    expect(s.editMap({ op: 'delete-card', id: 'c' })).toBe(false);
+  });
+});

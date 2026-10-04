@@ -15,6 +15,9 @@ body {
   --color-yellow: #e0ac00;
   --color-red: #e93147;
   --color-blue: #086ddd;
+  --color-orange: #e9973f;
+  --color-cyan: #53dfdd;
+  --color-purple: #a882ff;
   --font-ui-small: 13px;
   --font-ui-smaller: 12px;
   --font-monospace: ui-monospace, Menlo, Consolas, monospace;
@@ -40,6 +43,9 @@ body.theme-dark {
   --color-yellow: #e0de71;
   --color-red: #fb464c;
   --color-blue: #086ddd;
+  --color-orange: #e9973f;
+  --color-cyan: #53dfdd;
+  --color-purple: #a882ff;
 }
 
 .dev-bar {

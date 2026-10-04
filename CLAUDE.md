@@ -95,6 +95,12 @@ Release.
   (`panOnScrollSpeed={1}`), as do Space+drag and middle-drag; pinch or Cmd/Ctrl+scroll zooms. Dragging any selected node moves the selection; arrow keys nudge it and are saved.
 - The reset button (circular arrow in the controls) empties `positions` after a confirmation (`clearPositions`, through the
   same write queue as moves), and the view fits the new automatic layout.
+- Free cards, frames and `.gsmap` links (Phase 7) are drawn from the map and edited through `GsOp`s (`gsmap.ts`: `put-card`,
+  `delete-card`, …, `promote-card`), which the store shows at once and writes with the position moves in one `vault.process`.
+  `writeOps` changes only the touched items; unknown keys survive. Their React Flow ids are `card:<id>` / `frame:<id>` /
+  `link:<id>`, so they can never clash with a note key. Frames are backdrops (`pointer-events: none` except the label) and a
+  selection box never selects them. A card on either end of a dragged link makes a free link; two notes make a relation.
+  Promoting a card creates the note first (an edit intent), then runs `promote-card` (links and place move to the note).
 - Rebuilt React Flow nodes must keep `measured`: without it React Flow drops the node's measured handles and draws none of
   its edges until it re-measures (the "all edges vanish while dragging" bug).
 - Layout rule (plan D19): left → right is time; assumptions are never on the time axis but above their host (below if

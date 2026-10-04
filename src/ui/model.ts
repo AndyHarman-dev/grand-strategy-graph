@@ -3,7 +3,7 @@
  * The look itself (shapes, colours, dashes) is `graph.css`; this decides the classes and data it needs.
  */
 import type { Edge, Node } from '@xyflow/react';
-import type { GsPosition } from '../core/gsmap';
+import type { GsCard, GsFrame, GsLink, GsPosition } from '../core/gsmap';
 import { canPin, flowOf, HIDDEN_EDGE_KINDS, NODE_SIZES, type Size } from '../core/layout';
 import type { Graph, GraphNode } from '../core/schema';
 import type { Smell } from '../core/smells';
@@ -20,6 +20,21 @@ export type StrategyNodeData = {
 };
 
 export type StrategyFlowNode = Node<StrategyNodeData, typeof NODE_TYPE>;
+
+/** Free cards and frames (Phase 7) are React Flow nodes too, with ids that can never be a note's key. */
+export const CARD_TYPE = 'card';
+export const FRAME_TYPE = 'frame';
+export type CardFlowNode = Node<{ card: GsCard }, typeof CARD_TYPE>;
+export type FrameFlowNode = Node<{ frame: GsFrame }, typeof FRAME_TYPE>;
+/** Everything on the graph that is a node. */
+export type GraphFlowNode = StrategyFlowNode | CardFlowNode | FrameFlowNode;
+
+export const cardNodeId = (id: string) => `card:${id}`;
+export const frameNodeId = (id: string) => `frame:${id}`;
+export const linkEdgeId = (id: string) => `link:${id}`;
+export const isStrategyNode = (node: { type?: string }): node is StrategyFlowNode => node.type === NODE_TYPE;
+export const isCardNode = (node: { type?: string }): node is CardFlowNode => node.type === CARD_TYPE;
+export const isFrameNode = (node: { type?: string }): node is FrameFlowNode => node.type === FRAME_TYPE;
 
 /** The note's title without its id prefix: `B-10  byTalent backend` → `byTalent backend`. */
 export function titleOf(node: Pick<GraphNode, 'id' | 'basename'>): string {
@@ -161,9 +176,10 @@ export function followersOf(satellites: ReadonlyMap<string, readonly string[]>, 
 }
 
 /** Positions to save after a drag: by note id, only for nodes that can be pinned. */
-export function movedPositions(nodes: readonly Pick<StrategyFlowNode, 'id' | 'position' | 'data'>[]): Record<string, GsPosition> {
+export function movedPositions(nodes: readonly Pick<GraphFlowNode, 'id' | 'position' | 'data' | 'type'>[]): Record<string, GsPosition> {
   const out: Record<string, GsPosition> = {};
   for (const node of nodes) {
+    if (!isStrategyNode(node)) continue;
     if (node.data.pinnable && node.data.node.type !== 'fixed-point') out[node.data.node.id!] = { x: node.position.x, y: node.position.y };
   }
   return out;
@@ -175,11 +191,12 @@ export function movedPositions(nodes: readonly Pick<StrategyFlowNode, 'id' | 'po
  * them, the layout re-places unsaved nodes around the dropped ones.
  */
 export function unsavedPositions(
-  nodes: readonly Pick<StrategyFlowNode, 'position' | 'hidden' | 'data'>[],
+  nodes: readonly Pick<GraphFlowNode, 'position' | 'hidden' | 'data' | 'type'>[],
   saved: Readonly<Record<string, GsPosition>>
 ): Record<string, GsPosition> {
   const out: Record<string, GsPosition> = {};
   for (const node of nodes) {
+    if (!isStrategyNode(node)) continue;
     const id = node.data.node.id;
     if (node.hidden || !node.data.pinnable || id === null || Object.prototype.hasOwnProperty.call(saved, id)) continue;
     out[id] = { x: node.position.x, y: node.position.y };
@@ -192,4 +209,122 @@ export function localToday(): string {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+
+// ------------------------------------------------------------------ free cards, frames, links (Phase 7)
+
+/** Canvas colour presets "1"–"6" as Obsidian's palette; a hex string is used as it is. */
+const PRESET_COLORS: Record<string, string> = {
+  '1': 'var(--color-red, #fb464c)',
+  '2': 'var(--color-orange, #e9973f)',
+  '3': 'var(--color-yellow, #e0de71)',
+  '4': 'var(--color-green, #44cf6e)',
+  '5': 'var(--color-cyan, #53dfdd)',
+  '6': 'var(--color-purple, #a882ff)',
+};
+
+/** The colours a card, frame or link can be given, in the order the style editor offers them. */
+export const COLOR_CHOICES: readonly { value: string | null; label: string }[] = [
+  { value: null, label: 'none' },
+  { value: '1', label: 'red' },
+  { value: '2', label: 'orange' },
+  { value: '3', label: 'yellow' },
+  { value: '4', label: 'green' },
+  { value: '5', label: 'cyan' },
+  { value: '6', label: 'purple' },
+];
+
+/** The CSS colour for a canvas colour value, or undefined when there is none (or it isn't one we know). */
+export function cssColor(color: string | undefined): string | undefined {
+  if (!color) return undefined;
+  if (PRESET_COLORS[color]) return PRESET_COLORS[color];
+  return /^#[0-9a-f]{3,8}$/i.test(color) ? color : undefined;
+}
+
+export const CARD_DEFAULT_SIZE: Size = { width: 250, height: 60 };
+export const FRAME_DEFAULT_SIZE: Size = { width: 400, height: 300 };
+
+export function toFlowCards(cards: readonly GsCard[], editable: boolean): CardFlowNode[] {
+  return cards.map((card) => ({
+    id: cardNodeId(card.id),
+    type: CARD_TYPE,
+    position: { x: card.x, y: card.y },
+    width: card.width,
+    height: card.height,
+    draggable: editable,
+    connectable: true,
+    deletable: editable,
+    data: { card },
+  }));
+}
+
+export function toFlowFrames(frames: readonly GsFrame[], editable: boolean): FrameFlowNode[] {
+  return frames.map((frame) => ({
+    id: frameNodeId(frame.id),
+    type: FRAME_TYPE,
+    position: { x: frame.x, y: frame.y },
+    width: frame.width,
+    height: frame.height,
+    // A frame is a backdrop: behind the notes and cards that sit on it.
+    zIndex: -1,
+    draggable: editable,
+    connectable: false,
+    deletable: editable,
+    data: { frame },
+  }));
+}
+
+/** What a link end points at, as a React Flow node id. */
+export const endpointNodeId = (end: GsLink['from']): string => ('card' in end ? cardNodeId(end.card) : end.note);
+
+/** The dash pattern class for a link's `path` style (canvas styleAttributes). */
+function linkDash(link: GsLink): string | null {
+  switch (link.style?.path) {
+    case 'dotted':
+      return 'gs-link--dotted';
+    case 'short-dashed':
+      return 'gs-link--short-dashed';
+    case 'long-dashed':
+      return 'gs-link--long-dashed';
+    default:
+      return null;
+  }
+}
+
+/**
+ * The map's links as edges. A link whose end is not on the graph (a note that is gone) is left out;
+ * the session reports it. Sides come from the link when it has them (the canvas's), else face
+ * each other like the relation edges do.
+ */
+export function toFlowLinks(links: readonly GsLink[], rects: ReadonlyMap<string, GsPosition & Size>, editable: boolean): Edge[] {
+  const out: Edge[] = [];
+  for (const link of links) {
+    const [source, target] = [endpointNodeId(link.from), endpointNodeId(link.to)];
+    const [from, to] = [rects.get(source), rects.get(target)];
+    if (!from || !to) continue;
+    const facing = sidesOf(from, to);
+    const classes = ['gs-link'];
+    const dash = linkDash(link);
+    if (dash) classes.push(dash);
+    const color = cssColor(link.color);
+    out.push({
+      id: linkEdgeId(link.id),
+      source,
+      target,
+      sourceHandle: handleId(link.fromSide ?? facing.source, 'source'),
+      targetHandle: handleId(link.toSide ?? facing.target, 'target'),
+      type: link.style?.pathfindingMethod === 'square' ? 'smoothstep' : 'default',
+      className: classes.join(' '),
+      ...(color ? { style: { stroke: color } } : {}),
+      ...(link.label ? { label: link.label } : {}),
+      ...(link.fromEnd === 'arrow' ? { markerStart: { type: 'arrowclosed' as const } } : {}),
+      ...(link.toEnd === 'none' ? {} : { markerEnd: { type: 'arrowclosed' as const } }),
+      deletable: editable,
+      selectable: editable,
+      interactionWidth: 12,
+      data: { kind: 'link', link },
+    });
+  }
+  return out;
 }

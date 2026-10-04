@@ -33,6 +33,8 @@ export interface ActionPlan {
   /** The note to open once everything is written; null to stay where the user is (the graph). */
   open: string | null;
   notice: string;
+  /** The note a creation plan makes, for the caller that has to refer to it (promoting a card). Set by `edits.ts`, not by the planners, whose plans the goldens pin. */
+  created?: { id: string; path: string };
 }
 
 /** The folder the plugin creates each pickable type in. Every type in RELATIONS needs one. */

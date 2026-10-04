@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { findSmells } from '../../src/core/smells';
-import { followersOf, groupSmells, localToday, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions, unverifiedServes } from '../../src/ui/model';
+import type { GsCard, GsFrame, GsLink } from '../../src/core/gsmap';
+import { cardNodeId, cssColor, endpointNodeId, followersOf, frameNodeId, isCardNode, isFrameNode, isStrategyNode, toFlowCards, toFlowFrames, toFlowLinks, groupSmells, localToday, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions, unverifiedServes } from '../../src/ui/model';
 import { graphOf, md } from '../support/v2';
 
 const files = {
@@ -169,5 +170,62 @@ describe('edge styles (Phase 5b)', () => {
 describe('localToday', () => {
   it('is the local date as YYYY-MM-DD', () => {
     expect(localToday()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('free cards, frames and links (Phase 7)', () => {
+  const card: GsCard = { id: 'c1', kind: 'text', text: 'idea', x: 10, y: 20, width: 250, height: 60, color: '2' };
+  const frame: GsFrame = { id: 'f1', label: 'Visa route', x: -100, y: -100, width: 1800, height: 900 };
+
+  it('draws cards and frames as nodes whose ids cannot be a note key, frames behind everything', () => {
+    const [c] = toFlowCards([card], true);
+    expect(c).toMatchObject({ id: 'card:c1', type: 'card', position: { x: 10, y: 20 }, width: 250, height: 60, draggable: true, deletable: true });
+    const [f] = toFlowFrames([frame], true);
+    expect(f).toMatchObject({ id: 'frame:f1', type: 'frame', zIndex: -1, draggable: true, deletable: true, connectable: false });
+    expect(cardNodeId('x')).toBe('card:x');
+    expect(frameNodeId('x')).toBe('frame:x');
+    expect(isCardNode(c) && !isFrameNode(c) && !isStrategyNode(c)).toBe(true);
+  });
+
+  it('cannot move or delete them when the map cannot be written', () => {
+    expect(toFlowCards([card], false)[0]).toMatchObject({ draggable: false, deletable: false });
+    expect(toFlowFrames([frame], false)[0]).toMatchObject({ draggable: false, deletable: false });
+  });
+
+  it('maps the canvas colour presets and hex colours, and nothing else', () => {
+    expect(cssColor('1')).toContain('--color-red');
+    expect(cssColor('6')).toContain('--color-purple');
+    expect(cssColor('#a1b2c3')).toBe('#a1b2c3');
+    expect(cssColor('red')).toBeUndefined();
+    expect(cssColor(undefined)).toBeUndefined();
+  });
+
+  const rects = new Map([
+    ['card:c1', { x: 0, y: 0, width: 250, height: 60 }],
+    ['B-1', { x: 400, y: 0, width: 240, height: 84 }],
+  ]);
+  const link = (extra: Partial<GsLink> = {}): GsLink => ({ id: 'l1', from: { card: 'c1' }, to: { note: 'B-1' }, ...extra });
+
+  it('draws a link between a card and a note, with the canvas\'s sides, dashes, colour, label and ends', () => {
+    expect(endpointNodeId({ card: 'c1' })).toBe('card:c1');
+    expect(endpointNodeId({ note: 'B-1' })).toBe('B-1');
+    const [plain] = toFlowLinks([link()], rects, true);
+    expect(plain).toMatchObject({ id: 'link:l1', source: 'card:c1', target: 'B-1', sourceHandle: 'right-source', targetHandle: 'left-target', className: 'gs-link', selectable: true, deletable: true });
+    expect(plain.markerEnd).toBeDefined();
+    expect(plain.markerStart).toBeUndefined();
+    const [styled] = toFlowLinks(
+      [link({ label: 'Only A-6', color: '4', fromSide: 'bottom', toSide: 'top', style: { path: 'long-dashed', pathfindingMethod: 'square' }, fromEnd: 'arrow', toEnd: 'none' })],
+      rects,
+      true
+    );
+    expect(styled).toMatchObject({ label: 'Only A-6', sourceHandle: 'bottom-source', targetHandle: 'top-target', type: 'smoothstep', className: 'gs-link gs-link--long-dashed' });
+    expect(styled.style?.stroke).toContain('--color-green');
+    expect(styled.markerStart).toBeDefined();
+    expect(styled.markerEnd).toBeUndefined();
+  });
+
+  it('leaves out a link whose end is not on the graph, and makes none selectable when read-only', () => {
+    expect(toFlowLinks([link({ to: { note: 'B-404' } })], rects, true)).toEqual([]);
+    expect(toFlowLinks([link()], rects, false)[0]).toMatchObject({ selectable: false, deletable: false });
   });
 });

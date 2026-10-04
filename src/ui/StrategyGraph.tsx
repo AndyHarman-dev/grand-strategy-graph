@@ -28,7 +28,7 @@ import {
 } from 'react';
 import { relationCandidates, type Intent } from '../core/edits';
 import type { GraphNotice } from '../core/graph-session';
-import type { GsMap, GsPosition } from '../core/gsmap';
+import type { GsCard, GsFrame, GsLink, GsMap, GsOp, GsPosition } from '../core/gsmap';
 import { elkPositions, layoutKey, needsElk as needsElkFor, NODE_SIZES, pinnedPositions, placeNodes, structureOf } from '../core/layout';
 import type { EditOutcome } from '../core/perform';
 import type { Graph } from '../core/schema';
@@ -37,7 +37,28 @@ import { NodeActionsContext, type NodeActions } from './actions-context';
 import type { RelationField } from '../core/writes';
 import { Inspector } from './Inspector';
 import { PopupMenu, QuickCreate, Toast, type MenuItem, type QuickCreateKind } from './GraphMenus';
-import { followersOf, localToday, movedPositions, NODE_TYPE, toFlowEdges, toFlowNodes, unsavedPositions, type StrategyFlowNode } from './model';
+import {
+  CARD_DEFAULT_SIZE,
+  CARD_TYPE,
+  FRAME_DEFAULT_SIZE,
+  FRAME_TYPE,
+  followersOf,
+  isCardNode,
+  isFrameNode,
+  isStrategyNode,
+  localToday,
+  movedPositions,
+  NODE_TYPE,
+  toFlowCards,
+  toFlowEdges,
+  toFlowFrames,
+  toFlowLinks,
+  toFlowNodes,
+  unsavedPositions,
+  type GraphFlowNode,
+} from './model';
+import { CardNode, FrameNode } from './FreeNodes';
+import { ItemEditor, type EditedItem } from './ItemEditor';
 import { StrategyNode } from './StrategyNode';
 
 export interface StrategyGraphProps {
@@ -46,6 +67,12 @@ export interface StrategyGraphProps {
   positions: Readonly<Record<string, GsPosition>>;
   /** The `.gsmap`'s viewport, used once when the graph first shows. Without one, the graph is fitted to the view. */
   viewport?: GsMap['viewport'];
+  /** Free cards, frames and links of the `.gsmap` (Phase 7); drawn with the notes. */
+  cards?: readonly GsCard[];
+  frames?: readonly GsFrame[];
+  links?: readonly GsLink[];
+  /** Change a card, frame or link; false when the `.gsmap` can't be written. Absent: they can't be edited. */
+  onEditMap?: ((op: GsOp) => boolean) | null;
   /** Called on drag end with the moved nodes' positions by note id. Null when nothing can be saved: dragging is off. */
   onMove: ((updates: Record<string, GsPosition>) => void) | null;
   /** The reset button: forget every saved position. Null when nothing can be saved: the button is off. */
@@ -70,7 +97,7 @@ export interface StrategyGraphProps {
   autoLayout?: (graph: Graph) => Promise<Record<string, GsPosition>>;
 }
 
-const nodeTypes = { [NODE_TYPE]: StrategyNode };
+const nodeTypes = { [NODE_TYPE]: StrategyNode, [CARD_TYPE]: CardNode, [FRAME_TYPE]: FrameNode };
 
 /** Keys React Flow moves the selected nodes with (5 px, 20 with Shift). */
 const ARROW_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
@@ -150,6 +177,10 @@ export function StrategyGraph(props: StrategyGraphProps) {
   );
 }
 
+const NO_CARDS: readonly GsCard[] = [];
+const NO_FRAMES: readonly GsFrame[] = [];
+const NO_LINKS: readonly GsLink[] = [];
+
 function Flow({
   graph,
   positions,
@@ -161,14 +192,18 @@ function Flow({
   onOpenNote,
   onHoverNote,
   onEdit,
+  onEditMap,
+  cards = NO_CARDS,
+  frames = NO_FRAMES,
+  links = NO_LINKS,
   readNote,
   renderNote,
   today,
   reveal,
   notices,
 }: StrategyGraphProps & { placed: Record<string, GsPosition>; complete: boolean }) {
-  const flow = useReactFlow<StrategyFlowNode>();
-  const store = useStoreApi<StrategyFlowNode>();
+  const flow = useReactFlow<GraphFlowNode>();
+  const store = useStoreApi<GraphFlowNode>();
   const editable = onMove !== null;
   const smells = useMemo(() => findSmells(graph, { today: today ?? localToday() }), [graph, today]);
   const [showUltimate, setShowUltimate] = useState(false);
@@ -184,14 +219,65 @@ function Flow({
       return result;
     };
   }, [onEdit]);
+  // ---- free cards, frames and links (Phase 7): edits to the `.gsmap`, shown at once and written a moment later.
+  const canEditMap = onEditMap != null;
+  const mapOp = useCallback(
+    (op: GsOp) => {
+      if (onEditMap?.(op)) return true;
+      setOutcome({ ok: false, message: "Strategy.gsmap can't be written, so this change was not saved.", id: ++outcomeId.current });
+      return false;
+    },
+    [onEditMap]
+  );
+  const [editing, setEditing] = useState<{ kind: 'card' | 'frame'; id: string } | null>(null);
+  const [editor, setEditor] = useState<{ kind: 'card' | 'frame' | 'link'; id: string } | null>(null);
+  const freshId = useCallback(() => {
+    const taken = new Set([...cards, ...frames, ...links].map((item) => item.id));
+    for (;;) {
+      const id = Math.random().toString(16).slice(2, 10).padEnd(8, '0');
+      if (!taken.has(id)) return id;
+    }
+  }, [cards, frames, links]);
   const actions = useMemo<NodeActions>(
     () => ({
       hover: onHoverNote,
       canEdit: perform !== null,
       setStatus: (key, status) => void perform?.({ kind: 'set-status', key, status }),
       setDate: (key, value) => void perform?.({ kind: 'set-date', key, value }),
+      canEditMap,
+      editing,
+      startEdit: (kind, id) => canEditMap && setEditing({ kind, id }),
+      commitText: (kind, id, text) => {
+        setEditing(null);
+        if (kind === 'card') {
+          const card = cards.find((c) => c.id === id);
+          if (!card) return;
+          if (!text.trim() && card.kind === 'text') mapOp({ op: 'delete-card', id }); // an empty card is no card
+          else if (card.kind === 'text' && text !== card.text) mapOp({ op: 'put-card', card: { ...card, text } });
+        } else {
+          const frame = frames.find((f) => f.id === id);
+          if (frame && text.trim() !== frame.label) mapOp({ op: 'put-frame', frame: { ...frame, label: text.trim() } });
+        }
+      },
+      cancelEdit: () => {
+        // A card that was just made and never given text goes away again.
+        const card = editing?.kind === 'card' ? cards.find((c) => c.id === editing.id) : undefined;
+        setEditing(null);
+        if (card && card.kind === 'text' && !card.text.trim()) mapOp({ op: 'delete-card', id: card.id });
+      },
+      resize: (kind, id, rect) => {
+        const place = { x: Math.round(rect.x), y: Math.round(rect.y), width: Math.round(rect.width), height: Math.round(rect.height) };
+        if (kind === 'card') {
+          const card = cards.find((c) => c.id === id);
+          if (card) mapOp({ op: 'put-card', card: { ...card, ...place } });
+        } else {
+          const frame = frames.find((f) => f.id === id);
+          if (frame) mapOp({ op: 'put-frame', frame: { ...frame, ...place } });
+        }
+      },
+      openNote: onOpenNote,
     }),
-    [onHoverNote, perform]
+    [onHoverNote, perform, canEditMap, editing, cards, frames, mapOp, onOpenNote]
   );
   const dismissOutcome = useCallback(() => setOutcome(null), []);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -204,25 +290,39 @@ function Flow({
   }, []);
   const inspected = selectedKey !== null && selectedKey !== closedKey ? graph.nodes.find((n) => n.key === selectedKey) ?? null : null;
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; label: string; items: MenuItem[] } | null>(null);
-  const [create, setCreate] = useState<{ request: QuickCreateKind; anchor: string } | null>(null);
+  const [create, setCreate] = useState<{ request: QuickCreateKind; anchor: string | null } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
+  const editedItem: EditedItem | null = (() => {
+    if (!editor) return null;
+    if (editor.kind === 'card') return cards.find((c) => c.id === editor.id) ? { kind: 'card', item: cards.find((c) => c.id === editor.id)! } : null;
+    if (editor.kind === 'frame') return frames.find((f) => f.id === editor.id) ? { kind: 'frame', item: frames.find((f) => f.id === editor.id)! } : null;
+    return links.find((l) => l.id === editor.id) ? { kind: 'link', item: links.find((l) => l.id === editor.id)! } : null;
+  })();
   /** A point in client coordinates as a place inside the graph's own box. */
   const placeOf = useCallback((client: { clientX: number; clientY: number }) => {
     const box = store.getState().domNode?.getBoundingClientRect();
     return { x: client.clientX - (box?.left ?? 0), y: client.clientY - (box?.top ?? 0) };
   }, [store]);
   const build = useCallback(
-    () => toFlowNodes(graph, placed, smells).map((n) => (editable ? n : { ...n, draggable: false })),
-    [graph, placed, editable, smells]
+    (): GraphFlowNode[] => [
+      ...toFlowFrames(frames, canEditMap),
+      ...toFlowNodes(graph, placed, smells).map((n) => (editable ? n : { ...n, draggable: false })),
+      ...toFlowCards(cards, canEditMap),
+    ],
+    [graph, placed, editable, smells, cards, frames, canEditMap]
   );
-  const [nodes, setNodes] = useState<StrategyFlowNode[]>(build);
+  const [nodes, setNodes] = useState<GraphFlowNode[]>(build);
   /** `nodes` as last rendered, for handlers React Flow calls synchronously. */
   const nodesRef = useRef(nodes);
   nodesRef.current = nodes;
   /** Set while an arrow key is being handled: the position changes it causes are a move to save. */
   const arrowKey = useRef(false);
   // Edges follow the nodes as drawn, mid-drag included, so they always leave by the facing side.
-  const drawn = useMemo(() => Object.fromEntries(nodes.filter((n) => !n.hidden).map((n) => [n.id, n.position])), [nodes]);
+  const drawn = useMemo(() => Object.fromEntries(nodes.filter((n) => isStrategyNode(n) && !n.hidden).map((n) => [n.id, n.position])), [nodes]);
+  const rects = useMemo(
+    () => new Map(nodes.filter((n) => !n.hidden && n.width && n.height).map((n) => [n.id, { ...n.position, width: n.width!, height: n.height! }] as const)),
+    [nodes]
+  );
   // Edges are controlled too: a click selects a link (so Delete can remove it), which React Flow reports as a change to apply.
   const [selectedEdges, setSelectedEdges] = useState<ReadonlySet<string>>(new Set());
   const onEdgesChange = useCallback((changes: EdgeChange[]) => {
@@ -239,10 +339,10 @@ function Flow({
   }, []);
   const edges = useMemo(
     () =>
-      toFlowEdges(graph, drawn, { smells, showUltimate, editable: onEdit !== undefined }).map((edge) =>
+      [...toFlowEdges(graph, drawn, { smells, showUltimate, editable: onEdit !== undefined }), ...toFlowLinks(links, rects, canEditMap)].map((edge) =>
         selectedEdges.has(edge.id) ? { ...edge, selected: true } : edge
       ),
-    [graph, drawn, smells, showUltimate, onEdit, selectedEdges]
+    [graph, drawn, smells, showUltimate, onEdit, selectedEdges, links, rects, canEditMap]
   );
   const satellites = useMemo(() => structureOf(graph).satellites, [graph]);
   /** Assumptions moving with the current drag: where each started, and its host's start (D19). */
@@ -276,16 +376,22 @@ function Flow({
 
   /** Save moved nodes, and pin everything else where it is, so nothing that wasn't moved moves (unsaved nodes are placed around saved ones). */
   const save = useCallback(
-    (moved: readonly Pick<StrategyFlowNode, 'id' | 'position' | 'data'>[]) => {
+    (moved: readonly Pick<GraphFlowNode, 'id' | 'position' | 'data' | 'type'>[]) => {
+      // Free cards and frames carry their own place in the `.gsmap`.
+      for (const node of moved) {
+        const [x, y] = [Math.round(node.position.x), Math.round(node.position.y)];
+        if (isCardNode(node) && (x !== node.data.card.x || y !== node.data.card.y)) mapOp({ op: 'put-card', card: { ...node.data.card, x, y } });
+        else if (isFrameNode(node) && (x !== node.data.frame.x || y !== node.data.frame.y)) mapOp({ op: 'put-frame', frame: { ...node.data.frame, x, y } });
+      }
       const updates = movedPositions(moved);
       if (!Object.keys(updates).length) return;
       onMove?.({ ...unsavedPositions(nodesRef.current, positions), ...updates });
     },
-    [onMove, positions]
+    [onMove, positions, mapOp]
   );
 
   const onNodesChange = useCallback(
-    (changes: NodeChange<StrategyFlowNode>[]) => {
+    (changes: NodeChange<GraphFlowNode>[]) => {
       const nudged = arrowKey.current ? changes.filter((c): c is NodePositionChange => c.type === 'position' && !!c.position) : [];
       if (!nudged.length) {
         setNodes((current) => applyNodeChanges(changes, current));
@@ -303,6 +409,13 @@ function Flow({
     },
     [satellites, save]
   );
+
+  // A selection box over empty space inside a frame is not a wish to select (and then move) the frame: frames
+  // are selected by their label, never by the box.
+  const onSelectionEnd = useCallback(() => {
+    const frames = nodesRef.current.filter((n) => isFrameNode(n) && n.selected);
+    if (frames.length) store.getState().unselectNodesAndEdges({ nodes: frames, edges: [] });
+  }, [store]);
 
   const onKeyDownCapture = useCallback((event: ReactKeyboardEvent) => {
     if (!ARROW_KEYS.has(event.key)) return;
@@ -338,7 +451,7 @@ function Flow({
   }, []);
 
   const onNodeDragStart = useCallback(
-    (_event: unknown, _node: StrategyFlowNode, dragged: StrategyFlowNode[]) => {
+    (_event: unknown, _node: GraphFlowNode, dragged: GraphFlowNode[]) => {
       const byId = new Map(nodes.map((n) => [n.id, n]));
       const hosts = new Map(dragged.map((n) => [n.id, n.position]));
       following.current = new Map();
@@ -350,7 +463,7 @@ function Flow({
     [nodes, satellites]
   );
 
-  const onNodeDrag = useCallback((_event: unknown, _node: StrategyFlowNode, dragged: StrategyFlowNode[]) => {
+  const onNodeDrag = useCallback((_event: unknown, _node: GraphFlowNode, dragged: GraphFlowNode[]) => {
     if (!following.current.size) return;
     const now = new Map(dragged.map((n) => [n.id, n.position]));
     setNodes((current) =>
@@ -364,7 +477,7 @@ function Flow({
   }, []);
 
   const onNodeDragStop = useCallback(
-    (_event: unknown, _node: StrategyFlowNode, dragged: StrategyFlowNode[]) => {
+    (_event: unknown, _node: GraphFlowNode, dragged: GraphFlowNode[]) => {
       // The hosted assumptions moved too: save them with their host.
       const now = new Map(dragged.map((n) => [n.id, n.position]));
       const followers = nodes
@@ -381,21 +494,124 @@ function Flow({
   );
 
   const onNodeDoubleClick = useCallback(
-    (event: ReactMouseEvent, node: StrategyFlowNode) => onOpenNote?.(node.data.node.path, event.metaKey || event.ctrlKey),
-    [onOpenNote]
+    (event: ReactMouseEvent, node: GraphFlowNode) => {
+      const newTab = event.metaKey || event.ctrlKey;
+      if (isStrategyNode(node)) onOpenNote?.(node.data.node.path, newTab);
+      else if (isCardNode(node)) {
+        const card = node.data.card;
+        if (card.kind === 'text') actions.startEdit('card', card.id);
+        else if (card.kind === 'note-ref') onOpenNote?.(card.file, newTab);
+        else if (/^https?:\/\//i.test(card.url)) window.open(card.url, '_blank', 'noopener');
+      }
+    },
+    [onOpenNote, actions]
   );
 
-  const removeRelation = useCallback(
+  /** Remove a link: a relation is taken out of its note; a free link is taken out of the `.gsmap`. */
+  const removeLink = useCallback(
     (edge: Edge) => {
+      const link = (edge.data as { link?: GsLink } | undefined)?.link;
+      if (link) return void mapOp({ op: 'delete-link', id: link.id });
       const found = graph.edges.find((e) => e.key === edge.id);
       if (found) void perform?.({ kind: 'remove-relation', holder: found.from, field: found.field as RelationField, target: found.to });
     },
-    [graph, perform]
+    [graph, perform, mapOp]
+  );
+
+  const onNodesDelete = useCallback(
+    (deleted: GraphFlowNode[]) => {
+      for (const node of deleted) {
+        if (isCardNode(node)) mapOp({ op: 'delete-card', id: node.data.card.id });
+        else if (isFrameNode(node)) mapOp({ op: 'delete-frame', id: node.data.frame.id });
+      }
+    },
+    [mapOp]
+  );
+
+  // ---- free cards and frames: menus, and making new ones.
+  const newCard = useCallback(
+    (at: { x: number; y: number }) => {
+      const id = freshId();
+      if (!mapOp({ op: 'put-card', card: { id, kind: 'text', text: '', x: Math.round(at.x), y: Math.round(at.y), ...CARD_DEFAULT_SIZE } })) return;
+      setEditing({ kind: 'card', id });
+    },
+    [freshId, mapOp]
+  );
+  const newFrame = useCallback(
+    (at: { x: number; y: number }) => {
+      const id = freshId();
+      if (!mapOp({ op: 'put-frame', frame: { id, label: '', x: Math.round(at.x), y: Math.round(at.y), ...FRAME_DEFAULT_SIZE } })) return;
+      setEditing({ kind: 'frame', id });
+    },
+    [freshId, mapOp]
+  );
+  const onPaneContextMenu = useCallback(
+    (event: MouseEvent | ReactMouseEvent) => {
+      event.preventDefault();
+      if (!canEditMap) return;
+      const at = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      setMenu({
+        at: placeOf(event),
+        label: 'Graph',
+        items: [
+          { label: 'New card here', run: () => newCard(at) },
+          { label: 'New frame here', run: () => newFrame(at) },
+        ],
+      });
+    },
+    [canEditMap, flow, placeOf, newCard, newFrame]
+  );
+  // A double-click on empty space makes a card there, as on a canvas.
+  const onDoubleClickCapture = useCallback(
+    (event: ReactMouseEvent) => {
+      if (!canEditMap || !(event.target as HTMLElement).classList.contains('react-flow__pane')) return;
+      newCard(flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+    },
+    [canEditMap, flow, newCard]
+  );
+  const openCardMenu = useCallback(
+    (event: ReactMouseEvent, card: GsCard) => {
+      const items: MenuItem[] = [];
+      if (canEditMap) {
+        if (card.kind === 'text') items.push({ label: 'Edit text', run: () => setEditing({ kind: 'card', id: card.id }) });
+        items.push({ label: 'Style…', run: () => setEditor({ kind: 'card', id: card.id }) });
+        if (card.kind === 'text' && perform) {
+          const first = card.text.trim().split(/\r?\n/)[0] ?? '';
+          const ask = (request: QuickCreateKind) => () => setCreate({ request, anchor: null });
+          items.push(
+            { label: 'Promote to bet…', run: ask({ kind: 'bet', heading: 'Promote to bet', serves: [], initial: { title: first }, promote: card.id }) },
+            { label: 'Promote to assumption…', run: ask({ kind: 'assumption', heading: 'Promote to assumption', dependents: [], initial: { statement: card.text.trim() }, promote: card.id }) },
+            { label: 'Promote to milestone…', run: ask({ kind: 'milestone', heading: 'Promote to milestone', serves: [], initial: { title: first }, promote: card.id }) }
+          );
+        }
+      }
+      if (card.kind === 'note-ref' && onOpenNote) items.push({ label: 'Open note', run: () => onOpenNote(card.file, false) });
+      if (canEditMap) items.push({ label: 'Delete card', run: () => void mapOp({ op: 'delete-card', id: card.id }) });
+      if (items.length) setMenu({ at: placeOf(event), label: 'Card', items });
+    },
+    [canEditMap, perform, onOpenNote, mapOp, placeOf]
+  );
+  const openFrameMenu = useCallback(
+    (event: ReactMouseEvent, frame: GsFrame) => {
+      if (!canEditMap) return;
+      setMenu({
+        at: placeOf(event),
+        label: 'Frame',
+        items: [
+          { label: 'Rename', run: () => setEditing({ kind: 'frame', id: frame.id }) },
+          { label: 'Style…', run: () => setEditor({ kind: 'frame', id: frame.id }) },
+          { label: 'Delete frame', run: () => void mapOp({ op: 'delete-frame', id: frame.id }) },
+        ],
+      });
+    },
+    [canEditMap, placeOf, mapOp]
   );
 
   const onNodeContextMenu = useCallback(
-    (event: ReactMouseEvent, flowNode: StrategyFlowNode) => {
+    (event: ReactMouseEvent, flowNode: GraphFlowNode) => {
       event.preventDefault();
+      if (isCardNode(flowNode)) return openCardMenu(event, flowNode.data.card);
+      if (isFrameNode(flowNode)) return openFrameMenu(event, flowNode.data.frame);
       const n = flowNode.data.node;
       const items: MenuItem[] = [];
       const ask = (request: QuickCreateKind) => () => setCreate({ request, anchor: n.key });
@@ -436,33 +652,54 @@ function Flow({
       }
       if (items.length) setMenu({ at: placeOf(event), label: `Actions for ${n.id ?? n.basename}`, items });
     },
-    [graph, perform, onOpenNote, placeOf]
+    [graph, perform, onOpenNote, placeOf, openCardMenu, openFrameMenu]
   );
 
   const onEdgeContextMenu = useCallback(
     (event: ReactMouseEvent, edge: Edge) => {
       event.preventDefault();
-      if (!perform) return;
-      setMenu({ at: placeOf(event), label: 'Link', items: [{ label: 'Remove link', run: () => removeRelation(edge) }] });
+      const link = (edge.data as { link?: GsLink } | undefined)?.link;
+      if (link) {
+        if (!canEditMap) return;
+        setMenu({
+          at: placeOf(event),
+          label: 'Link',
+          items: [
+            { label: 'Edit link…', run: () => setEditor({ kind: 'link', id: link.id }) },
+            { label: 'Delete link', run: () => removeLink(edge) },
+          ],
+        });
+      } else if (perform) {
+        setMenu({ at: placeOf(event), label: 'Link', items: [{ label: 'Remove link', run: () => removeLink(edge) }] });
+      }
     },
-    [perform, placeOf, removeRelation]
+    [perform, canEditMap, placeOf, removeLink]
   );
 
-  const onEdgesDelete = useCallback((deleted: Edge[]) => deleted.forEach(removeRelation), [removeRelation]);
+  const onEdgesDelete = useCallback((deleted: Edge[]) => deleted.forEach(removeLink), [removeLink]);
 
   // Dropping a link from a handle: the node under the pointer is the other end, handle or not.
   const onConnectEnd = useCallback(
     (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
       const from = state.fromNode?.id;
-      if (!perform || !from) return;
+      if (!from || (!perform && !canEditMap)) return;
       const point = 'changedTouches' in event ? event.changedTouches[0] : event;
       const doc = (event.target as Node | null)?.ownerDocument ?? document;
       const to = doc
         .elementsFromPoint(point.clientX, point.clientY)
         .map((el) => el.closest('.react-flow__node'))
-        .find((el): el is Element => el !== null)
+        .find((el): el is Element => el !== null && !el.classList.contains('react-flow__node-frame'))
         ?.getAttribute('data-id');
       if (!to || to === from) return;
+      // A card on either end: a free link, no strategy meaning.
+      if (from.startsWith('card:') || to.startsWith('card:')) {
+        if (!canEditMap) return;
+        const endOf = (id: string): GsLink['from'] => (id.startsWith('card:') ? { card: id.slice('card:'.length) } : { note: id });
+        const side = state.fromHandle?.id?.replace(/-source$/, '') as GsLink['fromSide'] | undefined;
+        mapOp({ op: 'put-link', link: { id: freshId(), from: endOf(from), to: endOf(to), ...(side ? { fromSide: side } : {}) } });
+        return;
+      }
+      if (!perform) return;
       const options = relationCandidates(graph, from, to);
       const open = options.filter((o) => !o.blocked);
       const say = (message: string) => setOutcome({ ok: false, message, id: ++outcomeId.current });
@@ -473,11 +710,11 @@ function Flow({
       if (open.length === 1) return apply(open[0]);
       setMenu({ at: placeOf(point), label: 'Which relation?', items: open.map((o) => ({ label: o.label, run: () => apply(o) })) });
     },
-    [graph, perform, placeOf]
+    [graph, perform, placeOf, canEditMap, mapOp, freshId]
   );
 
   const onInit = useCallback(
-    (instance: ReactFlowInstance<StrategyFlowNode>) => {
+    (instance: ReactFlowInstance<GraphFlowNode>) => {
       // A pending reveal positions the view itself; otherwise the saved viewport (defaultViewport) or a fit.
       if (!reveal && !viewport) void instance.fitView({ padding: 0.1 });
       setReady(true);
@@ -521,14 +758,14 @@ function Flow({
   useEffect(() => {
     if (!fitWanted) return;
     const shown = nodes.filter((n) => !n.hidden);
-    if (!shown.length || shown.length < graph.nodes.length || shown.some((n) => !n.measured)) return;
+    if (!shown.length || shown.filter(isStrategyNode).length < graph.nodes.length || shown.some((n) => !n.measured)) return;
     setFitWanted(false);
     void flow.fitView({ padding: 0.1, duration: 300 });
   }, [fitWanted, nodes, graph, flow]);
 
   return (
     <NodeActionsContext.Provider value={actions}>
-      <ReactFlow<StrategyFlowNode>
+      <ReactFlow<GraphFlowNode>
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
@@ -541,16 +778,19 @@ function Flow({
         defaultViewport={viewport ?? { x: 0, y: 0, zoom: 1 }}
         minZoom={0.1}
         maxZoom={2}
-        nodesConnectable={onEdit !== undefined}
+        nodesConnectable={onEdit !== undefined || canEditMap}
         edgesFocusable={false}
-        deleteKeyCode={onEdit ? ['Backspace', 'Delete'] : null}
+        deleteKeyCode={onEdit || canEditMap ? ['Backspace', 'Delete'] : null}
+        onNodesDelete={onNodesDelete}
+        onDoubleClickCapture={onDoubleClickCapture}
         onConnectEnd={onConnectEnd}
         onEdgesChange={onEdgesChange}
         onEdgesDelete={onEdgesDelete}
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
-        onPaneContextMenu={(event) => event.preventDefault()}
+        onPaneContextMenu={onPaneContextMenu}
         onSelectionChange={onSelectionChange}
+        onSelectionEnd={onSelectionEnd}
         zoomOnDoubleClick={false}
         // As on an Obsidian canvas: drag on empty space to select; a two-finger swipe (scroll),
         // Space+drag or middle-drag pans; a pinch or Cmd/Ctrl+scroll zooms. Dragging any selected node
@@ -612,9 +852,24 @@ function Flow({
             />
           </Panel>
         )}
-        {create && graph.nodes.find((n) => n.key === create.anchor) && perform && (
+        {create && perform && (
           <Panel position="bottom-center">
-            <QuickCreate request={create.request} anchor={graph.nodes.find((n) => n.key === create.anchor)!} perform={perform} onClose={() => setCreate(null)} />
+            <QuickCreate
+              request={create.request}
+              anchor={create.anchor === null ? undefined : graph.nodes.find((n) => n.key === create.anchor)}
+              perform={perform}
+              // A promoted card becomes the note it made: its links and its place go to the note.
+              onCreated={(outcome) => {
+                const card = create.request.promote;
+                if (card && outcome.created) mapOp({ op: 'promote-card', card, note: outcome.created.id });
+              }}
+              onClose={() => setCreate(null)}
+            />
+          </Panel>
+        )}
+        {editor && editedItem && (
+          <Panel position="bottom-center">
+            <ItemEditor edited={editedItem} onOp={mapOp} onClose={() => setEditor(null)} />
           </Panel>
         )}
         {menu && <PopupMenu at={menu.at} items={menu.items} label={menu.label} onClose={closeMenu} />}

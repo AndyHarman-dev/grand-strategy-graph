@@ -611,3 +611,224 @@
   gap: 6px;
   justify-content: flex-end;
 }
+
+/* ---- Free cards, frames and links (Phase 7) ---- */
+.gs-graph .react-flow__node-card,
+.gs-graph .react-flow__node-frame {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+/* A frame is a backdrop: only its label (and its resize handles) take the pointer, so notes, cards and links on it stay reachable. */
+.gs-graph .react-flow__node-frame {
+  pointer-events: none !important;
+}
+
+.gs-frame {
+  --gs-c: var(--text-faint);
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: 2px dashed color-mix(in srgb, var(--gs-c) 70%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gs-c) 6%, transparent);
+}
+
+.gs-frame.is-selected {
+  border-color: var(--interactive-accent);
+}
+
+.gs-frame-label {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  max-width: calc(100% - 20px);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gs-c) 25%, var(--background-primary));
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+  font-weight: 600;
+  pointer-events: all;
+  cursor: grab;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gs-frame .react-flow__resize-control {
+  pointer-events: all;
+}
+
+.gs-card {
+  --gs-c: var(--text-faint);
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 6px 10px;
+  border: 2px solid var(--gs-c);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--gs-c) 12%, var(--background-secondary));
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+  line-height: 1.35;
+  overflow: hidden;
+}
+
+.gs-card.is-selected {
+  border-color: var(--interactive-accent);
+}
+
+.gs-card--dashed {
+  border-style: dashed;
+}
+
+.gs-card--invisible {
+  border-color: transparent;
+  background: transparent;
+}
+
+.gs-card--center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.gs-card--diamond {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--gs-c) 30%, var(--background-secondary));
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  text-align: center;
+  font-weight: 600;
+}
+
+.gs-card-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.gs-card-kind {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gs-c) 25%, transparent);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.gs-card-empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.gs-inline-text {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  resize: none;
+  font: inherit;
+}
+
+.gs-frame .gs-inline-text {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  width: 60%;
+  height: auto;
+  pointer-events: all;
+}
+
+.gs-card .react-flow__handle {
+  opacity: 0;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--interactive-accent);
+  background: var(--background-primary);
+}
+
+.gs-card:hover .react-flow__handle.source {
+  opacity: 1;
+}
+
+.gs-card .react-flow__handle.target {
+  pointer-events: none;
+}
+
+/* Links of the map: lines with no strategy meaning, drawn as the canvas did. */
+.gs-graph .gs-link .react-flow__edge-path {
+  stroke-width: 1.5;
+}
+.gs-graph .gs-link--dotted .react-flow__edge-path {
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
+.gs-graph .gs-link--short-dashed .react-flow__edge-path {
+  stroke-dasharray: 6 4;
+}
+.gs-graph .gs-link--long-dashed .react-flow__edge-path {
+  stroke-dasharray: 14 6;
+}
+.gs-graph .gs-link.selected .react-flow__edge-path {
+  stroke: var(--interactive-accent);
+}
+
+/* Colour, border and line choices for a card, frame or link. */
+.gs-item-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 300px;
+  padding: 10px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-item-editor h3 {
+  margin: 0;
+  font-size: var(--font-ui-medium, 15px);
+}
+
+.gs-item-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.gs-swatches {
+  display: flex;
+  gap: 6px;
+}
+
+.gs-graph .gs-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid var(--background-modifier-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.gs-graph .gs-swatch.is-none {
+  background: var(--background-primary);
+}
+
+.gs-graph .gs-swatch.is-active {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}

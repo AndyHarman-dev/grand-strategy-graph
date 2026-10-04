@@ -197,6 +197,26 @@ describe('creating from the graph', () => {
   });
 });
 
+describe('creating a milestone, and what a creation reports (Phase 7)', () => {
+  it('creates an open milestone serving a fixed point, and reports the id and path it made', async () => {
+    const { plan, graph: g } = await run({ kind: 'new-milestone', form: { title: 'Visa in hand', description: 'The D7 card is issued' }, serves: ['FP-1'] });
+    expect(plan!.open).toBeNull();
+    expect(plan!.created).toEqual({ id: 'M-1', path: 'Strategy/Milestones/M-1 Visa in hand.md' });
+    expect(node(g, 'M-1')).toMatchObject({ type: 'milestone', status: 'open' });
+    expect(edge(g, 'serves:M-1>FP-1')).toBe(true);
+  });
+
+  it('refuses a milestone that serves a bet, and an empty title', async () => {
+    expect((await run({ kind: 'new-milestone', form: { title: 'X', description: '' }, serves: ['B-1'] })).error).toContain('"Serves" must be notes in');
+    expect((await run({ kind: 'new-milestone', form: { title: '???', description: '' }, serves: [] })).error).toContain('title is empty');
+  });
+
+  it('reports the id of a created bet and assumption', async () => {
+    expect((await run({ kind: 'new-bet', form: { title: 'T', x: '', y: '', z: '', deadline: '' }, serves: [] })).plan!.created).toEqual({ id: 'B-9', path: 'Strategy/Bets/B-9 T.md' });
+    expect((await run({ kind: 'new-assumption', form: { statement: 'S', falsifier: '', verifyBy: '' }, dependents: [] })).plan!.created!.id).toBe('A-8');
+  });
+});
+
 describe('relationCandidates', () => {
   it('infers one relation from the types: bet to fixed point is serves', async () => {
     const g = await graph();

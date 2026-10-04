@@ -362,3 +362,40 @@ describe('editing from the graph (Phase 6)', () => {
     cleanup();
   });
 });
+
+describe('the free part of the map (Phase 7)', () => {
+  it('writes a card edit into the .gsmap through vault.process after the quiet period, changing nothing else', async () => {
+    const { mount } = await open();
+    const before = app.vault.text(GSMAP_PATH);
+    const cardsBefore = parseGsMap(before).ok ? (parseGsMap(before) as { map: { cards: unknown[] } }).map.cards.length : -1;
+    expect(mount.host.editMap!({ op: 'put-card', card: { id: 'new', kind: 'text', text: 'idea', x: 1, y: 2, width: 250, height: 60 } })).toBe(true);
+    expect(app.vault.text(GSMAP_PATH)).toBe(before);
+    await vi.advanceTimersByTimeAsync(400);
+    const read = parseGsMap(app.vault.text(GSMAP_PATH));
+    if (!read.ok) throw new Error(read.error);
+    expect(read.map.cards).toHaveLength(cardsBefore + 1);
+    expect(read.map.positions).toEqual(positionsOn(before));
+  });
+
+  it('refuses card edits into a .gsmap it cannot read, and says so', async () => {
+    app.vault.write(GSMAP_PATH, 'not json');
+    const { mount } = await open();
+    expect(mount.host.editMap!({ op: 'delete-card', id: 'x' })).toBe(false);
+    expect(notices.map((n) => n.message).join('\n')).toContain("can't be read, so this change was not saved");
+  });
+
+  it('writes a pending card edit when the tab closes', async () => {
+    const { mount, leaf } = await open();
+    mount.host.editMap!({ op: 'delete-card', id: 'note' });
+    await leaf.detach();
+    const read = parseGsMap(app.vault.text(GSMAP_PATH));
+    if (!read.ok) throw new Error(read.error);
+    expect(read.map.cards.map((c) => c.id)).not.toContain('note');
+  });
+});
+
+function positionsOn(text: string) {
+  const read = parseGsMap(text);
+  if (!read.ok) throw new Error(read.error);
+  return read.map.positions;
+}

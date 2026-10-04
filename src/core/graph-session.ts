@@ -6,7 +6,7 @@
  */
 import type { VaultAdapter } from './adapter';
 import { buildGraph } from './graph';
-import type { GsMap, GsPosition } from './gsmap';
+import type { GsMap, GsOp, GsPosition } from './gsmap';
 import { GsMapStore, type GsMapWriter } from './gsmap-store';
 import { describeIdChange, IdTracker } from './id-changes';
 import type { Graph } from './schema';
@@ -72,6 +72,14 @@ export class GraphSession {
     }
     for (const [path, change] of this.idNotices) {
       notices.push({ severity: 'warning', path, message: describeIdChange({ path, ...change }, change.hadPosition) });
+    }
+    // A link on the graph that ends on a note that is gone (deleted, or its id changed): not drawn, so say so.
+    if (this.graph && this.store.map) {
+      const known = new Set(this.graph.nodes.map((n) => n.key));
+      for (const link of this.store.map.links) {
+        const missing = [link.from, link.to].flatMap((end) => ('note' in end && !known.has(end.note) ? [end.note] : []));
+        if (missing.length) notices.push({ severity: 'warning', message: `A link on the graph${link.label ? ` ("${link.label}")` : ''} ends on ${missing.map((id) => `"${id}"`).join(' and ')}, which is not a note on the graph; it is not drawn.` });
+      }
     }
     for (const issue of this.graph?.issues ?? []) {
       notices.push({ severity: issue.severity, path: issue.path, message: `${issue.path}: ${issue.message}` });
@@ -145,6 +153,11 @@ export class GraphSession {
   /** Nodes were dragged: positions by note id. False when the `.gsmap` can't be written. */
   move(updates: Readonly<Record<string, GsPosition>>): boolean {
     return this.store.move(updates);
+  }
+
+  /** A card, frame or link was changed on the graph. False when the `.gsmap` can't be written. */
+  editMap(op: GsOp): boolean {
+    return this.store.edit(op);
   }
 
   /** Forget every saved position (the graph's reset button). False when the `.gsmap` can't be written. */

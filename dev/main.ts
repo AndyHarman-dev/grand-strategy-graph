@@ -20,6 +20,8 @@ const vaultName = params.get('vault') === 'legacy' ? 'legacy' : 'planned';
 const files: Record<string, string> = { ...vaults[vaultName] };
 // ?layout=auto drops the saved positions, to see the automatic layout (D19) on the whole vault.
 let gsmapText = params.get('layout') === 'auto' ? withoutPositions(files[GSMAP_PATH] ?? '') : files[GSMAP_PATH] ?? '';
+// ?gsmap=broken: a file this version can't read, to see what the graph offers then.
+if (params.get('gsmap') === 'broken') gsmapText = '{ not a gsmap';
 files[GSMAP_PATH] = gsmapText;
 const vault = new MemoryVault(files);
 let writes = 0;
@@ -32,6 +34,7 @@ const status = document.getElementById('status')!;
 const mounted = mountGraph(document.getElementById('content')!, {
   move: (updates) => session.move(updates),
   resetPositions: () => session.resetPositions(),
+  editMap: (op) => session.editMap(op),
   openNote: (path) => {
     opened.push(path);
     status.textContent = `open ${path}`;
