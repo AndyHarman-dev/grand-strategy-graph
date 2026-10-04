@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "migrate": "esbuild tools/migrate.ts --bundle --platform=node --format=esm --packages=external --outfile=.build/migrate.mjs --log-level=warning && node .build/migrate.mjs",
     "dev:web": "vite --config dev/vite.config.ts --configLoader runner",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "screenshots": "node tools/readme-screenshots.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
