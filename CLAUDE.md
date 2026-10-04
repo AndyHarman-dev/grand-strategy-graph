@@ -88,8 +88,8 @@ Release.
   that has no saved position yet (`unsavedPositions`), so nothing but the moved nodes ever moves. Fixed points and notes
   without a unique `id` can't be dragged (fixed points are still pinned that way).
 - Selection works as on an Obsidian canvas: drag on empty space draws a selection box (partial overlap selects),
-  Shift/Cmd/Ctrl-click toggles, Cmd/Ctrl+A selects all, Escape clears; Space+drag, middle-drag or scroll pans,
-  Cmd/Ctrl+scroll or pinch zooms. Dragging any selected node moves the selection; arrow keys nudge it and are saved.
+  Shift/Cmd/Ctrl-click toggles, Cmd/Ctrl+A selects all, Escape clears; a two-finger trackpad swipe (scroll) pans 1:1
+  (`panOnScrollSpeed={1}`), as do Space+drag and middle-drag; pinch or Cmd/Ctrl+scroll zooms. Dragging any selected node moves the selection; arrow keys nudge it and are saved.
 - The reset button (circular arrow in the controls) empties `positions` after a confirmation (`clearPositions`, through the
   same write queue as moves), and the view fits the new automatic layout.
 - Rebuilt React Flow nodes must keep `measured`: without it React Flow drops the node's measured handles and draws none of

@@ -209,6 +209,38 @@ test.describe('selecting several nodes, as on a canvas', () => {
     expect(after['B-3']).toEqual(before['B-3']);
   });
 
+  test.describe('on a Mac trackpad', () => {
+    test.use({ userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 (KHTML, like Gecko) obsidian/1.9.0 Chrome/132.0.0.0 Electron/34.0.0 Safari/537.36' });
+
+    test('a two-finger swipe pans any way, over a node too, and a pinch zooms', async ({ page }) => {
+      await page.goto('/');
+      await expect(node(page, 'B-1')).toBeVisible();
+      const a = await rectOf(page, 'B-1');
+      // A swipe arrives as wheel events with both deltas (no modifier key).
+      await page.mouse.move(700, 450);
+      for (let i = 0; i < 5; i++) await page.mouse.wheel(30, 20);
+      await page.waitForTimeout(150);
+      const b = await rectOf(page, 'B-1');
+      expect(Math.round(a.x - b.x)).toBe(150);
+      expect(Math.round(a.y - b.y)).toBe(100);
+      expect(b.width).toBeCloseTo(a.width, 0);
+      // Starting over a node, the swipe still pans the view, not the node.
+      const over = await rectOf(page, 'B-3');
+      await page.mouse.move(over.x + over.width / 2, over.y + over.height / 2);
+      await page.mouse.wheel(-40, 0);
+      await page.waitForTimeout(150);
+      expect(Math.round((await rectOf(page, 'B-1')).x - b.x)).toBe(40);
+      expect(await page.evaluate(() => window.gsDev.writes())).toBe(0);
+      // macOS sends a pinch as wheel events with ctrlKey set.
+      const before = (await rectOf(page, 'B-1')).width;
+      await page.keyboard.down('Control');
+      await page.mouse.wheel(0, -40);
+      await page.keyboard.up('Control');
+      await page.waitForTimeout(150);
+      expect((await rectOf(page, 'B-1')).width).toBeGreaterThan(before * 1.1);
+    });
+  });
+
   test('scroll pans, Cmd/Ctrl+scroll zooms', async ({ page }) => {
     const a = await rectOf(page, 'B-1');
     await page.mouse.move(700, 450);

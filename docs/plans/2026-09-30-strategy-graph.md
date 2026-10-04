@@ -551,6 +551,12 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Decisions:** reverses the 5a decision "ELK positions are never saved": a drag pins the whole shown layout (user, 2026-10-03). Saved positions are still never changed by the layout (D19). Arrow-key nudges count as moves.
   - **Verification:** `npm run typecheck`, `npm test` (290) and `npm run build` pass; `npm run test:e2e` (23, 3 of them `@visual`; baselines unchanged). Mutations (no pinning of unsaved nodes, no failed-layout state) each fail a test; the arrow-key save and Escape focus were found failing by their tests and fixed. **Unverified (user, local):** the selection gestures, trackpad pan/zoom and Cmd+A/Escape inside Obsidian (Obsidian's own hotkeys could take a key first).
 
+- **2026-10-04**:
+  - **Context:** the user asked for the Mac trackpad to pan the graph as it does on an Obsidian canvas (two-finger swipe).
+  - **Actions:** a swipe arrives as wheel events, which already panned since multi-select (`panOnScroll`), but at React Flow's default half speed, so the graph lagged behind the fingers. `panOnScrollSpeed` is now 1. New e2e test with a macOS Electron user agent: a diagonal swipe pans both axes 1:1, a swipe starting over a node pans too (and saves nothing), and a pinch (wheel with ctrlKey, as macOS sends it) zooms.
+  - **Decisions:** none.
+  - **Verification:** `npm run typecheck`, `npm test` (290), `npm run build`, `npm run test:e2e` (24, `@visual` baselines unchanged). **Unverified (user, local):** the feel on a real trackpad in Obsidian, momentum scrolling included.
+
 ## Decisions Log
 
 *(For the user's own hand only.)*

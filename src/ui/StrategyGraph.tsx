@@ -358,12 +358,15 @@ function Flow({
       edgesFocusable={false}
       deleteKeyCode={null}
       zoomOnDoubleClick={false}
-      // As on an Obsidian canvas: drag on empty space to select, Space+drag, middle-drag or scroll to
-      // pan, Cmd/Ctrl+scroll or pinch to zoom. Dragging any selected node moves the whole selection.
+      // As on an Obsidian canvas: drag on empty space to select; a two-finger swipe (scroll),
+      // Space+drag or middle-drag pans; a pinch or Cmd/Ctrl+scroll zooms. Dragging any selected node
+      // moves the whole selection. The swipe moves the graph with the fingers, 1:1 (React Flow's
+      // default is half speed).
       selectionOnDrag
       selectionMode={SelectionMode.Partial}
       panOnDrag={PAN_BUTTONS}
       panOnScroll
+      panOnScrollSpeed={1}
       multiSelectionKeyCode={MULTI_SELECT_KEYS}
       tabIndex={-1}
       onKeyDown={onKeyDown}
