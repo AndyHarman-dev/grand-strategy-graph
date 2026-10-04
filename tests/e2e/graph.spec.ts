@@ -974,6 +974,124 @@ test.describe('free cards, frames and links (Phase 7)', () => {
   });
 });
 
+test.describe('smells panel and review walk (Phase 8)', () => {
+  const panel = (page: Page) => page.getByRole('region', { name: 'Smells' });
+  const walk = (page: Page) => page.getByRole('dialog', { name: 'Review walk' });
+  /** How far a node's centre is from the centre of the graph's box. */
+  async function offCentre(page: Page, key: string) {
+    const [n, pane] = [(await node(page, key).boundingBox())!, (await page.locator('.react-flow').boundingBox())!];
+    return Math.hypot(n.x + n.width / 2 - (pane.x + pane.width / 2), n.y + n.height / 2 - (pane.y + pane.height / 2));
+  }
+
+  test('lists what review would flag, in groups, worst first, and a click centres the note and selects it', async ({ page }) => {
+    await page.goto('/?today=2026-10-20'); // B-3 (deadline 2026-10-15) is overdue
+    await expect(node(page, 'B-1')).toBeVisible();
+    const toggle = page.getByRole('button', { name: /^\d+ smells?$/ });
+    await toggle.click();
+    const titles = await panel(page).locator('h4').allTextContents();
+    expect(titles.map((t) => t.replace(/\s*\d+$/, ''))).toEqual([
+      'Active on assumptions with no verify-by',
+      'Active on falsified assumptions',
+      'Past its deadline while active',
+      'No serves chain to a fixed point',
+      'Dormant, and no bet\'s next',
+    ]);
+    // The count on the button is the sum of the badges on the notes.
+    const badges = await page.locator('.gs-node-smell').allTextContents();
+    expect(await toggle.textContent()).toBe(`${badges.reduce((n, b) => n + Number(b), 0)} smells`);
+    await panel(page).locator('[data-code=overdue-bet]').getByRole('button', { name: /B-3/ }).click();
+    await expect(node(page, 'B-3')).toHaveClass(/selected/);
+    await expect.poll(() => offCentre(page, 'B-3')).toBeLessThan(40);
+    // The smell reads as the badge does.
+    await expect(panel(page).locator('[data-code=overdue-bet] button').first()).toHaveAttribute('title', /passed its deadline/);
+  });
+
+  test('says so when there is nothing to flag', async ({ page }) => {
+    await page.goto('/?today=2026-09-01');
+    await expect(node(page, 'B-1')).toBeVisible();
+    for (const key of ['B-2', 'B-7', 'B-8']) await page.evaluate((k) => k, key);
+    // Fix the notes with smells in the in-memory vault, as an edit would.
+    await page.evaluate(() => {
+      const put = (path: string, text: string) => window.gsDev.setFile(path, text);
+      const bet = (id: string, extra = '') => `---\nid: ${id}\ntype: bet\nstatus: won\n${extra}---\n`;
+      for (const path of ['Strategy/Bets/B-1 Get a D7 visa.md', 'Strategy/Bets/B-2 Apply for a digital nomad visa.md', 'Strategy/Bets/B-3 Sell pottery at weekend markets.md', 'Strategy/Bets/B-4 Save 20000 for kiln and lease.md', 'Strategy/Bets/B-7  Part-time barista job.md', 'Strategy/Bets/B-8 Teach pottery workshops.md']) {
+        put(path, bet(path.match(/B-\d+/)![0], 'serves: "[[FP-1 Live in Portugal]]"\n'));
+      }
+      put('Strategy/Bets/B-6 Online ceramics course.md', bet('B-6', 'serves: "[[FP-2 Own a profitable ceramics studio]]"\n'));
+    });
+    await expect(page.locator('.gs-node-smell')).toHaveCount(0);
+    await page.getByRole('button', { name: /smells?$/ }).click();
+    await expect(page.getByRole('region', { name: 'Smells' })).toContainText('Nothing to flag');
+    await expect(page.getByRole('button', { name: '0 smells' })).toBeVisible();
+  });
+
+  test('the walk goes through each fixed point, then outward along its serves chains, in a fixed order', async ({ page }) => {
+    await page.goto('/?today=2026-10-04');
+    await expect(node(page, 'B-1')).toBeVisible();
+    await page.getByRole('button', { name: 'Review walk' }).click();
+    const dialog = walk(page);
+    await expect(dialog).toContainText('Step 1 of 10');
+    await expect(dialog).toContainText('Fixed point');
+    await expect(dialog).toContainText('FP-1 Live in Portugal');
+    await expect(dialog.getByText('A-6 Portugal stays open')).toBeVisible(); // the assumption held by the fixed point is reviewed with it
+    await expect(node(page, 'FP-1')).toHaveClass(/selected/);
+    await expect(page.getByRole('complementary', { name: /^Inspector/ })).toHaveCount(0); // the walk has the floor
+    const seen: string[] = [];
+    for (let i = 1; i < 10; i++) {
+      await dialog.getByRole('button', { name: /Next/ }).click();
+      await expect(dialog).toContainText(`Step ${i + 1} of 10`);
+      seen.push((await dialog.locator('h3').textContent())!.match(/^[A-Z]+-\d+/)![0]);
+    }
+    // B-7 serves B-4 here, and B-6's only serves is the phantom note kept as it is (D13): it is on no route.
+    expect(seen).toEqual(['B-1', 'B-2', 'B-5', 'FP-2', 'B-4', 'B-3', 'B-7', 'B-8', 'B-6']);
+    await expect(dialog).toContainText('Not on any route to a fixed point');
+    await expect(dialog.getByRole('button', { name: /Next/ })).toBeDisabled();
+    await expect(node(page, 'B-6')).toHaveClass(/selected/);
+    await expect.poll(() => offCentre(page, 'B-6')).toBeLessThan(40);
+  });
+
+  test('a step shows the route, the dates, the smells and the assumptions of the note; Previous and the arrow keys go back and forth', async ({ page }) => {
+    await page.goto('/?today=2026-10-20');
+    await expect(node(page, 'B-1')).toBeVisible();
+    await page.getByRole('button', { name: 'Review walk' }).click();
+    const dialog = walk(page);
+    for (let i = 0; i < 6; i++) await dialog.getByRole('button', { name: /Next/ }).click(); // → B-3
+    await expect(dialog.locator('h3')).toContainText('B-3 Sell pottery at weekend markets');
+    await expect(dialog).toContainText('On the way to FP-2 · 2 steps out');
+    await expect(dialog).toContainText('B-3 → B-4 → FP-2');
+    await expect(dialog).toContainText('Deadline 2026-10-15');
+    await expect(dialog.getByRole('list', { name: 'Smells' })).toContainText('passed its deadline');
+    await expect(dialog).toContainText('A-3 Weekend market stalls are available');
+    await expect(dialog).toContainText('falsified');
+    await dialog.press('ArrowLeft');
+    await expect(dialog.locator('h3')).toContainText('B-4');
+    await dialog.press('ArrowRight');
+    await expect(dialog.locator('h3')).toContainText('B-3');
+    await dialog.getByRole('button', { name: /Previous/ }).click();
+    await expect(dialog.locator('h3')).toContainText('B-4');
+  });
+
+  test('the walk ends with Escape or ×, keeps the last note selected, and stays on its note when an edit changes the order', async ({ page }) => {
+    await page.goto('/?today=2026-10-04&saveDelay=200');
+    await expect(node(page, 'B-1')).toBeVisible();
+    await page.getByRole('button', { name: 'Review walk' }).click();
+    const dialog = walk(page);
+    await dialog.getByRole('button', { name: /Next/ }).click(); // B-1
+    await expect(dialog.locator('h3')).toContainText('B-1');
+    // B-1 stops serving FP-1 (as an edit would do): the walk stays on it.
+    await page.evaluate(() => window.gsDev.setFile('Strategy/Bets/B-1 Get a D7 visa.md', '---\nid: B-1\ntype: bet\nstatus: active\n---\n'));
+    await expect(dialog.locator('h3')).toContainText('B-1');
+    await expect(dialog).toContainText('Not on any route to a fixed point');
+    await dialog.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(node(page, 'B-1')).toHaveClass(/selected/);
+    await expect(page.getByRole('complementary', { name: /^Inspector/ })).toBeVisible();
+    await page.getByRole('button', { name: 'Review walk' }).click();
+    await walk(page).getByRole('button', { name: 'End the review walk' }).click();
+    await expect(walk(page)).toHaveCount(0);
+  });
+});
+
 test.describe('screenshots @visual', () => {
   // ?today pins the clock: the overdue smell, and so the badges, would otherwise change with the date.
   test('migrated test vault, light', async ({ page }) => {
@@ -1013,6 +1131,16 @@ test.describe('screenshots @visual', () => {
     await expect(page.getByRole('menu')).toBeVisible();
     await page.waitForTimeout(300);
     await expect(page).toHaveScreenshot('migrated-inspector.png');
+  });
+
+  test('smells panel and review walk', async ({ page }) => {
+    await page.goto('/?today=2026-10-20');
+    await expect(node(page, 'B-1')).toBeVisible();
+    await page.getByRole('button', { name: /smells?$/ }).click();
+    await page.getByRole('button', { name: 'Review walk' }).click();
+    for (let i = 0; i < 6; i++) await page.getByRole('dialog', { name: 'Review walk' }).getByRole('button', { name: /Next/ }).click();
+    await page.waitForTimeout(600);
+    await expect(page).toHaveScreenshot('migrated-walk.png');
   });
 
   test('legacy test vault, dark', async ({ page }) => {

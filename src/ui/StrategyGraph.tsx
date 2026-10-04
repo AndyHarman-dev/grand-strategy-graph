@@ -29,13 +29,15 @@ import {
 import { relationCandidates, type Intent } from '../core/edits';
 import type { GraphNotice } from '../core/graph-session';
 import type { GsCard, GsFrame, GsLink, GsMap, GsOp, GsPosition } from '../core/gsmap';
-import { elkPositions, layoutKey, needsElk as needsElkFor, NODE_SIZES, pinnedPositions, placeNodes, structureOf } from '../core/layout';
+import { elkPositions, layoutKey, needsElk as needsElkFor, pinnedPositions, placeNodes, structureOf } from '../core/layout';
 import type { EditOutcome } from '../core/perform';
 import type { Graph } from '../core/schema';
 import { findSmells } from '../core/smells';
 import { NodeActionsContext, type NodeActions } from './actions-context';
 import type { RelationField } from '../core/writes';
 import { Inspector } from './Inspector';
+import { ReviewWalk, SmellsPanel } from './ReviewPanels';
+import { reviewWalk } from '../core/review-walk';
 import { PopupMenu, QuickCreate, Toast, type MenuItem, type QuickCreateKind } from './GraphMenus';
 import {
   CARD_DEFAULT_SIZE,
@@ -280,6 +282,7 @@ function Flow({
     [onHoverNote, perform, canEditMap, editing, cards, frames, mapOp, onOpenNote]
   );
   const dismissOutcome = useCallback(() => setOutcome(null), []);
+  const [walkKey, setWalkKey] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   /** The note whose inspector was closed by hand: it stays closed until another note is selected. */
   const [closedKey, setClosedKey] = useState<string | null>(null);
@@ -288,10 +291,23 @@ function Flow({
     setSelectedKey(key);
     setClosedKey((closed) => (closed === key ? closed : null));
   }, []);
-  const inspected = selectedKey !== null && selectedKey !== closedKey ? graph.nodes.find((n) => n.key === selectedKey) ?? null : null;
+  const inspected = walkKey === null && selectedKey !== null && selectedKey !== closedKey ? graph.nodes.find((n) => n.key === selectedKey) ?? null : null;
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; label: string; items: MenuItem[] } | null>(null);
   const [create, setCreate] = useState<{ request: QuickCreateKind; anchor: string | null } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
+  // ---- review walk (Phase 8)
+  const startWalk = useCallback(() => {
+    const first = reviewWalk(graph)[0];
+    if (!first) return setWalkKey('');
+    setWalkKey(first.node);
+    focusNodeRef.current(first.node);
+  }, [graph]);
+  const stepWalk = useCallback((key: string) => {
+    setWalkKey(key);
+    focusNodeRef.current(key);
+  }, []);
+  /** `focusNode` is defined further down, once the nodes exist; the walk calls it through here. */
+  const focusNodeRef = useRef<(key: string) => boolean>(() => false);
   const editedItem: EditedItem | null = (() => {
     if (!editor) return null;
     if (editor.kind === 'card') return cards.find((c) => c.id === editor.id) ? { kind: 'card', item: cards.find((c) => c.id === editor.id)! } : null;
@@ -722,16 +738,27 @@ function Flow({
     [reveal, viewport]
   );
 
+  /** Select a note and center the view on it (the smells panel, the review walk, "Reveal note in graph"). False when it isn't shown. */
+  const focusNode = useCallback(
+    (key: string) => {
+      const target = nodesRef.current.find((n) => n.id === key && isStrategyNode(n) && !n.hidden);
+      if (!target) return false;
+      setNodes((current) => current.map((n) => (n.selected === (n.id === key) ? n : { ...n, selected: n.id === key })));
+      const [w, h] = [target.width ?? 0, target.height ?? 0];
+      void flow.setCenter(target.position.x + w / 2, target.position.y + h / 2, { zoom: Math.max(flow.getZoom(), 1), duration: 300 });
+      return true;
+    },
+    [flow]
+  );
+
   useEffect(() => {
     if (!ready || !reveal || revealed.current === reveal.nonce) return;
-    const node = graph.nodes.find((n) => n.key === reveal.key);
-    const at = placed[reveal.key];
-    if (!node || !at) return;
+    if (!placed[reveal.key] || !graph.nodes.some((n) => n.key === reveal.key)) return;
     revealed.current = reveal.nonce;
-    setNodes((current) => current.map((n) => (n.selected === (n.id === reveal.key) ? n : { ...n, selected: n.id === reveal.key })));
-    const size = NODE_SIZES[node.type];
-    void flow.setCenter(at.x + size.width / 2, at.y + size.height / 2, { zoom: Math.max(flow.getZoom(), 1), duration: 300 });
-  }, [ready, reveal, graph, placed, flow]);
+    focusNode(reveal.key);
+  }, [ready, reveal, graph, placed, focusNode]);
+
+  focusNodeRef.current = focusNode;
 
   const resetPositions = useCallback(() => {
     setConfirmingReset(false);
@@ -874,9 +901,16 @@ function Flow({
         )}
         {menu && <PopupMenu at={menu.at} items={menu.items} label={menu.label} onClose={closeMenu} />}
         <Toast outcome={outcome} onDone={dismissOutcome} />
-        {notices && notices.length > 0 && (
-          <Panel position="top-left">
-            <Notices notices={notices} onOpenNote={onOpenNote} />
+        <Panel position="top-left" className="gs-toolbar">
+          {notices && notices.length > 0 && <Notices notices={notices} onOpenNote={onOpenNote} />}
+          <SmellsPanel graph={graph} smells={smells} onFocus={focusNode} />
+          <button className="gs-toolbar-button" onClick={() => (walkKey === null ? startWalk() : setWalkKey(null))} aria-pressed={walkKey !== null}>
+            Review walk
+          </button>
+        </Panel>
+        {walkKey !== null && (
+          <Panel position="bottom-center">
+            <ReviewWalk graph={graph} smells={smells} current={walkKey} onStep={stepWalk} onClose={() => setWalkKey(null)} />
           </Panel>
         )}
       </ReactFlow>

@@ -597,6 +597,16 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Golden diff:** none. Screenshot baselines (`@visual`) rewritten, because the canvas's free part now shows.
   - **Verification:** `npm run typecheck`, `npm test` (374), `npm run build`, `npm run test:e2e` (62, 6 of them `@visual`) pass. **Unverified (user, local, needs Obsidian):** all of the above inside Obsidian: typing in a card, resizing by handles, frame labels, the right-click menus, drawing links to cards, and opening a note-reference card or link.
 
+- **2026-10-04**:
+  - **Context:** Phase 8 (smell overlay + review walk), same session.
+  - **Actions:**
+    - Smells: the badge on each node (Phase 5b) is now joined by a "Smells" panel in the graph's toolbar (top-left): the count, then the smells in groups, worst first (gating violation, falsified dependency, `requires-open-milestone` (D17), overdue, orphan, unreached fixed point, dormant that is no bet's `next`); clicking a note centers the graph on it and selects it. `findSmells` is untouched; the panel and badges render its output.
+    - `src/core/review-walk.ts` (`reviewWalk`): each fixed point in id order, then outward along the `serves` chains that lead to it (D16), nearest first and by id inside a distance; a note two fixed points share is visited under the first; bets and milestones on no route come last. Each step carries the route up to its fixed point and the assumptions the note leans on. The "Review walk" button opens a step panel (Previous / Next, ← →, Escape or × to end): it centers on and selects the note, and shows its status, deadline or verify-by, expected result, route, smells and assumptions with their status. The walk follows the note by key, so an edit that reorders the steps leaves it on the note it was on. The inspector stays closed during the walk.
+    - `focusNode` (select + center) is now shared by the smells panel, the walk and "Reveal note in graph".
+  - **Decisions:** assumptions are reviewed with the note that holds them, not as steps of their own. Unrouted notes are walked, after the routes, so a review can't skip an orphan. Current position is not a step.
+  - **Golden diff:** none. Screenshot baselines (`@visual`) rewritten for the toolbar; one added (`migrated-walk`).
+  - **Verification:** `npm run typecheck`, `npm test` (382), `npm run build`, `npm run test:e2e` (68, 7 of them `@visual`) pass. **Unverified (user, local, needs Obsidian):** the toolbar and the walk panel in Obsidian's styling, and the walk's arrow keys while the graph tab has focus.
+
 ## Decisions Log
 
 *(For the user's own hand only.)*

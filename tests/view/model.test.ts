@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { findSmells } from '../../src/core/smells';
 import type { GsCard, GsFrame, GsLink } from '../../src/core/gsmap';
+import { groupSmellsForPanel, SMELL_GROUPS } from '../../src/ui/model';
 import { cardNodeId, cssColor, endpointNodeId, followersOf, frameNodeId, isCardNode, isFrameNode, isStrategyNode, toFlowCards, toFlowFrames, toFlowLinks, groupSmells, localToday, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions, unverifiedServes } from '../../src/ui/model';
 import { graphOf, md } from '../support/v2';
 
@@ -227,5 +228,22 @@ describe('free cards, frames and links (Phase 7)', () => {
   it('leaves out a link whose end is not on the graph, and makes none selectable when read-only', () => {
     expect(toFlowLinks([link({ to: { note: 'B-404' } })], rects, true)).toEqual([]);
     expect(toFlowLinks([link()], rects, false)[0]).toMatchObject({ selectable: false, deletable: false });
+  });
+});
+
+describe('smells panel groups (Phase 8)', () => {
+  it('lists every smell code the core can produce, worst first, and leaves empty groups out', async () => {
+    const graph = await graphOf(files);
+    const smells = findSmells(graph, { today: '2026-10-01' });
+    const groups = groupSmellsForPanel(smells);
+    expect(groups.map((g) => g.code)).toEqual(['gating-violation', 'orphan-bet']);
+    expect(groups.find((g) => g.code === 'orphan-bet')!.smells.map((s) => s.node)).toEqual(['B-2', 'No id.md'.replace(/^/, 'Strategy/')]);
+    expect(groupSmellsForPanel([])).toEqual([]);
+  });
+
+  it('has a title for each of the core\'s smell codes, no more and no fewer', () => {
+    expect(SMELL_GROUPS.map((g) => g.code).sort()).toEqual(
+      ['dormant-not-next', 'falsified-dependency', 'gating-violation', 'orphan-bet', 'overdue-bet', 'requires-open-milestone', 'unreached-fixed-point'].sort()
+    );
   });
 });

@@ -6,7 +6,7 @@ import type { Edge, Node } from '@xyflow/react';
 import type { GsCard, GsFrame, GsLink, GsPosition } from '../core/gsmap';
 import { canPin, flowOf, HIDDEN_EDGE_KINDS, NODE_SIZES, type Size } from '../core/layout';
 import type { Graph, GraphNode } from '../core/schema';
-import type { Smell } from '../core/smells';
+import type { Smell, SmellCode } from '../core/smells';
 
 export const NODE_TYPE = 'strategy';
 
@@ -327,4 +327,23 @@ export function toFlowLinks(links: readonly GsLink[], rects: ReadonlyMap<string,
     });
   }
   return out;
+}
+
+
+// ------------------------------------------------------------------ smells panel (Phase 8)
+
+/** What each smell means, worst first: the order the panel lists them in. */
+export const SMELL_GROUPS: readonly { code: SmellCode; title: string }[] = [
+  { code: 'gating-violation', title: 'Active on assumptions with no verify-by' },
+  { code: 'falsified-dependency', title: 'Active on falsified assumptions' },
+  { code: 'requires-open-milestone', title: 'Active, but requires a milestone not reached' },
+  { code: 'overdue-bet', title: 'Past its deadline while active' },
+  { code: 'orphan-bet', title: 'No serves chain to a fixed point' },
+  { code: 'unreached-fixed-point', title: 'Fixed point nothing serves' },
+  { code: 'dormant-not-next', title: 'Dormant, and no bet\'s next' },
+];
+
+/** The smells in the panel's groups, each group in the smells' own order (by node). Empty groups are left out. */
+export function groupSmellsForPanel(smells: readonly Smell[]): { code: SmellCode; title: string; smells: Smell[] }[] {
+  return SMELL_GROUPS.map((group) => ({ ...group, smells: smells.filter((s) => s.code === group.code) })).filter((group) => group.smells.length > 0);
 }

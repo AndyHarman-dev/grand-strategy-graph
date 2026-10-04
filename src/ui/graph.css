@@ -832,3 +832,153 @@
   border-color: var(--interactive-accent);
   box-shadow: 0 0 0 1px var(--interactive-accent);
 }
+
+/* ---- Smells panel and review walk (Phase 8) ---- */
+.gs-graph .gs-toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.gs-toolbar-button[aria-pressed='true'] {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, #fff);
+}
+
+.gs-smells {
+  position: relative;
+}
+
+.gs-smells-list {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  max-height: 60vh;
+  width: 340px;
+  overflow: auto;
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-smells-list h4 {
+  margin: 8px 0 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+  font-weight: 600;
+}
+
+.gs-smells-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gs-smells-count {
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--text-warning, #ec7500);
+  color: var(--background-primary);
+}
+
+.gs-smells-none {
+  margin: 4px 0;
+  color: var(--text-muted);
+}
+
+.gs-graph .gs-smells-item {
+  all: unset;
+  display: block;
+  width: 100%;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.gs-graph .gs-smells-item:hover,
+.gs-graph .gs-smells-item:focus-visible {
+  background: var(--background-modifier-hover);
+}
+
+.gs-walk {
+  box-sizing: border-box;
+  width: 420px;
+  max-width: 90vw;
+  padding: 10px 14px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-walk header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.gs-walk h3 {
+  margin: 2px 0 4px;
+  font-size: var(--font-ui-medium, 15px);
+}
+
+.gs-walk h4 {
+  margin: 8px 0 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.gs-walk p {
+  margin: 2px 0;
+}
+
+.gs-walk-group,
+.gs-walk-via,
+.gs-walk-facts {
+  color: var(--text-muted);
+}
+
+.gs-walk-facts {
+  display: flex;
+  flex-direction: column;
+}
+
+.gs-walk-status {
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  font-size: var(--font-ui-smaller, 12px);
+  font-weight: 500;
+}
+
+.gs-walk-smells {
+  margin: 6px 0;
+  padding-left: 18px;
+  color: var(--text-warning, #ec7500);
+}
+
+.gs-walk ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.gs-walk-when {
+  color: var(--text-faint);
+}
+
+.gs-walk-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
