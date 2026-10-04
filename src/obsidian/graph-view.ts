@@ -1,7 +1,10 @@
-import { FileView, Notice, TFile, type WorkspaceLeaf } from 'obsidian';
+import { Component, FileView, MarkdownRenderer, Notice, TFile, type WorkspaceLeaf } from 'obsidian';
 import { GraphSession, type GraphState } from '../core/graph-session';
+import { performIntent } from '../core/perform';
+import { splitFrontmatter } from '../core/writes';
 import { mountGraph, type GraphHost, type MountedGraph } from '../ui/mount';
 import { ObsidianAdapter } from './adapter';
+import { ObsidianIO } from './io';
 import { today } from './today';
 
 export const VIEW_TYPE = 'strategy-graph';
@@ -91,6 +94,16 @@ export class StrategyGraphView extends FileView {
       hoverNote: (event, targetEl, path) =>
         this.app.workspace.trigger('hover-link', { event, source: VIEW_TYPE, hoverParent: this, targetEl, linktext: path }),
       today,
+      edit: async (intent) => {
+        const graph = session.state.graph;
+        if (!graph) return { ok: false, message: 'The graph has not been read yet.' };
+        return performIntent(intent, { graph, vault: this.app.vault, today: today() }, new ObsidianIO(this.app));
+      },
+      readNote: (path) => {
+        const note = this.app.vault.getAbstractFileByPath(path);
+        return note instanceof TFile ? this.app.vault.read(note) : Promise.reject(new Error('Not a note: ' + path));
+      },
+      renderNote: (el, path) => this.renderNote(el, path),
     });
     session.loadMap(await this.app.vault.read(file));
     await session.rebuild();
@@ -129,6 +142,20 @@ export class StrategyGraphView extends FileView {
       this.pendingReveal = null;
       this.revealPath(path);
     }
+  }
+
+  /** The note's body (its frontmatter is shown as fields instead) rendered as in reading view; returns the cleanup. */
+  private renderNote(el: HTMLElement, path: string): () => void {
+    const component = new Component();
+    component.load();
+    const note = this.app.vault.getAbstractFileByPath(path);
+    if (note instanceof TFile) {
+      void this.app.vault
+        .read(note)
+        .then((text) => MarkdownRenderer.render(this.app, splitFrontmatter(text).body, el, path, component))
+        .catch((error) => console.error('strategy graph: rendering the note failed', error));
+    }
+    return () => component.unload();
   }
 
   private async reloadMap(file: TFile): Promise<void> {

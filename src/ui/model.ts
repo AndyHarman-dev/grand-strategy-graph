@@ -51,7 +51,8 @@ export function toFlowNodes(
       position: position ? { x: position.x, y: position.y } : { x: 0, y: 0 },
       hidden: !position,
       draggable: pinnable && node.type !== 'fixed-point',
-      connectable: false,
+      // Each handle decides for itself (read-only graphs make them all unconnectable); a node is never deleted.
+      connectable: true,
       deletable: false,
       width: size.width,
       height: size.height,
@@ -113,6 +114,8 @@ export interface EdgeView {
   smells?: readonly Smell[];
   /** The toggle: show every `ultimately-serves` edge, not only a chainless bet's. */
   showUltimate?: boolean;
+  /** Edits are possible: a link can be selected and removed. */
+  editable?: boolean;
 }
 
 /** One React Flow edge per graph edge, attached to the sides that face each other at `positions`. */
@@ -135,8 +138,9 @@ export function toFlowEdges(graph: Graph, positions: Readonly<Record<string, GsP
       ...(sides ? { sourceHandle: handleId(sides.source, 'source'), targetHandle: handleId(sides.target, 'target') } : {}),
       className: `gs-edge gs-edge-${edge.kind}${unverified.has(edge.key) ? ' gs-edge-unverified' : ''}`,
       hidden: !shown,
-      deletable: false,
-      selectable: false,
+      deletable: view.editable === true,
+      selectable: view.editable === true,
+      interactionWidth: 12,
       ...(edge.kind === 'next' ? { label: 'on kill' } : {}),
       ...(edge.kind === 'ultimately-serves' ? { label: 'ultimately' } : {}),
       ...(edge.kind === 'assumption' ? {} : { markerEnd: { type: 'arrowclosed' as const } }),

@@ -329,3 +329,285 @@
 .gs-graph .react-flow:focus {
   outline: none;
 }
+
+/* ---- Editing (Phase 6) ---- */
+
+/* The status pill is a dropdown, and the date a button, once edits are possible. */
+.gs-graph select.gs-node-status {
+  appearance: none;
+  height: auto;
+  min-height: 0;
+  padding: 0 7px;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.gs-graph button.gs-node-date--button {
+  all: unset;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.gs-graph button.gs-node-date--button:hover {
+  color: var(--text-normal);
+  text-decoration: underline;
+}
+
+.gs-graph input.gs-node-date--input {
+  height: 18px;
+  padding: 0 2px;
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+/* Handles draw a relation: invisible until the pointer is over the node. */
+.gs-node .react-flow__handle {
+  visibility: visible;
+  opacity: 0;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--interactive-accent);
+  background: var(--background-primary);
+}
+
+.gs-node:hover .react-flow__handle.source,
+.react-flow__handle.connectingfrom {
+  opacity: 1;
+}
+
+.gs-node .react-flow__handle.target {
+  pointer-events: none;
+}
+
+.gs-graph .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--interactive-accent);
+  stroke-width: 2;
+}
+
+/* The inspector: a column on the right, scrolling by itself. */
+.gs-graph .gs-inspector-panel {
+  max-height: calc(100% - 20px);
+  margin: 10px;
+  display: flex;
+}
+
+.gs-inspector {
+  box-sizing: border-box;
+  width: 340px;
+  max-width: 100%;
+  overflow: auto;
+  padding: 10px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.gs-inspector h4 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0 4px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.gs-inspector-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.gs-inspector-id {
+  font-family: var(--font-monospace);
+  color: var(--text-muted);
+}
+
+.gs-inspector-type {
+  margin-left: 6px;
+  font-family: var(--font-ui-small, inherit);
+  color: var(--text-faint);
+}
+
+.gs-inspector-title {
+  font-weight: 600;
+}
+
+.gs-inspector-close {
+  flex: none;
+}
+
+.gs-inspector-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.gs-inspector-fields label,
+.gs-quick-create label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.gs-inspector textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+}
+
+.gs-inspector-relation ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gs-inspector-relation li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+
+.gs-inspector-none {
+  color: var(--text-faint);
+}
+
+.gs-inspector-add {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.gs-inspector-incoming p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.gs-inspector-log-row {
+  display: flex;
+  gap: 6px;
+}
+
+.gs-inspector-log-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.gs-inspector-body {
+  max-height: 260px;
+  overflow: auto;
+  padding: 6px 8px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+}
+
+.gs-inspector-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+/* Right-click menus and the connect question. */
+.gs-menu {
+  position: absolute;
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  min-width: 180px;
+  list-style: none;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.gs-menu button {
+  all: unset;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-menu button:hover:not(:disabled),
+.gs-menu button:focus-visible {
+  background: var(--background-modifier-hover);
+}
+
+.gs-menu button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+/* The outcome of the last edit, and the small creation form. */
+.gs-toast {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  max-width: 70%;
+  padding: 6px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: var(--font-ui-small, 13px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.gs-toast.is-error {
+  border-color: var(--text-error);
+  color: var(--text-error);
+}
+
+.gs-quick-create {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 340px;
+  padding: 10px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-quick-create h3 {
+  margin: 0;
+  font-size: var(--font-ui-medium, 15px);
+}
+
+.gs-quick-create-anchor {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.gs-quick-create-error {
+  margin: 0;
+  color: var(--text-error);
+}
+
+.gs-quick-create-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}

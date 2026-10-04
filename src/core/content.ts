@@ -18,6 +18,10 @@ function linkList(key: string, basenames: readonly string[]): string[] {
   return [key + ':', ...basenames.map((b) => '  - ' + yamlString('[[' + b + ']]'))];
 }
 
+/** The section of an assumption that says what would falsify it. */
+export const FALSIFIER_HEADING = "## How I'd Know It's False";
+export const FALSIFIER_PLACEHOLDER = "*What observable evidence would falsify this? If nothing could, it's a belief, not an assumption — rewrite it.*";
+
 export interface AssumptionContentOptions {
   today: string;
   /** `A-<n>`. */
@@ -43,10 +47,8 @@ export function buildAssumptionContent(opts: AssumptionContentOptions): string {
     '## The Assumption',
     opts.statement,
     '',
-    "## How I'd Know It's False",
-    opts.falsifier
-      ? opts.falsifier
-      : "*What observable evidence would falsify this? If nothing could, it's a belief, not an assumption — rewrite it.*",
+    FALSIFIER_HEADING,
+    opts.falsifier ? opts.falsifier : FALSIFIER_PLACEHOLDER,
     '',
     '## Verify By',
     '*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*',

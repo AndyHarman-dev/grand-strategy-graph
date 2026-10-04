@@ -4,12 +4,13 @@
  * ambiguous id space or a path collision aborts the run cleanly instead of leaving orphan notes.
  *
  * There are no cross-note body writes (D2). A relation is a frontmatter link on the note that
- * holds it, so the only write to an existing note is `add-link`: append one link to a list field.
+ * holds it, so creating writes to an existing note only through `add-link`: append one link to a list
+ * field. Changing existing notes is `edits.ts`; the write kinds are in `writes.ts`.
  */
 import { ASSUMPTIONS_FOLDER, BETS_FOLDER, FIXED_POINTS_FOLDER, MILESTONES_FOLDER } from './constants';
+import { addLinkToField } from './link-field';
 import { buildAssumptionContent, buildBetContent, buildMilestoneContent } from './content';
 import { parseIds, type ParsedIds } from './ids';
-import { linkpathOf } from './links';
 import {
   getFilesInFolders,
   type AssumptionFormData,
@@ -21,18 +22,16 @@ import {
 } from './plan';
 import { relationFor, targetsOf, type NodeType } from './schema';
 import { deriveAssumptionTitle, sanitizeTitle } from './text';
+import type { PlannedWrite } from './writes';
 
-export type PlannedWrite =
-  /** A new note. */
-  | { kind: 'create'; path: string; content: string }
-  /** Append `link` to the list field `field` of an existing note's frontmatter, unless it is already there. */
-  | { kind: 'add-link'; path: string; field: 'assumptions'; link: string };
+export { addLinkToField };
+export type { PlannedWrite };
 
 export interface ActionPlan {
   /** In order: new notes first, so what links to them points at real files. */
   writes: PlannedWrite[];
-  /** The note to open once everything is written. */
-  open: string;
+  /** The note to open once everything is written; null to stay where the user is (the graph). */
+  open: string | null;
   notice: string;
 }
 
@@ -52,35 +51,6 @@ export function pickFolders(field: string, holder: NodeType): string[] {
 
 /** Folders of the types that may carry `assumptions`: the notes a new assumption can attach to. */
 export const ASSUMPTION_HOLDER_FOLDERS = foldersOf(Object.keys(relationFor('assumptions').to) as NodeType[]);
-
-/** Link path to compare by: lower case, no `.md`, no leading slash. */
-const comparable = (linkpath: string) => linkpath.trim().replace(/^\/+/, '').replace(/\.md$/i, '').toLowerCase();
-
-/**
- * `link` appended to a frontmatter list value, as Obsidian hands it over: nothing, one string
- * or a list. Returns the same value when the link is already there, so callers can tell
- * nothing changed. A match ignores case, alias and heading, accepts a folder-qualified path to
- * the same name (`[[Strategy/Bets/B-1 X]]` for `[[B-1 X]]`), and an unquoted `[[link]]`, which
- * YAML reads as a nested list (`[['B-1 X']]`).
- */
-export function addLinkToField(value: unknown, link: string): unknown {
-  const target = comparable(linkpathOf(link.replace(/^\[\[|\]\]$/g, '')));
-  const same = (linkpath: string) => {
-    const p = comparable(linkpathOf(linkpath));
-    return p === target || p.endsWith('/' + target);
-  };
-  const has = (item: unknown, nested: boolean): boolean => {
-    if (Array.isArray(item)) return item.some((i) => has(i, true));
-    if (typeof item !== 'string') return false;
-    const links = Array.from(item.matchAll(/\[\[([^\]]*)\]\]/g));
-    // Inside a nested list the brackets were eaten by YAML, so the bare string is the link.
-    return links.length ? links.some((m) => same(m[1])) : nested && same(item);
-  };
-  if (value == null || value === '') return [link];
-  if (Array.isArray(value)) return value.some((i) => has(i, false)) ? value : [...value, link];
-  if (typeof value === 'string') return has(value, false) ? value : [value, link];
-  return [String(value), link];
-}
 
 interface IdKind {
   label: string;

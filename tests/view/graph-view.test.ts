@@ -3,7 +3,7 @@ import { GSMAP_PATH, parseGsMap, serializeGsMap, emptyGsMap } from '../../src/co
 import { isGraphNote, openStrategyGraph, revealInStrategyGraph } from '../../src/obsidian/graph-commands';
 import { StrategyGraphView } from '../../src/obsidian/graph-view';
 import { plannedTestVault } from '../../tools/test-vault';
-import { notices, resetObsidianMock } from '../mocks/obsidian';
+import { notices, rendered, resetObsidianMock } from '../mocks/obsidian';
 import { FakeWorkspaceApp, type MountRecord } from '../support/fake-workspace';
 import { md } from '../support/v2';
 
@@ -295,5 +295,70 @@ describe('hovering a node (Phase 5b)', () => {
   it('gives the graph the local date for the overdue smell', async () => {
     const { mount } = await open();
     expect(mount.host.today!()).toBe('2026-10-01'); // the obsidian mock's clock
+  });
+});
+
+describe('editing from the graph (Phase 6)', () => {
+  const B3 = 'Strategy/Bets/B-3 Sell pottery at weekend markets.md';
+
+  it('performs an edit through Obsidian, and the graph picks the change up from the cache', async () => {
+    const { mount } = await open();
+    const outcome = await mount.host.edit!({ kind: 'set-status', key: 'B-3', status: 'dormant' });
+    expect(outcome).toEqual({ ok: true, message: 'B-3 is now dormant.' });
+    expect(app.vault.text(B3)).toContain('status: dormant');
+    await vi.advanceTimersByTimeAsync(400);
+    expect(lastState(mount).graph!.nodes.find((n) => n.key === 'B-3')!.status).toBe('dormant');
+  });
+
+  it('writes a log line to the body through vault.process, leaving the frontmatter as it was', async () => {
+    const { mount } = await open();
+    const before = app.vault.text(B3);
+    await mount.host.edit!({ kind: 'log', key: 'B-3', text: 'stall booked' });
+    const after = app.vault.text(B3);
+    expect(after.slice(0, after.indexOf('\n---\n') + 5)).toBe(before.slice(0, before.indexOf('\n---\n') + 5));
+    expect(after).toContain('- 2026-10-01: stall booked');
+    expect(app.vault.processed[app.vault.processed.length - 1].path).toBe(B3);
+  });
+
+  it('creates a note in its folder and links it, without opening it', async () => {
+    const { mount } = await open();
+    const outcome = await mount.host.edit!({ kind: 'new-assumption', form: { statement: 'Stalls stay cheap', falsifier: '', verifyBy: '' }, dependents: ['B-3'] });
+    expect(outcome.ok).toBe(true);
+    expect(app.vault.text('Strategy/Assumptions/A-8 Stalls stay cheap.md')).toContain('id: A-8');
+    expect(app.vault.text(B3)).toContain('[[A-8 Stalls stay cheap]]');
+    expect(app.opened).toEqual([]);
+  });
+
+  it('says why when an edit is refused, and writes nothing', async () => {
+    const { mount } = await open();
+    const writes = app.vault.processed.length;
+    const outcome = await mount.host.edit!({ kind: 'set-status', key: 'B-3', status: 'reached' });
+    expect(outcome.ok).toBe(false);
+    expect(outcome.message).toContain('not a status of a bet');
+    expect(app.vault.processed.length).toBe(writes);
+  });
+
+  it('reports a failure part-way with what was already written', async () => {
+    const { mount } = await open();
+    app.vault.files.delete('Strategy/Bets/B-2 Apply for a digital nomad visa.md'); // the sequel's file vanishes under the plan
+    const graph = lastState(mount).graph!; // still lists B-2
+    expect(graph.nodes.some((n) => n.key === 'B-2')).toBe(true);
+    const outcome = await mount.host.edit!({ kind: 'kill-activate-next', key: 'B-1' });
+    expect(outcome.ok).toBe(false);
+    expect(outcome.message).toContain('Edit failed');
+    expect(outcome.message).toContain('Nothing was changed');
+  });
+
+  it('reads a note for the inspector and renders its body without the frontmatter', async () => {
+    const { mount } = await open();
+    expect(await mount.host.readNote!(B3)).toContain('type: bet');
+    const el = {} as HTMLElement;
+    const cleanup = mount.host.renderNote!(el, B3);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(rendered).toHaveLength(1);
+    expect(rendered[0].sourcePath).toBe(B3);
+    expect(rendered[0].markdown.startsWith('---')).toBe(false);
+    expect(rendered[0].markdown).toContain('## The Bet');
+    cleanup();
   });
 });

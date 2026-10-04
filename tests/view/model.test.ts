@@ -24,7 +24,7 @@ describe('toFlowNodes', () => {
     expect(by['B-10']).toMatchObject({ draggable: true, hidden: false, position: { x: 3, y: 4 }, width: 240 });
     expect(by['Strategy/No id.md']).toMatchObject({ draggable: false, hidden: false, data: { pinnable: false } });
     expect(by['CP']).toMatchObject({ hidden: true });
-    expect(nodes.every((n) => n.connectable === false && n.deletable === false)).toBe(true);
+    expect(nodes.every((n) => n.connectable === true && n.deletable === false)).toBe(true);
   });
 });
 

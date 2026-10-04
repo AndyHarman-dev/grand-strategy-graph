@@ -10,6 +10,9 @@ import {
   useReactFlow,
   useStoreApi,
   type NodeChange,
+  type Edge,
+  type EdgeChange,
+  type FinalConnectionState,
   type NodePositionChange,
   type ReactFlowInstance,
 } from '@xyflow/react';
@@ -23,12 +26,17 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { relationCandidates, type Intent } from '../core/edits';
 import type { GraphNotice } from '../core/graph-session';
 import type { GsMap, GsPosition } from '../core/gsmap';
 import { elkPositions, layoutKey, needsElk as needsElkFor, NODE_SIZES, pinnedPositions, placeNodes, structureOf } from '../core/layout';
+import type { EditOutcome } from '../core/perform';
 import type { Graph } from '../core/schema';
 import { findSmells } from '../core/smells';
 import { NodeActionsContext, type NodeActions } from './actions-context';
+import type { RelationField } from '../core/writes';
+import { Inspector } from './Inspector';
+import { PopupMenu, QuickCreate, Toast, type MenuItem, type QuickCreateKind } from './GraphMenus';
 import { followersOf, localToday, movedPositions, NODE_TYPE, toFlowEdges, toFlowNodes, unsavedPositions, type StrategyFlowNode } from './model';
 import { StrategyNode } from './StrategyNode';
 
@@ -44,6 +52,12 @@ export interface StrategyGraphProps {
   onResetPositions?: (() => void) | null;
   /** Double-click on a node. `newTab` when Ctrl/Cmd was held. */
   onOpenNote?: (path: string, newTab: boolean) => void;
+  /** Perform an edit (Phase 6) and say how it went. Absent: the graph is read-only, and nothing offers an edit. */
+  onEdit?: (intent: Intent) => Promise<EditOutcome>;
+  /** A note's text, for the inspector. */
+  readNote?: (path: string) => Promise<string>;
+  /** Render a note into an element (Obsidian's reading view); returns the cleanup. */
+  renderNote?: (el: HTMLElement, path: string) => () => void;
   /** The pointer enters a note's node: show the note's preview. */
   onHoverNote?: NodeActions['hover'];
   /** Today as `YYYY-MM-DD`, for the overdue smell. Defaults to the local date. */
@@ -146,6 +160,9 @@ function Flow({
   onResetPositions,
   onOpenNote,
   onHoverNote,
+  onEdit,
+  readNote,
+  renderNote,
   today,
   reveal,
   notices,
@@ -155,7 +172,45 @@ function Flow({
   const editable = onMove !== null;
   const smells = useMemo(() => findSmells(graph, { today: today ?? localToday() }), [graph, today]);
   const [showUltimate, setShowUltimate] = useState(false);
-  const actions = useMemo<NodeActions>(() => ({ hover: onHoverNote }), [onHoverNote]);
+
+  // ---- editing (Phase 6): every change is an intent for the host; the graph re-derives from the notes.
+  const [outcome, setOutcome] = useState<(EditOutcome & { id: number }) | null>(null);
+  const outcomeId = useRef(0);
+  const perform = useMemo(() => {
+    if (!onEdit) return null;
+    return async (intent: Intent): Promise<EditOutcome> => {
+      const result = await onEdit(intent).catch((error: unknown): EditOutcome => ({ ok: false, message: error instanceof Error ? error.message : String(error) }));
+      setOutcome({ ...result, id: ++outcomeId.current });
+      return result;
+    };
+  }, [onEdit]);
+  const actions = useMemo<NodeActions>(
+    () => ({
+      hover: onHoverNote,
+      canEdit: perform !== null,
+      setStatus: (key, status) => void perform?.({ kind: 'set-status', key, status }),
+      setDate: (key, value) => void perform?.({ kind: 'set-date', key, value }),
+    }),
+    [onHoverNote, perform]
+  );
+  const dismissOutcome = useCallback(() => setOutcome(null), []);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  /** The note whose inspector was closed by hand: it stays closed until another note is selected. */
+  const [closedKey, setClosedKey] = useState<string | null>(null);
+  const onSelectionChange = useCallback(({ nodes: picked }: { nodes: { id: string }[] }) => {
+    const key = picked.length === 1 ? picked[0].id : null;
+    setSelectedKey(key);
+    setClosedKey((closed) => (closed === key ? closed : null));
+  }, []);
+  const inspected = selectedKey !== null && selectedKey !== closedKey ? graph.nodes.find((n) => n.key === selectedKey) ?? null : null;
+  const [menu, setMenu] = useState<{ at: { x: number; y: number }; label: string; items: MenuItem[] } | null>(null);
+  const [create, setCreate] = useState<{ request: QuickCreateKind; anchor: string } | null>(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  /** A point in client coordinates as a place inside the graph's own box. */
+  const placeOf = useCallback((client: { clientX: number; clientY: number }) => {
+    const box = store.getState().domNode?.getBoundingClientRect();
+    return { x: client.clientX - (box?.left ?? 0), y: client.clientY - (box?.top ?? 0) };
+  }, [store]);
   const build = useCallback(
     () => toFlowNodes(graph, placed, smells).map((n) => (editable ? n : { ...n, draggable: false })),
     [graph, placed, editable, smells]
@@ -168,7 +223,27 @@ function Flow({
   const arrowKey = useRef(false);
   // Edges follow the nodes as drawn, mid-drag included, so they always leave by the facing side.
   const drawn = useMemo(() => Object.fromEntries(nodes.filter((n) => !n.hidden).map((n) => [n.id, n.position])), [nodes]);
-  const edges = useMemo(() => toFlowEdges(graph, drawn, { smells, showUltimate }), [graph, drawn, smells, showUltimate]);
+  // Edges are controlled too: a click selects a link (so Delete can remove it), which React Flow reports as a change to apply.
+  const [selectedEdges, setSelectedEdges] = useState<ReadonlySet<string>>(new Set());
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+    setSelectedEdges((current) => {
+      let next: Set<string> | null = null;
+      for (const change of changes) {
+        if (change.type !== 'select' || (next ?? current).has(change.id) === change.selected) continue;
+        next ??= new Set(current);
+        if (change.selected) next.add(change.id);
+        else next.delete(change.id);
+      }
+      return next ?? current;
+    });
+  }, []);
+  const edges = useMemo(
+    () =>
+      toFlowEdges(graph, drawn, { smells, showUltimate, editable: onEdit !== undefined }).map((edge) =>
+        selectedEdges.has(edge.id) ? { ...edge, selected: true } : edge
+      ),
+    [graph, drawn, smells, showUltimate, onEdit, selectedEdges]
+  );
   const satellites = useMemo(() => structureOf(graph).satellites, [graph]);
   /** Assumptions moving with the current drag: where each started, and its host's start (D19). */
   const following = useRef<Map<string, { start: { x: number; y: number }; host: string; hostStart: { x: number; y: number } }>>(new Map());
@@ -241,7 +316,7 @@ function Flow({
   const onKeyDown = useCallback(
     (event: ReactKeyboardEvent) => {
       const target = event.target as HTMLElement;
-      if (target.closest('input, textarea, [contenteditable="true"]')) return;
+      if (target.closest('input, textarea, select, [contenteditable="true"]')) return;
       if (event.key === 'Escape') {
         setConfirmingReset(false);
         store.setState({ nodesSelectionActive: false });
@@ -310,6 +385,97 @@ function Flow({
     [onOpenNote]
   );
 
+  const removeRelation = useCallback(
+    (edge: Edge) => {
+      const found = graph.edges.find((e) => e.key === edge.id);
+      if (found) void perform?.({ kind: 'remove-relation', holder: found.from, field: found.field as RelationField, target: found.to });
+    },
+    [graph, perform]
+  );
+
+  const onNodeContextMenu = useCallback(
+    (event: ReactMouseEvent, flowNode: StrategyFlowNode) => {
+      event.preventDefault();
+      const n = flowNode.data.node;
+      const items: MenuItem[] = [];
+      const ask = (request: QuickCreateKind) => () => setCreate({ request, anchor: n.key });
+      if (perform) {
+        const sequel = graph.edges.find((e) => e.kind === 'next' && e.from === n.key);
+        const sequelNode = sequel && graph.nodes.find((g) => g.key === sequel.to);
+        if (n.type === 'bet') {
+          items.push({
+            label: 'New sequel bet',
+            disabled: sequel ? 'This bet already has a next sequel' : undefined,
+            run: ask({ kind: 'bet', heading: 'New sequel bet', serves: [], sequelOf: n.key }),
+          });
+        }
+        if (n.type === 'bet' || n.type === 'milestone' || n.type === 'fixed-point') {
+          items.push({ label: 'New bet serving this', run: ask({ kind: 'bet', heading: 'New bet serving this', serves: [n.key] }) });
+          items.push({ label: 'Add assumption', run: ask({ kind: 'assumption', heading: 'Add assumption', dependents: [n.key] }) });
+        }
+        if (n.type === 'bet') {
+          const why = !sequelNode
+            ? 'No next sequel to activate'
+            : n.status === 'killed' || n.status === 'won'
+              ? `This bet is already ${n.status}`
+              : sequelNode.status !== 'dormant'
+                ? `${sequelNode.id ?? sequelNode.basename} is not dormant`
+                : undefined;
+          items.push({ label: 'Kill → activate next', disabled: why, run: () => void perform({ kind: 'kill-activate-next', key: n.key }) });
+        }
+        if (n.type === 'assumption') {
+          items.push({
+            label: 'Mark falsified',
+            disabled: n.status === 'falsified' ? 'Already falsified' : undefined,
+            run: () => void perform({ kind: 'falsify', key: n.key }),
+          });
+        }
+      }
+      if (onOpenNote) {
+        items.push({ label: 'Open note', run: () => onOpenNote(n.path, false) }, { label: 'Open in split', run: () => onOpenNote(n.path, true) });
+      }
+      if (items.length) setMenu({ at: placeOf(event), label: `Actions for ${n.id ?? n.basename}`, items });
+    },
+    [graph, perform, onOpenNote, placeOf]
+  );
+
+  const onEdgeContextMenu = useCallback(
+    (event: ReactMouseEvent, edge: Edge) => {
+      event.preventDefault();
+      if (!perform) return;
+      setMenu({ at: placeOf(event), label: 'Link', items: [{ label: 'Remove link', run: () => removeRelation(edge) }] });
+    },
+    [perform, placeOf, removeRelation]
+  );
+
+  const onEdgesDelete = useCallback((deleted: Edge[]) => deleted.forEach(removeRelation), [removeRelation]);
+
+  // Dropping a link from a handle: the node under the pointer is the other end, handle or not.
+  const onConnectEnd = useCallback(
+    (event: MouseEvent | TouchEvent, state: FinalConnectionState) => {
+      const from = state.fromNode?.id;
+      if (!perform || !from) return;
+      const point = 'changedTouches' in event ? event.changedTouches[0] : event;
+      const doc = (event.target as Node | null)?.ownerDocument ?? document;
+      const to = doc
+        .elementsFromPoint(point.clientX, point.clientY)
+        .map((el) => el.closest('.react-flow__node'))
+        .find((el): el is Element => el !== null)
+        ?.getAttribute('data-id');
+      if (!to || to === from) return;
+      const options = relationCandidates(graph, from, to);
+      const open = options.filter((o) => !o.blocked);
+      const say = (message: string) => setOutcome({ ok: false, message, id: ++outcomeId.current });
+      const label = (key: string) => graph.nodes.find((n) => n.key === key)?.id ?? key;
+      if (!options.length) return say(`${label(from)} and ${label(to)} can't be linked: no relation is defined between those types.`);
+      if (!open.length) return say(options[0].blocked!);
+      const apply = (o: (typeof open)[number]) => void perform({ kind: 'add-relation', holder: o.holder, field: o.field, target: o.target });
+      if (open.length === 1) return apply(open[0]);
+      setMenu({ at: placeOf(point), label: 'Which relation?', items: open.map((o) => ({ label: o.label, run: () => apply(o) })) });
+    },
+    [graph, perform, placeOf]
+  );
+
   const onInit = useCallback(
     (instance: ReactFlowInstance<StrategyFlowNode>) => {
       // A pending reveal positions the view itself; otherwise the saved viewport (defaultViewport) or a fit.
@@ -339,17 +505,26 @@ function Flow({
 
   // After a reset, show the whole new layout once it is complete. Positions that come back (the reset
   // couldn't be saved) or a drag before the layout is done cancel the fit.
+  const [fitWanted, setFitWanted] = useState(false);
   useEffect(() => {
     if (resetFrom.current === null || positions === resetFrom.current) return;
     if (hasSaved) {
       resetFrom.current = null;
+      setFitWanted(false);
       return;
     }
     if (!complete) return;
     resetFrom.current = null;
-    // React Flow fits once the nodes it is given next are in: the rebuilt ones, at their new places.
+    setFitWanted(true);
+  }, [complete, positions, hasSaved]);
+  // Fit only when every node is in and measured: asked earlier, React Flow fits whatever it has (nothing, or one node).
+  useEffect(() => {
+    if (!fitWanted) return;
+    const shown = nodes.filter((n) => !n.hidden);
+    if (!shown.length || shown.length < graph.nodes.length || shown.some((n) => !n.measured)) return;
+    setFitWanted(false);
     void flow.fitView({ padding: 0.1, duration: 300 });
-  }, [complete, positions, hasSaved, flow]);
+  }, [fitWanted, nodes, graph, flow]);
 
   return (
     <NodeActionsContext.Provider value={actions}>
@@ -366,9 +541,16 @@ function Flow({
         defaultViewport={viewport ?? { x: 0, y: 0, zoom: 1 }}
         minZoom={0.1}
         maxZoom={2}
-        nodesConnectable={false}
+        nodesConnectable={onEdit !== undefined}
         edgesFocusable={false}
-        deleteKeyCode={null}
+        deleteKeyCode={onEdit ? ['Backspace', 'Delete'] : null}
+        onConnectEnd={onConnectEnd}
+        onEdgesChange={onEdgesChange}
+        onEdgesDelete={onEdgesDelete}
+        onNodeContextMenu={onNodeContextMenu}
+        onEdgeContextMenu={onEdgeContextMenu}
+        onPaneContextMenu={(event) => event.preventDefault()}
+        onSelectionChange={onSelectionChange}
         zoomOnDoubleClick={false}
         // As on an Obsidian canvas: drag on empty space to select; a two-finger swipe (scroll),
         // Space+drag or middle-drag pans; a pinch or Cmd/Ctrl+scroll zooms. Dragging any selected node
@@ -417,6 +599,26 @@ function Flow({
             </div>
           </Panel>
         )}
+        {inspected && (
+          <Panel position="top-right" className="gs-inspector-panel">
+            <Inspector
+              graph={graph}
+              node={inspected}
+              perform={perform}
+              readNote={readNote}
+              renderNote={renderNote}
+              onOpenNote={onOpenNote}
+              onClose={() => setClosedKey(inspected.key)}
+            />
+          </Panel>
+        )}
+        {create && graph.nodes.find((n) => n.key === create.anchor) && perform && (
+          <Panel position="bottom-center">
+            <QuickCreate request={create.request} anchor={graph.nodes.find((n) => n.key === create.anchor)!} perform={perform} onClose={() => setCreate(null)} />
+          </Panel>
+        )}
+        {menu && <PopupMenu at={menu.at} items={menu.items} label={menu.label} onClose={closeMenu} />}
+        <Toast outcome={outcome} onDone={dismissOutcome} />
         {notices && notices.length > 0 && (
           <Panel position="top-left">
             <Notices notices={notices} onOpenNote={onOpenNote} />

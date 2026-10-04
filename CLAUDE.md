@@ -29,14 +29,17 @@ renders the strategy as a data-driven graph. The full plan, decisions (D1–D19)
 - **The legacy plugin oracle is gone.** Phase 4 intentionally changed the notes the plugin writes (schema v2), so
   `tests/legacy/main.js` and its `legacy` test entries were removed; the goldens now pin the v2 output alone.
   Write-side behavior is tied to `buildGraph` by `tests/characterization/v2-graph.test.ts`: every note the plugin
-  creates must build a clean graph. Existing notes are only ever changed by appending a link to a frontmatter list
-  (`processFrontMatter`), never in the body.
+  creates must build a clean graph. Existing notes change in
+  exactly the ways `src/core/writes.ts` lists and no others: a frontmatter field is set, a link is added to or
+  removed from a relation field (`processFrontMatter`), a dated line is appended under `## Log`, or the
+  assumption's "How I'd Know It's False" section is replaced (`vault.process`, body only, frontmatter untouched).
+  Every one comes from an intent in `src/core/edits.ts` (Phase 6); never write a note any other way.
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `src/core/` | Pure TS: helpers, content builders, `actions.ts` (creation intents → planned writes), schema, graph, smells, `.gsmap` format and position store, ELK layout (`layout.ts`), `graph-session.ts` (everything the graph view does that isn't Obsidian or React) |
+| `src/core/` | Pure TS: helpers, content builders, `actions.ts` (creation intents → planned writes), `edits.ts` + `writes.ts` (edit intents from the graph, and the write kinds both planners produce), schema, graph, smells, `.gsmap` format and position store, ELK layout (`layout.ts`), `graph-session.ts` (everything the graph view does that isn't Obsidian or React) |
 | `src/obsidian/` | Obsidian adapter: modals, create flows (execute the planned writes), the graph `FileView` (`graph-view.ts`) and its commands |
 | `src/ui/` | React components: `<StrategyGraph>` (React Flow), `mount.tsx` (shared by the plugin and the dev page) |
 | `dev/` | Vite dev page (`npm run dev:web`): the graph over the test vault, no Obsidian; `window.gsDev` drives it from Playwright |

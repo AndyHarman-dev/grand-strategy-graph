@@ -1,7 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import type { Intent } from '../core/edits';
 import type { GraphState } from '../core/graph-session';
 import type { GsPosition } from '../core/gsmap';
+import type { EditOutcome } from '../core/perform';
 import type { Graph } from '../core/schema';
 import { StrategyGraph } from './StrategyGraph';
 
@@ -13,6 +15,12 @@ export interface GraphHost {
   openNote?(path: string, newTab: boolean): void;
   /** The pointer entered a note's node: show its preview (Obsidian's page preview). */
   hoverNote?(event: MouseEvent, el: HTMLElement, path: string): void;
+  /** Perform an edit asked for on the graph (Phase 6). Absent: the graph is read-only. */
+  edit?(intent: Intent): Promise<EditOutcome>;
+  /** A note's text, for the inspector's fields. */
+  readNote?(path: string): Promise<string>;
+  /** Render a note like Obsidian does into `el`, for the inspector. Returns the cleanup. Absent: the inspector shows the text. */
+  renderNote?(el: HTMLElement, path: string): () => void;
   /** Today as `YYYY-MM-DD` (the overdue smell). Defaults to the browser's local date. */
   today?(): string;
 }
@@ -34,6 +42,9 @@ export function mountGraph(el: HTMLElement, host: GraphHost, options: MountOptio
   const onResetPositions = () => void host.resetPositions();
   const onOpenNote = host.openNote?.bind(host);
   const onHoverNote = host.hoverNote?.bind(host);
+  const onEdit = host.edit?.bind(host);
+  const readNote = host.readNote?.bind(host);
+  const renderNote = host.renderNote?.bind(host);
   return {
     render(state, reveal = null) {
       if (!state.graph) {
@@ -50,6 +61,9 @@ export function mountGraph(el: HTMLElement, host: GraphHost, options: MountOptio
             onResetPositions={state.map ? onResetPositions : null}
             onOpenNote={onOpenNote}
             onHoverNote={onHoverNote}
+            onEdit={onEdit}
+            readNote={readNote}
+            renderNote={renderNote}
             today={host.today?.()}
             reveal={reveal}
             notices={state.notices}

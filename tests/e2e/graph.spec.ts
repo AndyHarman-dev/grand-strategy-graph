@@ -141,8 +141,12 @@ const rectOf = async (page: Page, key: string) => (await node(page, key).boundin
 test.describe('selecting several nodes, as on a canvas', () => {
   test('dragging on empty space draws a selection box; dragging one selected node moves them all, saved in one write', async ({ page }) => {
     const [b7, b8] = [await rectOf(page, 'B-7'), await rectOf(page, 'B-8')];
-    const box = { x1: Math.min(b7.x, b8.x) - 12, y1: Math.min(b7.y, b8.y) - 12, x2: Math.max(b7.x + b7.width, b8.x + b8.width) + 12, y2: Math.max(b7.y + b7.height, b8.y + b8.height) + 12 };
-    expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.classList.contains('react-flow__pane'), [box.x1, box.y1])).toBe(true);
+    // Start on the pane: a link under the pointer would be picked instead (links can be selected and removed since Phase 6).
+    const onPane = (x: number, y: number) => page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.classList.contains('react-flow__pane'), [x, y]);
+    let margin = 12;
+    while (!(await onPane(Math.min(b7.x, b8.x) - margin, Math.min(b7.y, b8.y) - margin)) && margin < 60) margin += 6;
+    const box = { x1: Math.min(b7.x, b8.x) - margin, y1: Math.min(b7.y, b8.y) - margin, x2: Math.max(b7.x + b7.width, b8.x + b8.width) + 12, y2: Math.max(b7.y + b7.height, b8.y + b8.height) + 12 };
+    expect(await onPane(box.x1, box.y1)).toBe(true);
     // Every node the box touches gets selected (partial overlap counts).
     const touched = await page.locator('.react-flow__node').evaluateAll(
       (els, b) => els.filter((el) => { const r = el.getBoundingClientRect(); return r.x < b.x2 && r.right > b.x1 && r.y < b.y2 && r.bottom > b.y1; }).map((el) => el.getAttribute('data-id')!).sort(),
@@ -261,6 +265,9 @@ test('the reset button forgets every saved position, after a confirmation, and s
   await page.goto('/?layout=auto');
   await expect(page.locator('.react-flow__node')).toHaveCount(18);
   await expect(page.getByRole('button', { name: 'Reset layout' })).toBeDisabled(); // nothing saved
+  // The nodes are in before the view is fitted to them: measure once it has been.
+  await expect(page.locator('.react-flow__viewport')).not.toHaveAttribute('style', /scale\(1\)/);
+  await page.waitForTimeout(100);
   const auto = await layoutOf(page);
 
   await page.goto('/?saveDelay=200');
@@ -278,8 +285,8 @@ test('the reset button forgets every saved position, after a confirmation, and s
   await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(2);
   expect(await positions(page)).toEqual({});
   await expect(page.locator('.react-flow__edge')).toHaveCount(19);
-  await page.waitForTimeout(400); // the fit
-  expect(await layoutOf(page)).toEqual(auto);
+  // ELK lays the graph out again and the view then fits it: both take longer when the machine is busy.
+  await expect.poll(() => layoutOf(page), { timeout: 10_000 }).toEqual(auto);
   // The view is fitted to the new layout: every node is inside the pane.
   const pane = (await page.locator('.react-flow').boundingBox())!;
   for (const box of await page.locator('.react-flow__node').evaluateAll((els) => els.map((el) => JSON.parse(JSON.stringify(el.getBoundingClientRect()))))) {
@@ -427,8 +434,8 @@ test.describe('node and edge styling (Phase 5b)', () => {
     // Bets by status: active, won and killed differ; assumptions by what is known of them.
     const bets = [await colorOf(page, 'B-1'), await colorOf(page, 'B-5'), await colorOf(page, 'B-6')]; // active, won, killed
     expect(new Set(bets).size).toBe(3);
-    const assumptions = await Promise.all(['A-1', 'A-5', 'A-6'].map((k) => page.locator(`.react-flow__node[data-id="${k}"] .gs-node-status`).textContent()));
-    expect(new Set(assumptions).size).toBeGreaterThan(1);
+    const assumptions = await Promise.all(['A-1', 'A-3', 'A-4'].map((k) => colorOf(page, k))); // confirmed, falsified, undeterminable
+    expect(new Set(assumptions).size).toBe(3);
     await expect(node(page, 'A-1').locator('.gs-node')).toHaveCSS('border-top-style', 'dashed');
     await expect(node(page, 'B-6').locator('.gs-node-title')).toHaveCSS('text-decoration-line', 'line-through');
   });
@@ -441,7 +448,7 @@ test.describe('node and edge styling (Phase 5b)', () => {
     await expect(m).toHaveCSS('border-left-width', '6px');
     const open = await m.evaluate((el) => getComputedStyle(el).backgroundColor);
     await page.evaluate((text) => window.gsDev.setFile('Strategy/M-1 Visa in hand.md', text), milestone('reached'));
-    await expect(node(page, 'M-1')).toContainText('reached');
+    await expect(node(page, 'M-1').locator('select.gs-node-status')).toHaveValue('reached');
     expect(await m.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(open);
   });
 
@@ -486,6 +493,221 @@ test.describe('node and edge styling (Phase 5b)', () => {
   });
 });
 
+test.describe('editing from the graph (Phase 6)', () => {
+  const B1 = 'Strategy/Bets/B-1 Get a D7 visa.md';
+  const B2 = 'Strategy/Bets/B-2 Apply for a digital nomad visa.md';
+  const B3 = 'Strategy/Bets/B-3 Sell pottery at weekend markets.md';
+  const B7 = 'Strategy/Bets/B-7  Part-time barista job.md';
+  const file = (page: Page, path: string) => page.evaluate((p) => window.gsDev.file(p), path);
+  const pill = (page: Page, key: string) => node(page, key).locator('select.gs-node-status');
+  const inspector = (page: Page) => page.getByRole('complementary', { name: /^Inspector/ });
+  const toast = (page: Page) => page.getByRole('status');
+
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/?today=2026-10-04&saveDelay=200');
+    await expect(node(page, 'B-1')).toBeVisible();
+  });
+
+  test('the status pill is a dropdown that changes the note, and refuses nothing it offers', async ({ page }) => {
+    await pill(page, 'B-3').selectOption('dormant');
+    await expect.poll(() => file(page, B3)).toContain('status: dormant');
+    await expect(pill(page, 'B-3')).toHaveValue('dormant');
+    await expect(toast(page)).toHaveText('B-3 is now dormant.');
+    // Only the status line changed.
+    expect((await file(page, B3))!.replace('status: dormant', 'status: active')).toContain('## The Bet');
+    expect(await pill(page, 'B-3').locator('option').allTextContents()).toEqual(['active', 'dormant', 'won', 'killed', 'extended']);
+  });
+
+  test('the date is edited in place: Enter saves, Escape cancels', async ({ page }) => {
+    const date = node(page, 'B-3').locator('.gs-node-date');
+    await date.click();
+    await node(page, 'B-3').locator('input[type=date]').fill('2027-02-03');
+    await page.keyboard.press('Enter');
+    await expect.poll(() => file(page, B3)).toContain('deadline: 2027-02-03');
+    await expect(node(page, 'B-3').locator('.gs-node-date')).toHaveText('2027-02-03');
+    await node(page, 'B-3').locator('.gs-node-date').click();
+    await node(page, 'B-3').locator('input[type=date]').fill('2030-01-01');
+    await page.keyboard.press('Escape');
+    await expect(node(page, 'B-3').locator('input[type=date]')).toHaveCount(0);
+    expect(await file(page, B3)).toContain('deadline: 2027-02-03');
+  });
+
+  test('selecting a note opens its inspector, with the rendered text and a way to open it in a split', async ({ page }) => {
+    await node(page, 'B-3').click();
+    const panel = inspector(page);
+    await expect(panel).toContainText('B-3');
+    await expect(panel).toContainText('Sell pottery at weekend markets');
+    await expect(panel.locator('.gs-inspector-text')).toContainText('## The Bet');
+    await expect(panel.locator('.gs-inspector-text')).not.toContainText('type: bet'); // the frontmatter is shown as fields
+    await panel.getByRole('button', { name: 'Open in split' }).click();
+    expect(await page.evaluate(() => window.gsDev.opened())).toEqual([B3]);
+    await panel.getByRole('button', { name: 'Close inspector' }).click();
+    await expect(panel).toHaveCount(0);
+    await node(page, 'B-1').click();
+    await expect(inspector(page)).toContainText('B-1');
+  });
+
+  test('the inspector adds and removes relations, and edits the expected result and the falsifier', async ({ page }) => {
+    await node(page, 'B-7').click();
+    const panel = inspector(page);
+    await panel.getByLabel('Add Serves').selectOption({ label: 'FP-1 Live in Portugal' });
+    await expect.poll(() => file(page, B7)).toContain('[[FP-1 Live in Portugal]]');
+    await expect(page.locator('.react-flow__edge[data-id="serves:B-7>FP-1"]')).toHaveCount(1);
+    await expect(panel.locator('[data-field=serves] li', { hasText: 'FP-1' })).toHaveCount(1);
+    await panel.getByRole('button', { name: 'Remove Serves FP-1' }).click();
+    await expect.poll(() => file(page, B7)).not.toContain('FP-1 Live in Portugal');
+    await expect(page.locator('.react-flow__edge[data-id="serves:B-7>FP-1"]')).toHaveCount(0);
+
+    await panel.getByLabel('Expected result').fill('A steady 20 hours a week');
+    await panel.getByLabel('Expected result').blur();
+    await expect.poll(() => file(page, B7)).toContain('expected-result: A steady 20 hours a week');
+
+    await node(page, 'A-3').click();
+    const falsifier = inspector(page).getByLabel("How I'd know it's false");
+    await falsifier.fill('A stall costs over 80 a day');
+    await falsifier.blur();
+    await expect
+      .poll(() => file(page, 'Strategy/Assumptions/A-3 Weekend market stalls are available.md'))
+      .toContain("## How I'd Know It's False\nA stall costs over 80 a day\n");
+  });
+
+  test('a log entry goes under ## Log, dated, and shows in the note', async ({ page }) => {
+    await node(page, 'B-1').click();
+    const panel = inspector(page);
+    await panel.getByLabel('Log entry').fill('visa appointment booked');
+    await panel.getByLabel('Log entry').press('Enter');
+    await expect.poll(() => file(page, B1)).toContain('- 2026-07-05: created\n- 2026-10-04: visa appointment booked\n');
+    await expect(panel.locator('.gs-inspector-text')).toContainText('2026-10-04: visa appointment booked');
+    await expect(panel.getByLabel('Log entry')).toHaveValue('');
+  });
+
+  const handleOf = (page: Page, key: string, side: string) => node(page, key).locator(`.react-flow__handle-${side}.source`);
+
+  async function connect(page: Page, from: string, to: string, side = 'right') {
+    await node(page, from).hover();
+    const handle = (await handleOf(page, from, side).boundingBox())!;
+    const target = (await node(page, to).boundingBox())!;
+    await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 8 });
+    await page.mouse.up();
+  }
+
+  test('dragging from a handle onto a note draws the relation its types imply, and asks when that is ambiguous', async ({ page }) => {
+    // An assumption onto the bet that leans on it: one possible relation, made at once.
+    await connect(page, 'A-7', 'B-7');
+    await expect.poll(() => file(page, B7)).toContain('[[A-7 Workshops can fill eight seats]]');
+    await expect(page.locator('.react-flow__edge[data-id="assumption:B-7>A-7"]')).toHaveCount(1);
+    // Bet onto bet: serves, requires or next. The menu asks, and the choice is written.
+    await connect(page, 'B-7', 'B-8');
+    const menu = page.getByRole('menu', { name: 'Which relation?' });
+    await expect(menu.getByRole('menuitem')).toHaveText(['B-7 serves B-8', 'B-8 requires B-7', 'B-7 has next sequel B-8']);
+    await menu.getByRole('menuitem', { name: 'B-8 requires B-7' }).click();
+    await expect.poll(() => file(page, 'Strategy/Bets/B-8 Teach pottery workshops.md')).toContain('[[B-7  Part-time barista job]]');
+    await expect(page.locator('.react-flow__edge[data-id="requires:B-8>B-7"]')).toHaveCount(1);
+  });
+
+  test('a link that already exists, or two notes with no relation between them, is refused with the reason', async ({ page }) => {
+    await connect(page, 'A-1', 'B-1');
+    await expect(toast(page)).toContainText('B-1 depends on A-1 already');
+    await connect(page, 'FP-1', 'FP-2');
+    await expect(toast(page)).toContainText("can't be linked");
+  });
+
+  test('a selected link is removed with Delete', async ({ page }) => {
+    const edge = page.locator('.react-flow__edge[data-id="requires:B-4>B-5"]');
+    await expect(edge).toHaveCount(1);
+    // Click the middle of the curve, where the link can be hit.
+    const point = await edge.locator('.react-flow__edge-interaction').evaluate((path: SVGPathElement) => {
+      const p = path.getPointAtLength(path.getTotalLength() / 2);
+      const m = path.getScreenCTM()!;
+      return { x: m.a * p.x + m.c * p.y + m.e, y: m.b * p.x + m.d * p.y + m.f };
+    });
+    await page.mouse.click(point.x, point.y);
+    await expect(edge).toHaveClass(/selected/);
+    await page.keyboard.press('Delete');
+    await expect.poll(() => file(page, 'Strategy/Bets/B-4 Save 20000 for kiln and lease.md')).not.toContain('[[B-5 Learn Portuguese to B1]]');
+    await expect(page.locator('.react-flow__edge[data-id="requires:B-4>B-5"]')).toHaveCount(0);
+    expect(await file(page, 'Strategy/Bets/B-4 Save 20000 for kiln and lease.md')).toContain('[[B-3 Sell pottery at weekend markets]]');
+  });
+
+  test('Kill → activate next kills the bet, activates the sequel, and logs in both notes', async ({ page }) => {
+    await node(page, 'B-1').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Kill → activate next' }).click();
+    await expect.poll(() => file(page, B1)).toContain('status: killed');
+    expect(await file(page, B2)).toContain('status: active');
+    expect(await file(page, B1)).toContain('- 2026-10-04: Killed. Activating [[B-2 Apply for a digital nomad visa]].');
+    expect(await file(page, B2)).toContain('- 2026-10-04: Activated: [[B-1 Get a D7 visa]] was killed.');
+    await expect(pill(page, 'B-1')).toHaveValue('killed');
+    await expect(pill(page, 'B-2')).toHaveValue('active');
+  });
+
+  test('the menu says why an item is off: no sequel to activate, a sequel already there', async ({ page }) => {
+    await node(page, 'B-3').click({ button: 'right' });
+    await expect(page.getByRole('menuitem', { name: 'Kill → activate next' })).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await node(page, 'B-1').click({ button: 'right' });
+    await expect(page.getByRole('menuitem', { name: 'New sequel bet' })).toBeDisabled();
+  });
+
+  test('Mark falsified flags the active bets that lean on the assumption', async ({ page }) => {
+    await node(page, 'A-1').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Mark falsified' }).click();
+    await expect.poll(() => file(page, 'Strategy/Assumptions/A-1 D7 accepts freelance income.md')).toContain('status: falsified');
+    await expect(toast(page)).toContainText('B-1 is active and depends on it: flagged');
+    await expect(node(page, 'B-1').locator('.gs-node-smell')).toHaveAttribute('title', /falsified assumptions/);
+  });
+
+  test('New sequel bet creates the note, links it as next, and it appears on the graph', async ({ page }) => {
+    await node(page, 'B-3').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'New sequel bet' }).click();
+    const form = page.getByRole('form', { name: 'New sequel bet' });
+    await form.getByLabel('Title', { exact: true }).fill('Rent a permanent stall');
+    await form.getByRole('button', { name: 'Create' }).click();
+    await expect(node(page, 'B-9')).toBeVisible();
+    await expect(node(page, 'B-9')).toContainText('Rent a permanent stall');
+    expect(await file(page, B3)).toContain('next: "[[B-9 Rent a permanent stall]]"');
+    await expect(page.locator('.react-flow__edge[data-id="next:B-3>B-9"]')).toHaveCount(1);
+    expect(await page.evaluate(() => window.gsDev.opened())).toEqual([]); // the graph stays where it is
+  });
+
+  test('New bet serving this and Add assumption use the note they were asked on', async ({ page }) => {
+    await node(page, 'FP-2').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'New bet serving this' }).click();
+    await page.getByRole('form', { name: 'New bet serving this' }).getByLabel('Title', { exact: true }).fill('Sell at a craft fair');
+    await page.getByRole('form').getByRole('button', { name: 'Create' }).click();
+    await expect(page.locator('.react-flow__edge[data-id="serves:B-9>FP-2"]')).toHaveCount(1);
+    await node(page, 'B-9').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Add assumption' }).click();
+    await page.getByRole('form', { name: 'Add assumption' }).getByLabel('The assumption').fill('Craft fairs allow ceramics');
+    await page.getByRole('form').getByRole('button', { name: 'Create' }).click();
+    await expect(page.locator('.react-flow__edge[data-id="assumption:B-9>A-8"]')).toHaveCount(1);
+  });
+
+  test('a refused creation stays open and says why', async ({ page }) => {
+    await node(page, 'B-3').click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'New bet serving this' }).click();
+    const form = page.getByRole('form', { name: 'New bet serving this' });
+    await form.getByLabel('Title', { exact: true }).fill('???');
+    await form.getByRole('button', { name: 'Create' }).click();
+    await expect(form.getByRole('alert')).toContainText('title is empty');
+    await form.getByRole('button', { name: 'Cancel' }).click();
+    await expect(form).toHaveCount(0);
+  });
+
+  test('read-only: no dropdowns, no date fields, no inspector controls, no handles to draw from', async ({ page }) => {
+    await page.goto('/?readonly=1');
+    await expect(node(page, 'B-1')).toBeVisible();
+    await expect(page.locator('select.gs-node-status')).toHaveCount(0);
+    await expect(page.locator('button.gs-node-date--button')).toHaveCount(0);
+    await node(page, 'B-3').click();
+    await expect(inspector(page).getByRole('combobox').first()).toBeDisabled();
+    await expect(inspector(page).getByLabel('Log entry')).toHaveCount(0);
+    await node(page, 'B-3').click({ button: 'right' });
+    await expect(page.getByRole('menuitem')).toHaveText(['Open note', 'Open in split']); // nothing that writes
+  });
+});
+
 test.describe('screenshots @visual', () => {
   // ?today pins the clock: the overdue smell, and so the badges, would otherwise change with the date.
   test('migrated test vault, light', async ({ page }) => {
@@ -513,6 +735,19 @@ test.describe('screenshots @visual', () => {
       await expect(page).toHaveScreenshot(`migrated-zoomed-${theme}.png`);
     });
   }
+
+  test('inspector and a right-click menu on a selected bet', async ({ page }) => {
+    await page.goto('/?today=2026-10-01');
+    await expect(node(page, 'B-1')).toBeVisible();
+    const zoomIn = page.getByRole('button', { name: 'Zoom In' });
+    for (let i = 0; i < 3; i++) await zoomIn.click();
+    await page.waitForTimeout(500);
+    await node(page, 'B-3').click({ position: { x: 60, y: 40 } });
+    await node(page, 'B-3').click({ button: 'right' });
+    await expect(page.getByRole('menu')).toBeVisible();
+    await page.waitForTimeout(300);
+    await expect(page).toHaveScreenshot('migrated-inspector.png');
+  });
 
   test('legacy test vault, dark', async ({ page }) => {
     await page.goto('/?vault=legacy&theme=dark&today=2026-10-01');
