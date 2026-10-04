@@ -100,7 +100,9 @@ Release.
   `writeOps` changes only the touched items; unknown keys survive. Their React Flow ids are `card:<id>` / `frame:<id>` /
   `link:<id>`, so they can never clash with a note key. Frames are backdrops (`pointer-events: none` except the label): a click
   on the label selects one, and a selection box selects one only when it holds the whole frame, as on an Obsidian canvas
-  (`framesInBox`; Cmd/Ctrl+A still leaves them out). Dragging a frame (by its label) carries every node wholly inside it at the start, as an
+  (`framesInBox`; Cmd/Ctrl+A still leaves them out). Right-clicking a selection of several nodes (or the selection's box)
+  offers "Create frame around selection", as a canvas's "Create group" (`frameAround`, `FRAME_PADDING`); a bigger frame is
+  always drawn behind a smaller one. Dragging a frame (by its label) carries every node wholly inside it at the start, as an
   Obsidian canvas group does (`frameContents`); frames stay visual only, nothing is written to notes. A card on either end of
   a dragged link makes a free link; two notes make a relation. Promoting a card creates the note first (an edit intent), then
   runs `promote-card` (links and place move to the note). Any vault note can be put on the graph as a note card: drop it from

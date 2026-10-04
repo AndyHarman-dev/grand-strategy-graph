@@ -46,6 +46,7 @@ import {
   FRAME_DEFAULT_SIZE,
   FRAME_TYPE,
   dragCompanions,
+  frameAround,
   frameContents,
   holds,
   isCardNode,
@@ -687,6 +688,28 @@ function Flow({
     [freshId, mapOp]
   );
   /**
+   * A frame around the selected nodes, as "Create group" on an Obsidian canvas: it holds them all with
+   * some room, so dragging it carries them. Named in place, like a new frame.
+   */
+  const frameSelection = useCallback(() => {
+    const picked = nodesRef.current.filter((n) => n.selected && !n.hidden);
+    const place = frameAround(picked.map((n) => ({ ...n.position, width: n.width ?? n.measured?.width ?? 0, height: n.height ?? n.measured?.height ?? 0 })));
+    if (!place) return;
+    const id = freshId();
+    if (!mapOp({ op: 'put-frame', frame: { id, label: '', ...place } })) return;
+    setEditing({ kind: 'frame', id });
+  }, [freshId, mapOp]);
+  /** The menu of a selection of more than one node. */
+  const openSelectionMenu = useCallback(
+    (event: ReactMouseEvent | MouseEvent) => {
+      event.preventDefault();
+      if (!canEditMap) return;
+      const count = nodesRef.current.filter((n) => n.selected && !n.hidden).length;
+      setMenu({ at: placeOf(event), label: `${count} selected`, items: [{ label: 'Create frame around selection', run: frameSelection }] });
+    },
+    [canEditMap, placeOf, frameSelection]
+  );
+  /**
    * Put notes on the graph as note cards (bug 2), stacked from `at`: any note of the vault, as on a
    * canvas. A strategy note is on the graph already: the view goes to it instead.
    */
@@ -792,6 +815,8 @@ function Flow({
   const onNodeContextMenu = useCallback(
     (event: ReactMouseEvent, flowNode: GraphFlowNode) => {
       event.preventDefault();
+      // One of several selected nodes: the menu is the selection's, as on a canvas.
+      if (flowNode.selected && canEditMap && nodesRef.current.filter((n) => n.selected && !n.hidden).length > 1) return openSelectionMenu(event);
       if (isCardNode(flowNode)) return openCardMenu(event, flowNode.data.card);
       if (isFrameNode(flowNode)) return openFrameMenu(event, flowNode.data.frame);
       if (!isStrategyNode(flowNode)) return;
@@ -835,7 +860,7 @@ function Flow({
       }
       if (items.length) setMenu({ at: placeOf(event), label: `Actions for ${n.id ?? n.basename}`, items });
     },
-    [graph, perform, onOpenNote, placeOf, openCardMenu, openFrameMenu]
+    [graph, perform, onOpenNote, placeOf, openCardMenu, openFrameMenu, openSelectionMenu, canEditMap]
   );
 
   const onEdgeContextMenu = useCallback(
@@ -984,6 +1009,7 @@ function Flow({
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
         onPaneContextMenu={onPaneContextMenu}
+        onSelectionContextMenu={openSelectionMenu}
         onDragOver={onDragOver}
         onDrop={onDrop}
         onSelectionChange={onSelectionChange}

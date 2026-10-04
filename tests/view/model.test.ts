@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { findSmells } from '../../src/core/smells';
 import type { GsCard, GsFrame, GsLink } from '../../src/core/gsmap';
 import { groupSmellsForPanel, SMELL_GROUPS } from '../../src/ui/model';
-import { frameContents, junctionRect, junctionsOf, toFlowJunctions } from '../../src/ui/model';
+import { FRAME_PADDING, frameAround, frameContents, holds, junctionRect, junctionsOf, toFlowJunctions } from '../../src/ui/model';
 import { cardNodeId, cssColor, endpointNodeId, dragCompanions, frameNodeId, isCardNode, isFrameNode, isStrategyNode, toFlowCards, toFlowFrames, toFlowLinks, groupSmells, localToday, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions, unverifiedServes } from '../../src/ui/model';
 import { graphOf, md } from '../support/v2';
 
@@ -157,6 +157,27 @@ describe('dragCompanions', () => {
 
   it('moves the assumptions a dragged note hosts by the same amount', () => {
     expect(run({ 'B-2': { x: 320, y: 40 } })).toEqual({ 'A-1': { x: 320, y: -80 } });
+  });
+});
+
+describe('frameAround (a frame from a selection)', () => {
+  it('holds every selected node with room around it, more at the top for the label, in whole pixels', () => {
+    const rects = [
+      { x: 100.4, y: 50, width: 200, height: 60 },
+      { x: 400, y: 300.6, width: 250, height: 80.2 },
+    ];
+    const frame = frameAround(rects)!;
+    expect(frame).toEqual({ x: 80, y: 50 - FRAME_PADDING.top, width: 650 + FRAME_PADDING.side - 80, height: Math.ceil(380.8 + FRAME_PADDING.side) - (50 - FRAME_PADDING.top) });
+    for (const r of rects) expect(holds(frame, r)).toBe(true);
+    // So dragging it carries them all.
+    expect(Array.from(frameContents(new Map([['f', frame]]), new Map(rects.map((r, i) => [`n${i}`, r]))).keys())).toEqual(['n0', 'n1']);
+    expect(frameAround([])).toBeNull();
+  });
+
+  it('draws a bigger frame behind a smaller one, whatever their order in the map', () => {
+    const small: GsFrame = { id: 's', label: '', x: 10, y: 10, width: 100, height: 100 };
+    const big: GsFrame = { id: 'b', label: '', x: 0, y: 0, width: 500, height: 500 };
+    expect(toFlowFrames([small, big], true).map((n) => n.id)).toEqual([frameNodeId('b'), frameNodeId('s')]);
   });
 });
 

@@ -446,8 +446,24 @@ export function toFlowCards(cards: readonly GsCard[], editable: boolean): CardFl
   }));
 }
 
+/** Room a frame made around a selection leaves on each side, and more at the top, where its label sits. */
+export const FRAME_PADDING = { side: 20, top: 44 };
+
+/** The place of a frame made around these nodes (as a canvas group made from a selection), or null for none. */
+export function frameAround(rects: readonly (GsPosition & Size)[]): (GsPosition & Size) | null {
+  if (!rects.length) return null;
+  const left = Math.min(...rects.map((r) => r.x)) - FRAME_PADDING.side;
+  const top = Math.min(...rects.map((r) => r.y)) - FRAME_PADDING.top;
+  const right = Math.max(...rects.map((r) => r.x + r.width)) + FRAME_PADDING.side;
+  const bottom = Math.max(...rects.map((r) => r.y + r.height)) + FRAME_PADDING.side;
+  const [x, y] = [Math.floor(left), Math.floor(top)];
+  return { x, y, width: Math.ceil(right) - x, height: Math.ceil(bottom) - y };
+}
+
 export function toFlowFrames(frames: readonly GsFrame[], editable: boolean): FrameFlowNode[] {
-  return frames.map((frame) => ({
+  // The bigger frame behind: one made around another is drawn under it, so the inner one stays in view.
+  const area = (frame: GsFrame) => frame.width * frame.height;
+  return [...frames].sort((a, b) => area(b) - area(a)).map((frame) => ({
     id: frameNodeId(frame.id),
     type: FRAME_TYPE,
     position: { x: frame.x, y: frame.y },

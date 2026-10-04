@@ -1163,6 +1163,67 @@ test.describe('free cards, frames and links (Phase 7)', () => {
     expect(after.width).toBe(before.width);
   });
 
+  test('a frame is made around a selection of several nodes from its menu, and carries them', async ({ page }) => {
+    await node(page, 'B-7').click();
+    await node(page, 'B-8').click({ modifiers: ['Shift'] });
+    await card(page, 't-elab').click({ modifiers: ['Shift'] });
+    // A node outside the selection keeps its own menu.
+    await node(page, 'B-1').click({ button: 'right' });
+    await expect(page.getByRole('menuitem', { name: 'Create frame around selection' })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await node(page, 'B-8').click({ button: 'right' });
+    await expect(page.getByRole('menu', { name: '3 selected' })).toBeVisible();
+    await page.getByRole('menuitem', { name: 'Create frame around selection' }).click();
+    const label = page.getByRole('textbox', { name: 'Frame label' });
+    await label.fill('Jobs');
+    await label.press('Enter');
+    await settle(page);
+    const made = (await map(page)).frames.find((f) => f.label === 'Jobs')!;
+    expect(made).toBeDefined();
+    // It holds them all, on screen too.
+    const frameBox = (await page.locator('.react-flow__node-frame', { hasText: 'Jobs' }).boundingBox())!;
+    for (const held of [node(page, 'B-7'), node(page, 'B-8'), card(page, 't-elab')]) {
+      const r = (await held.boundingBox())!;
+      expect(r.x).toBeGreaterThan(frameBox.x);
+      expect(r.y).toBeGreaterThan(frameBox.y);
+      expect(r.x + r.width).toBeLessThan(frameBox.x + frameBox.width);
+      expect(r.y + r.height).toBeLessThan(frameBox.y + frameBox.height);
+    }
+    // Dragging it by its label carries what it was made around.
+    await page.keyboard.press('Escape');
+    const before = await map(page);
+    const grip = (await page.locator('.react-flow__node-frame', { hasText: 'Jobs' }).locator('.gs-frame-label').boundingBox())!;
+    await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(grip.x + grip.width / 2 + 60, grip.y + grip.height / 2 + 40, { steps: 6 });
+    await page.mouse.up();
+    await settle(page);
+    const after = await map(page);
+    const moved = after.frames.find((f) => f.label === 'Jobs')!;
+    const [dx, dy] = [moved.x - made.x, moved.y - made.y];
+    expect(dx).toBeGreaterThan(0);
+    for (const key of ['B-7', 'B-8']) expect(after.positions[key], key).toEqual({ x: before.positions[key].x + dx, y: before.positions[key].y + dy });
+    const elab = after.cards.find((c) => c.id === 't-elab')!;
+    expect(elab).toMatchObject({ x: before.cards.find((c) => c.id === 't-elab')!.x + dx });
+  });
+
+  test('a selection drawn with a box has the same menu', async ({ page }) => {
+    const [a, b] = [(await card(page, 't-route').boundingBox())!, (await card(page, 't-routec').boundingBox())!];
+    const box = { x1: Math.min(a.x, b.x) - 8, y1: Math.min(a.y, b.y) - 8, x2: Math.max(a.x + a.width, b.x + b.width) + 8, y2: Math.max(a.y + a.height, b.y + b.height) + 8 };
+    expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.classList.contains('react-flow__pane'), [box.x1, box.y1])).toBe(true);
+    await page.mouse.move(box.x1, box.y1);
+    await page.mouse.down();
+    await page.mouse.move(box.x2, box.y2, { steps: 8 });
+    await page.mouse.up();
+    await expect(card(page, 't-route')).toHaveClass(/selected/);
+    await expect(card(page, 't-routec')).toHaveClass(/selected/);
+    await card(page, 't-route').click({ button: 'right', force: true });
+    await page.getByRole('menuitem', { name: 'Create frame around selection' }).click();
+    await page.getByRole('textbox', { name: 'Frame label' }).press('Enter');
+    await settle(page);
+    expect((await map(page)).frames).toHaveLength(3);
+  });
+
   test('a note-reference card opens its note', async ({ page }) => {
     await card(page, 'note').dblclick();
     expect(await page.evaluate(() => window.gsDev.opened())).toEqual(['lisbon-neighbourhoods-research.md']);
