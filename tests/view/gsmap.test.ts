@@ -14,6 +14,20 @@ describe('parseGsMap', () => {
     expect(read.map.frames.length).toBeGreaterThan(0);
   });
 
+  it('reads cards of every kind, frames and links that are what they say', () => {
+    const text = JSON.stringify({
+      version: 1,
+      cards: [
+        { id: 'a', kind: 'text', text: '', x: 0, y: 0, width: 1, height: 1 },
+        { id: 'b', kind: 'note-ref', file: 'x.md', x: 0, y: 0, width: 1, height: 1 },
+        { id: 'c', kind: 'link', url: 'https://example.com', x: 0, y: 0, width: 1, height: 1 },
+      ],
+      frames: [{ id: 'f', label: '', x: 0, y: 0, width: 1, height: 1 }],
+      links: [{ id: 'l', from: { card: 'a' }, to: { note: 'B-1' } }],
+    });
+    expect(parseGsMap(text).ok).toBe(true);
+  });
+
   it('reads an empty file as an empty map', () => {
     expect(parseGsMap('')).toEqual({ ok: true, map: emptyGsMap() });
     expect(parseGsMap(' \n')).toEqual({ ok: true, map: emptyGsMap() });
@@ -31,6 +45,14 @@ describe('parseGsMap', () => {
     ['{"version":1,"positions":[]}', /`positions` is not an object/],
     ['{"version":1,"positions":{"B-1":{"x":"1","y":2}}}', /position of "B-1"/],
     ['{"version":1,"cards":{}}', /`cards` is not a list/],
+    // The graph draws these without checking again, so one that is not what it says is an error, not a crash.
+    ['{"version":1,"cards":[{"id":"a","kind":"text","text":"t","x":"0","y":0,"width":1,"height":1}]}', /card 1 is not a card/],
+    ['{"version":1,"cards":[{"id":"a","kind":"text","x":0,"y":0,"width":1,"height":1}]}', /card 1 is not a card/],
+    ['{"version":1,"cards":[{"id":"a","kind":"photo","x":0,"y":0,"width":1,"height":1}]}', /card 1 is not a card/],
+    ['{"version":1,"frames":[{"id":"f","x":0,"y":0,"width":1,"height":1}]}', /frame 1 is not a frame/],
+    ['{"version":1,"links":[{"id":"l","from":{"card":"a"}}]}', /link 1 is not a link/],
+    ['{"version":1,"links":[{"id":"l","from":"a","to":{"note":"B-1"}}]}', /link 1 is not a link/],
+    ['{"version":1,"links":[null]}', /link 1 is not a link/],
   ])('refuses %s', (text, error) => {
     const read = parseGsMap(text);
     expect(read.ok).toBe(false);

@@ -24,6 +24,7 @@ export function setToday(date: string): void {
 
 export function resetObsidianMock(): void {
   notices.length = 0;
+  rendered.length = 0;
   openedModals.length = 0;
   today = '2026-10-01';
 }
@@ -42,6 +43,16 @@ export function moment() {
     },
   };
 }
+
+/** Records what the graph's inspector asks Obsidian to render. */
+export const rendered: { markdown: string; sourcePath: string }[] = [];
+
+export const MarkdownRenderer = {
+  async render(_app: unknown, markdown: string, el: unknown, sourcePath: string, _component: unknown): Promise<void> {
+    rendered.push({ markdown, sourcePath });
+    (el as { rendered?: string }).rendered = markdown;
+  },
+};
 
 /** `instanceof TFile` is how the plugin tells a note from a folder; FakeVault files are instances. */
 export class TFile {}
@@ -203,6 +214,12 @@ export class Plugin {
 
   registerExtensions(extensions: string[], viewType: string): void {
     this.extensions.push({ extensions, viewType });
+  }
+
+  hoverLinkSources: { id: string; info: { display: string; defaultMod: boolean } }[] = [];
+
+  registerHoverLinkSource(id: string, info: { display: string; defaultMod: boolean }): void {
+    this.hoverLinkSources.push({ id, info });
   }
 
   constructor(app: unknown) {

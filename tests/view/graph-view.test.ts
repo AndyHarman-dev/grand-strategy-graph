@@ -3,7 +3,7 @@ import { GSMAP_PATH, parseGsMap, serializeGsMap, emptyGsMap } from '../../src/co
 import { isGraphNote, openStrategyGraph, revealInStrategyGraph } from '../../src/obsidian/graph-commands';
 import { StrategyGraphView } from '../../src/obsidian/graph-view';
 import { plannedTestVault } from '../../tools/test-vault';
-import { notices, resetObsidianMock } from '../mocks/obsidian';
+import { notices, rendered, resetObsidianMock } from '../mocks/obsidian';
 import { FakeWorkspaceApp, type MountRecord } from '../support/fake-workspace';
 import { md } from '../support/v2';
 
@@ -282,3 +282,149 @@ describe('opening a note from the graph', () => {
     ]);
   });
 });
+
+describe('hovering a node (Phase 5b)', () => {
+  it('asks Obsidian for the page preview of the note, as a hover-link from the graph view', async () => {
+    const { view, mount } = await open();
+    const event = { type: 'mouseover' } as MouseEvent;
+    const targetEl = {} as HTMLElement;
+    mount.host.hoverNote!(event, targetEl, B1);
+    expect(app.triggered).toEqual([{ name: 'hover-link', args: [{ event, source: 'strategy-graph', hoverParent: view, targetEl, linktext: B1 }] }]);
+  });
+
+  it('gives the graph the local date for the overdue smell', async () => {
+    const { mount } = await open();
+    expect(mount.host.today!()).toBe('2026-10-01'); // the obsidian mock's clock
+  });
+});
+
+describe('editing from the graph (Phase 6)', () => {
+  const B3 = 'Strategy/Bets/B-3 Sell pottery at weekend markets.md';
+
+  /** An edit that changes the graph resolves after the rebuild it causes (250 ms): run it with the clock moving. */
+  async function edit(mount: MountRecord, intent: Parameters<NonNullable<MountRecord['host']['edit']>>[0]) {
+    const pending = mount.host.edit!(intent);
+    await vi.advanceTimersByTimeAsync(300);
+    return pending;
+  }
+
+  it('lets the next edit see the last one: a second kill of the same bet is refused, not repeated', async () => {
+    const { mount } = await open();
+    expect((await edit(mount, { kind: 'kill-activate-next', key: 'B-1' })).ok).toBe(true);
+    const again = await edit(mount, { kind: 'kill-activate-next', key: 'B-1' });
+    expect(again).toMatchObject({ ok: false, message: 'B-1 is already killed.' });
+    const log = app.vault.text('Strategy/Bets/B-1 Get a D7 visa.md').match(/Killed\. Activating/g);
+    expect(log).toHaveLength(1);
+  });
+
+  it('answers a log entry at once: it changes nothing the graph shows, so nothing is waited for', async () => {
+    const { mount } = await open();
+    const outcome = await mount.host.edit!({ kind: 'log', key: 'B-3', text: 'x' }); // no timers advanced
+    expect(outcome.ok).toBe(true);
+  });
+  it('performs an edit through Obsidian, and the graph picks the change up from the cache', async () => {
+    const { mount } = await open();
+    const outcome = await edit(mount, { kind: 'set-status', key: 'B-3', status: 'dormant' });
+    expect(outcome).toEqual({ ok: true, message: 'B-3 is now dormant.' });
+    expect(app.vault.text(B3)).toContain('status: dormant');
+    // The edit resolves once the graph has read the change, so the next one plans from it.
+    expect(lastState(mount).graph!.nodes.find((n) => n.key === 'B-3')!.status).toBe('dormant');
+  });
+
+  it('writes a log line to the body through vault.process, leaving the frontmatter as it was', async () => {
+    const { mount } = await open();
+    const before = app.vault.text(B3);
+    await mount.host.edit!({ kind: 'log', key: 'B-3', text: 'stall booked' });
+    const after = app.vault.text(B3);
+    expect(after.slice(0, after.indexOf('\n---\n') + 5)).toBe(before.slice(0, before.indexOf('\n---\n') + 5));
+    expect(after).toContain('- 2026-10-01: stall booked');
+    expect(app.vault.processed[app.vault.processed.length - 1].path).toBe(B3);
+  });
+
+  it('creates a note in its folder and links it, without opening it', async () => {
+    const { mount } = await open();
+    const outcome = await edit(mount, { kind: 'new-assumption', form: { statement: 'Stalls stay cheap', falsifier: '', verifyBy: '' }, dependents: ['B-3'] });
+    expect(outcome.ok).toBe(true);
+    expect(app.vault.text('Strategy/Assumptions/A-8 Stalls stay cheap.md')).toContain('id: A-8');
+    expect(app.vault.text(B3)).toContain('[[A-8 Stalls stay cheap]]');
+    expect(app.opened).toEqual([]);
+  });
+
+  it('says why when an edit is refused, and writes nothing', async () => {
+    const { mount } = await open();
+    const writes = app.vault.processed.length;
+    const outcome = await mount.host.edit!({ kind: 'set-status', key: 'B-3', status: 'reached' });
+    expect(outcome.ok).toBe(false);
+    expect(outcome.message).toContain('not a status of a bet');
+    expect(app.vault.processed.length).toBe(writes);
+  });
+
+  it('reports a failure part-way with what was already written', async () => {
+    const { mount } = await open();
+    app.vault.files.delete('Strategy/Bets/B-2 Apply for a digital nomad visa.md'); // the sequel's file vanishes under the plan
+    const graph = lastState(mount).graph!; // still lists B-2
+    expect(graph.nodes.some((n) => n.key === 'B-2')).toBe(true);
+    const outcome = await mount.host.edit!({ kind: 'kill-activate-next', key: 'B-1' });
+    expect(outcome.ok).toBe(false);
+    expect(outcome.message).toContain('Edit failed');
+    expect(outcome.message).toContain('Nothing was changed');
+  });
+
+  it('reads a note for the inspector and renders its body without the frontmatter', async () => {
+    const { mount } = await open();
+    expect(await mount.host.readNote!(B3)).toContain('type: bet');
+    const el = {} as HTMLElement;
+    const cleanup = mount.host.renderNote!(el, B3);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(rendered).toHaveLength(1);
+    expect(rendered[0].sourcePath).toBe(B3);
+    expect(rendered[0].markdown.startsWith('---')).toBe(false);
+    expect(rendered[0].markdown).toContain('## The Bet');
+    cleanup();
+  });
+
+  it('does not render into a note that was let go before it was read', async () => {
+    const { mount } = await open();
+    const cleanup = mount.host.renderNote!({} as HTMLElement, B3);
+    cleanup(); // another note was selected before the file came back
+    await vi.advanceTimersByTimeAsync(0);
+    expect(rendered).toHaveLength(0);
+  });
+});
+
+describe('the free part of the map (Phase 7)', () => {
+  it('writes a card edit into the .gsmap through vault.process after the quiet period, changing nothing else', async () => {
+    const { mount } = await open();
+    const before = app.vault.text(GSMAP_PATH);
+    const cardsBefore = parseGsMap(before).ok ? (parseGsMap(before) as { map: { cards: unknown[] } }).map.cards.length : -1;
+    expect(mount.host.editMap!({ op: 'put-card', card: { id: 'new', kind: 'text', text: 'idea', x: 1, y: 2, width: 250, height: 60 } })).toBe(true);
+    expect(app.vault.text(GSMAP_PATH)).toBe(before);
+    await vi.advanceTimersByTimeAsync(400);
+    const read = parseGsMap(app.vault.text(GSMAP_PATH));
+    if (!read.ok) throw new Error(read.error);
+    expect(read.map.cards).toHaveLength(cardsBefore + 1);
+    expect(read.map.positions).toEqual(positionsOn(before));
+  });
+
+  it('refuses card edits into a .gsmap it cannot read, and says so', async () => {
+    app.vault.write(GSMAP_PATH, 'not json');
+    const { mount } = await open();
+    expect(mount.host.editMap!({ op: 'delete-card', id: 'x' })).toBe(false);
+    expect(notices.map((n) => n.message).join('\n')).toContain("can't be read, so this change was not saved");
+  });
+
+  it('writes a pending card edit when the tab closes', async () => {
+    const { mount, leaf } = await open();
+    mount.host.editMap!({ op: 'delete-card', id: 'note' });
+    await leaf.detach();
+    const read = parseGsMap(app.vault.text(GSMAP_PATH));
+    if (!read.ok) throw new Error(read.error);
+    expect(read.map.cards.map((c) => c.id)).not.toContain('note');
+  });
+});
+
+function positionsOn(text: string) {
+  const read = parseGsMap(text);
+  if (!read.ok) throw new Error(read.error);
+  return read.map.positions;
+}

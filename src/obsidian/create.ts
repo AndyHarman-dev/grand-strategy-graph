@@ -1,5 +1,5 @@
 import { App, Notice, TFile } from 'obsidian';
-import { addLinkToField, planAssumption, planBet, planMilestone, type ActionPlan } from '../core/actions';
+import { planAssumption, planBet, planMilestone, type ActionPlan } from '../core/actions';
 import { ASSUMPTIONS_FOLDER, BETS_FOLDER, MILESTONES_FOLDER } from '../core/constants';
 import {
   isPlanError,
@@ -8,23 +8,9 @@ import {
   type MilestoneFormData,
   type PlanError,
 } from '../core/plan';
+import { describeWrite, runWrite } from '../core/writes';
+import { ensureFolder, errorMessage, ObsidianIO } from './io';
 import { today as todayIso } from './today';
-
-/** `err.message` when there is a truthy one, otherwise the stringified value. */
-export function errorMessage(err: unknown): string {
-  const e = err as { message?: unknown } | null | undefined;
-  return e && e.message ? String(e.message) : String(err);
-}
-
-export async function ensureFolder(app: App, path: string): Promise<void> {
-  if (app.vault.getAbstractFileByPath(path)) return;
-  try {
-    await app.vault.createFolder(path);
-  } catch (err) {
-    // Racy "already exists" is fine; anything else surfaces on the create call.
-    console.warn('strategy-bet-creator: createFolder(' + path + ') failed', err);
-  }
-}
 
 /**
  * Run a planned action: new notes first, then link appends to existing notes through
@@ -38,6 +24,7 @@ async function execute(app: App, plan: ActionPlan | PlanError, what: string): Pr
     return;
   }
 
+  const io = new ObsidianIO(app);
   const written: string[] = [];
   try {
     let opened: TFile | null = null;
@@ -47,13 +34,8 @@ async function execute(app: App, plan: ActionPlan | PlanError, what: string): Pr
         written.push(write.path);
         if (write.path === plan.open) opened = file;
       } else {
-        const file = app.vault.getAbstractFileByPath(write.path);
-        if (!(file instanceof TFile)) throw new Error('Not a note: ' + write.path);
-        await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
-          const next = addLinkToField(fm[write.field], write.link);
-          if (next !== fm[write.field]) fm[write.field] = next;
-        });
-        written.push(write.path + ' (' + write.field + ')');
+        await runWrite(write, io);
+        written.push(describeWrite(write));
       }
     }
     if (opened) await app.workspace.getLeaf(false).openFile(opened);

@@ -6,9 +6,13 @@
 import vaults from 'virtual:test-vault';
 import '../src/styles.css';
 import './obsidian-theme.css';
+import type { Intent } from '../src/core/edits';
 import { GraphSession, type GraphState } from '../src/core/graph-session';
 import { GSMAP_PATH, parseGsMap, serializeGsMap } from '../src/core/gsmap';
 import { MemoryAdapter } from '../src/core/memory-adapter';
+import { MemoryVault } from '../src/core/memory-vault';
+import { performIntent } from '../src/core/perform';
+import { localToday } from '../src/ui/model';
 import { mountGraph } from '../src/ui/mount';
 
 const params = new URLSearchParams(location.search);
@@ -16,19 +20,43 @@ const vaultName = params.get('vault') === 'legacy' ? 'legacy' : 'planned';
 const files: Record<string, string> = { ...vaults[vaultName] };
 // ?layout=auto drops the saved positions, to see the automatic layout (D19) on the whole vault.
 let gsmapText = params.get('layout') === 'auto' ? withoutPositions(files[GSMAP_PATH] ?? '') : files[GSMAP_PATH] ?? '';
+// ?gsmap=broken: a file this version can't read, to see what the graph offers then.
+if (params.get('gsmap') === 'broken') gsmapText = '{ not a gsmap';
 files[GSMAP_PATH] = gsmapText;
+const vault = new MemoryVault(files);
 let writes = 0;
 let state: GraphState | null = null;
 let reveal: { key: string; nonce: number } | null = null;
 const opened: string[] = [];
+const hovered: string[] = [];
 
 const status = document.getElementById('status')!;
 const mounted = mountGraph(document.getElementById('content')!, {
   move: (updates) => session.move(updates),
   resetPositions: () => session.resetPositions(),
+  editMap: (op) => session.editMap(op),
   openNote: (path) => {
     opened.push(path);
     status.textContent = `open ${path}`;
+  },
+  hoverNote: (_event, _el, path) => hovered.push(path),
+  // ?today=YYYY-MM-DD pins the clock, so the overdue smell (and the screenshots) don't depend on the day.
+  today: () => params.get('today') ?? localToday(),
+  // Edits go to the in-memory notes, as Obsidian's would to the vault, then the graph is read again.
+  // ?readonly=1: a host without `edit`, to see the graph as it is when nothing can be written.
+  ...(params.get('readonly') === '1'
+    ? {}
+    : {
+        edit: async (intent: Intent) => {
+          if (!state?.graph) return { ok: false, message: 'The graph has not been read yet.' };
+          const outcome = await performIntent(intent, { graph: state.graph, vault, today: params.get('today') ?? localToday() }, vault);
+          await session.rebuild();
+          return outcome;
+        },
+      }),
+  readNote: async (path) => {
+    if (!(path in files)) throw new Error('Not a note: ' + path);
+    return files[path];
   },
 }, params.get('elk') === 'fail' ? { autoLayout: () => Promise.reject(new Error('simulated ELK failure')) } : {});
 
@@ -98,6 +126,7 @@ const api = {
   },
   notices: () => state?.notices ?? [],
   opened: () => opened,
+  hovered: () => hovered,
   flush: () => session.flush(),
 };
 window.gsDev = api;

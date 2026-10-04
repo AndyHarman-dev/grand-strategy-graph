@@ -1,6 +1,9 @@
 /*
- * Strategy graph view (Phase 5a). Colours come from Obsidian's CSS variables, so the graph
- * follows the theme. Per-type shapes and status colours are Phase 5b.
+ * Strategy graph view (Phases 5a, 5b). Colours come from Obsidian's CSS variables, so the graph
+ * follows the theme: each status sets --gs-c (its colour), and the border, the pill and the tint
+ * of a node are mixed from it. Types differ by shape: bets and assumptions are boxes (assumptions
+ * dashed), a milestone is a checkpoint with a thick left edge, a fixed point is a stadium, the
+ * current position a pill.
  */
 
 .workspace-leaf-content[data-type='strategy-graph'] .view-content {
@@ -39,6 +42,16 @@
   color: var(--text-normal);
 }
 
+/* Colour roles. Obsidian's accent colours with fallbacks for the dev page. */
+.gs-graph {
+  --gs-accent: var(--interactive-accent);
+  --gs-ok: var(--color-green, #08b94e);
+  --gs-wait: var(--color-yellow, #e0ac00);
+  --gs-bad: var(--color-red, #e93147);
+  --gs-info: var(--color-blue, #086ddd);
+  --gs-quiet: var(--text-faint);
+}
+
 /* Nodes. The box size comes from NODE_SIZES (src/core/layout.ts). */
 .gs-graph .react-flow__node-strategy {
   padding: 0;
@@ -47,17 +60,18 @@
 }
 
 .gs-node {
+  --gs-c: var(--background-modifier-border);
+  position: relative;
   box-sizing: border-box;
   width: 100%;
   height: 100%;
   padding: 6px 10px;
-  border: 1px solid var(--background-modifier-border);
+  border: 1px solid var(--gs-c);
   border-radius: 8px;
-  background: var(--background-secondary);
+  background: color-mix(in srgb, var(--gs-c) 8%, var(--background-secondary));
   color: var(--text-normal);
   font-size: var(--font-ui-small, 13px);
   line-height: 1.3;
-  overflow: hidden;
 }
 
 .gs-node.is-selected {
@@ -65,16 +79,76 @@
   box-shadow: 0 0 0 1px var(--interactive-accent);
 }
 
-.gs-node--fixed-point {
+/* Bets */
+.gs-node--bet {
+  --gs-c: var(--gs-quiet);
+}
+.gs-node--bet.gs-status--active {
+  --gs-c: var(--gs-accent);
   border-width: 2px;
+}
+.gs-node--bet.gs-status--dormant {
+  opacity: 0.65;
+}
+.gs-node--bet.gs-status--won {
+  --gs-c: var(--gs-ok);
+}
+.gs-node--bet.gs-status--killed {
+  --gs-c: var(--gs-bad);
+  opacity: 0.75;
+}
+.gs-node--bet.gs-status--killed .gs-node-title {
+  text-decoration: line-through;
+}
+.gs-node--bet.gs-status--extended {
+  --gs-c: var(--gs-info);
+}
+
+/* Assumptions: dashed, coloured by what is known about them. */
+.gs-node--assumption {
+  --gs-c: var(--gs-quiet);
+  border-style: dashed;
+}
+.gs-node--assumption.gs-status--unverified {
+  --gs-c: var(--gs-wait);
+}
+.gs-node--assumption.gs-status--confirmed {
+  --gs-c: var(--gs-ok);
+}
+.gs-node--assumption.gs-status--falsified {
+  --gs-c: var(--gs-bad);
+}
+.gs-node--assumption.gs-status--undeterminable {
+  --gs-c: var(--gs-quiet);
+}
+
+/* Milestones: a checkpoint, hollow while open, filled once reached. */
+.gs-node--milestone {
+  --gs-c: var(--gs-info);
+  border-left-width: 6px;
+  border-radius: 4px 12px 12px 4px;
+  background: var(--background-secondary);
+}
+.gs-node--milestone.gs-status--reached {
+  --gs-c: var(--gs-ok);
+  background: color-mix(in srgb, var(--gs-c) 18%, var(--background-secondary));
+}
+
+/* Fixed points: locked anchors at the far end. */
+.gs-node--fixed-point {
+  --gs-c: var(--gs-accent);
+  border-width: 2px;
+  border-radius: 999px;
+  padding-inline: 18px;
+  background: color-mix(in srgb, var(--gs-c) 14%, var(--background-secondary));
   font-weight: 600;
 }
 
-.gs-node--assumption {
-  border-style: dashed;
-}
-
+/* The current position: where the strategy starts, neutral. */
 .gs-node--current-position {
+  --gs-c: var(--text-muted);
+  border-radius: 999px;
+  padding-inline: 18px;
   background: var(--background-primary-alt, var(--background-secondary));
 }
 
@@ -85,6 +159,7 @@
 .gs-node-head {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 6px;
   color: var(--text-muted);
   font-size: var(--font-ui-smaller, 12px);
@@ -94,6 +169,19 @@
   font-family: var(--font-monospace);
 }
 
+.gs-node-glyph {
+  color: var(--gs-c);
+}
+
+.gs-node-status {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gs-c) 22%, transparent);
+  color: var(--text-normal);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
 .gs-node-title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -101,29 +189,70 @@
   overflow: hidden;
 }
 
+.gs-node--fixed-point .gs-node-title,
+.gs-node--current-position .gs-node-title {
+  -webkit-line-clamp: 1;
+}
+
 .gs-node-date {
   color: var(--text-faint);
   font-size: var(--font-ui-smaller, 12px);
+}
+
+/* Smell badge: how many things review would flag on this note; the title lists them. */
+.gs-node-smell {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: var(--text-warning, #ec7500);
+  color: var(--background-primary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
 }
 
 .gs-node .react-flow__handle {
   visibility: hidden;
 }
 
-/* Edges (plan, Schema section). */
-.gs-edge-next .react-flow__edge-path {
-  stroke-dasharray: 6 4;
-}
-
-.gs-edge-requires .react-flow__edge-path {
+/* Edges (plan, Schema section): serves solid; unverified serve dashed; next dashed in the kill colour
+   with its label; requires dotted; assumption leader thin dashed; ultimately-serves faint, long dashes. */
+.gs-graph .gs-edge-requires .react-flow__edge-path {
+  stroke: var(--gs-info);
   stroke-dasharray: 2 4;
   stroke-linecap: round;
 }
 
-.gs-edge-assumption .react-flow__edge-path {
+.gs-graph .gs-edge-unverified .react-flow__edge-path {
+  stroke-dasharray: 9 5;
+}
+
+.gs-graph .gs-edge-next .react-flow__edge-path {
+  stroke: var(--text-warning, #ec7500);
+  stroke-dasharray: 6 4;
+}
+
+.gs-graph .gs-edge-assumption .react-flow__edge-path {
   stroke-dasharray: 3 3;
   stroke-width: 1;
   opacity: 0.7;
+}
+
+.gs-graph .gs-edge-ultimately-serves .react-flow__edge-path {
+  stroke: var(--text-faint);
+  stroke-dasharray: 14 6;
+  stroke-width: 1;
+}
+
+.gs-graph .react-flow__controls-button.gs-toggle-ultimate[aria-pressed='true'] {
+  background: var(--background-modifier-hover);
+  color: var(--interactive-accent);
 }
 
 /* Problems found while building the graph. */
@@ -199,4 +328,657 @@
 /* The graph takes focus when clicked (for Cmd/Ctrl+A and Escape); no focus ring for that. */
 .gs-graph .react-flow:focus {
   outline: none;
+}
+
+/* ---- Editing (Phase 6) ---- */
+
+/* The status pill is a dropdown, and the date a button, once edits are possible. */
+.gs-graph select.gs-node-status {
+  appearance: none;
+  height: auto;
+  min-height: 0;
+  padding: 0 7px;
+  border: none;
+  box-shadow: none;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.gs-graph button.gs-node-date--button {
+  all: unset;
+  cursor: pointer;
+  color: var(--text-faint);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.gs-graph button.gs-node-date--button:hover {
+  color: var(--text-normal);
+  text-decoration: underline;
+}
+
+.gs-graph input.gs-node-date--input {
+  height: 18px;
+  padding: 0 2px;
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+/* Handles draw a relation: invisible until the pointer is over the node. */
+.gs-node .react-flow__handle {
+  visibility: visible;
+  opacity: 0;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--interactive-accent);
+  background: var(--background-primary);
+}
+
+.gs-node:hover .react-flow__handle.source,
+.react-flow__handle.connectingfrom {
+  opacity: 1;
+}
+
+.gs-node .react-flow__handle.target {
+  pointer-events: none;
+}
+
+.gs-graph .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--interactive-accent);
+  stroke-width: 2;
+}
+
+/* The inspector: a column on the right, scrolling by itself. */
+.gs-graph .gs-inspector-panel {
+  max-height: calc(100% - 20px);
+  margin: 10px;
+  display: flex;
+}
+
+.gs-inspector {
+  box-sizing: border-box;
+  width: 340px;
+  max-width: 100%;
+  overflow: auto;
+  padding: 10px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+.gs-inspector h4 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0 4px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.gs-inspector-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.gs-inspector-id {
+  font-family: var(--font-monospace);
+  color: var(--text-muted);
+}
+
+.gs-inspector-type {
+  margin-left: 6px;
+  font-family: var(--font-ui-small, inherit);
+  color: var(--text-faint);
+}
+
+.gs-inspector-title {
+  font-weight: 600;
+}
+
+.gs-inspector-close {
+  flex: none;
+}
+
+.gs-inspector-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.gs-inspector-fields label,
+.gs-quick-create label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.gs-inspector textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+}
+
+.gs-inspector-relation ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gs-inspector-relation li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 0;
+}
+
+.gs-inspector-none {
+  color: var(--text-faint);
+}
+
+.gs-inspector-add {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.gs-inspector-incoming p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.gs-inspector-log-row {
+  display: flex;
+  gap: 6px;
+}
+
+.gs-inspector-log-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.gs-inspector-body {
+  max-height: 260px;
+  overflow: auto;
+  padding: 6px 8px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+}
+
+.gs-inspector-text {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-monospace);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+/* Right-click menus and the connect question. */
+.gs-menu {
+  position: absolute;
+  z-index: 20;
+  margin: 0;
+  padding: 4px;
+  min-width: 180px;
+  list-style: none;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.gs-menu button {
+  all: unset;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-menu button:hover:not(:disabled),
+.gs-menu button:focus-visible {
+  background: var(--background-modifier-hover);
+}
+
+.gs-menu button:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+/* The outcome of the last edit, and the small creation form. */
+.gs-toast {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  max-width: 70%;
+  padding: 6px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: var(--font-ui-small, 13px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.gs-toast.is-error {
+  border-color: var(--text-error);
+  color: var(--text-error);
+}
+
+.gs-quick-create {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 340px;
+  padding: 10px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-quick-create h3 {
+  margin: 0;
+  font-size: var(--font-ui-medium, 15px);
+}
+
+.gs-quick-create-anchor {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.gs-quick-create-error {
+  margin: 0;
+  color: var(--text-error);
+}
+
+.gs-quick-create-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+/* ---- Free cards, frames and links (Phase 7) ---- */
+.gs-graph .react-flow__node-card,
+.gs-graph .react-flow__node-frame {
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+/* A frame is a backdrop: only its label (and its resize handles) take the pointer, so notes, cards and links on it stay reachable. */
+.gs-graph .react-flow__node-frame {
+  pointer-events: none !important;
+}
+
+.gs-frame {
+  --gs-c: var(--text-faint);
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: 2px dashed color-mix(in srgb, var(--gs-c) 70%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--gs-c) 6%, transparent);
+}
+
+.gs-frame.is-selected {
+  border-color: var(--interactive-accent);
+}
+
+.gs-frame-label {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  max-width: calc(100% - 20px);
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gs-c) 25%, var(--background-primary));
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+  font-weight: 600;
+  pointer-events: all;
+  cursor: grab;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gs-frame .react-flow__resize-control {
+  pointer-events: all;
+}
+
+.gs-card {
+  --gs-c: var(--text-faint);
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 6px 10px;
+  border: 2px solid var(--gs-c);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--gs-c) 12%, var(--background-secondary));
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+  line-height: 1.35;
+  overflow: hidden;
+}
+
+.gs-card.is-selected {
+  border-color: var(--interactive-accent);
+}
+
+.gs-card--dashed {
+  border-style: dashed;
+}
+
+.gs-card--invisible {
+  border-color: transparent;
+  background: transparent;
+}
+
+.gs-card--center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.gs-card--diamond {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--gs-c) 30%, var(--background-secondary));
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  text-align: center;
+  font-weight: 600;
+}
+
+.gs-card-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.gs-card-kind {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gs-c) 25%, transparent);
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.gs-card-empty {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.gs-inline-text {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  resize: none;
+  font: inherit;
+}
+
+.gs-frame .gs-inline-text {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  width: 60%;
+  height: auto;
+  pointer-events: all;
+}
+
+.gs-card .react-flow__handle {
+  opacity: 0;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--interactive-accent);
+  background: var(--background-primary);
+}
+
+.gs-card:hover .react-flow__handle.source {
+  opacity: 1;
+}
+
+.gs-card .react-flow__handle.target {
+  pointer-events: none;
+}
+
+/* Links of the map: lines with no strategy meaning, drawn as the canvas did. */
+.gs-graph .gs-link .react-flow__edge-path {
+  stroke-width: 1.5;
+}
+.gs-graph .gs-link--dotted .react-flow__edge-path {
+  stroke-dasharray: 2 4;
+  stroke-linecap: round;
+}
+.gs-graph .gs-link--short-dashed .react-flow__edge-path {
+  stroke-dasharray: 6 4;
+}
+.gs-graph .gs-link--long-dashed .react-flow__edge-path {
+  stroke-dasharray: 14 6;
+}
+.gs-graph .gs-link.selected .react-flow__edge-path {
+  stroke: var(--interactive-accent);
+}
+
+/* Colour, border and line choices for a card, frame or link. */
+.gs-item-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 300px;
+  padding: 10px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-item-editor h3 {
+  margin: 0;
+  font-size: var(--font-ui-medium, 15px);
+}
+
+.gs-item-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+}
+
+.gs-swatches {
+  display: flex;
+  gap: 6px;
+}
+
+.gs-graph .gs-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid var(--background-modifier-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.gs-graph .gs-swatch.is-none {
+  background: var(--background-primary);
+}
+
+.gs-graph .gs-swatch.is-active {
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+/* ---- Smells panel and review walk (Phase 8) ---- */
+.gs-graph .gs-toolbar {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.gs-toolbar-button[aria-pressed='true'] {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, #fff);
+}
+
+.gs-smells {
+  position: relative;
+}
+
+.gs-smells-list {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  max-height: 60vh;
+  width: 340px;
+  overflow: auto;
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-smells-list h4 {
+  margin: 8px 0 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+  font-weight: 600;
+}
+
+.gs-smells-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gs-smells-count {
+  margin-left: 4px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--text-warning, #ec7500);
+  color: var(--background-primary);
+}
+
+.gs-smells-none {
+  margin: 4px 0;
+  color: var(--text-muted);
+}
+
+.gs-graph .gs-smells-item {
+  all: unset;
+  display: block;
+  width: 100%;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.gs-graph .gs-smells-item:hover,
+.gs-graph .gs-smells-item:focus-visible {
+  background: var(--background-modifier-hover);
+}
+
+.gs-walk {
+  box-sizing: border-box;
+  width: 420px;
+  max-width: 90vw;
+  padding: 10px 14px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-size: var(--font-ui-small, 13px);
+}
+
+.gs-walk header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.gs-walk h3 {
+  margin: 2px 0 4px;
+  font-size: var(--font-ui-medium, 15px);
+}
+
+.gs-walk h4 {
+  margin: 8px 0 2px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller, 12px);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.gs-walk p {
+  margin: 2px 0;
+}
+
+.gs-walk-group,
+.gs-walk-via,
+.gs-walk-facts {
+  color: var(--text-muted);
+}
+
+.gs-walk-facts {
+  display: flex;
+  flex-direction: column;
+}
+
+.gs-walk-status {
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--background-modifier-hover);
+  font-size: var(--font-ui-smaller, 12px);
+  font-weight: 500;
+}
+
+.gs-walk-smells {
+  margin: 6px 0;
+  padding-left: 18px;
+  color: var(--text-warning, #ec7500);
+}
+
+.gs-walk ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.gs-walk-when {
+  color: var(--text-faint);
+}
+
+.gs-walk-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
 }

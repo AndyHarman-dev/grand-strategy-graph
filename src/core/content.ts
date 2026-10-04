@@ -18,6 +18,10 @@ function linkList(key: string, basenames: readonly string[]): string[] {
   return [key + ':', ...basenames.map((b) => '  - ' + yamlString('[[' + b + ']]'))];
 }
 
+/** The section of an assumption that says what would falsify it. */
+export const FALSIFIER_HEADING = "## How I'd Know It's False";
+export const FALSIFIER_PLACEHOLDER = "*What observable evidence would falsify this? If nothing could, it's a belief, not an assumption — rewrite it.*";
+
 export interface AssumptionContentOptions {
   today: string;
   /** `A-<n>`. */
@@ -43,10 +47,8 @@ export function buildAssumptionContent(opts: AssumptionContentOptions): string {
     '## The Assumption',
     opts.statement,
     '',
-    "## How I'd Know It's False",
-    opts.falsifier
-      ? opts.falsifier
-      : "*What observable evidence would falsify this? If nothing could, it's a belief, not an assumption — rewrite it.*",
+    FALSIFIER_HEADING,
+    opts.falsifier ? opts.falsifier : FALSIFIER_PLACEHOLDER,
     '',
     '## Verify By',
     '*If this assumption is load-bearing, set a date in the frontmatter by which I should have evidence either way. This is the anti-postponement discipline: name the information and the deadline.*',
@@ -75,12 +77,14 @@ export interface BetContentOptions {
   requiresBasenames?: string[];
   /** The sequel activated when this bet is killed. */
   nextBasename?: string | null;
+  /** `active` unless the bet waits for a kill to start: a sequel is `dormant`. */
+  status?: 'active' | 'dormant';
   assumptionBasenames: string[];
 }
 
 /** Bet note, mirroring Templates/Bet Template.md. */
 export function buildBetContent(opts: BetContentOptions): string {
-  const frontmatter = ['---', 'id: ' + opts.id, 'type: bet', 'status: active', 'started: ' + opts.today];
+  const frontmatter = ['---', 'id: ' + opts.id, 'type: bet', 'status: ' + (opts.status ?? 'active'), 'started: ' + opts.today];
   frontmatter.push('deadline:' + (opts.deadline ? ' ' + opts.deadline : ''));
   frontmatter.push('expected-result: ' + yamlString(opts.y));
   frontmatter.push(...linkList('serves', opts.servesBasenames));

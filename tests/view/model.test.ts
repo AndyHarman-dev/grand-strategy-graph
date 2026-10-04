@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { followersOf, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions } from '../../src/ui/model';
+import { findSmells } from '../../src/core/smells';
+import type { GsCard, GsFrame, GsLink } from '../../src/core/gsmap';
+import { groupSmellsForPanel, SMELL_GROUPS } from '../../src/ui/model';
+import { cardNodeId, cssColor, endpointNodeId, followersOf, frameNodeId, isCardNode, isFrameNode, isStrategyNode, toFlowCards, toFlowFrames, toFlowLinks, groupSmells, localToday, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions, unverifiedServes } from '../../src/ui/model';
 import { graphOf, md } from '../support/v2';
 
 const files = {
@@ -23,7 +26,7 @@ describe('toFlowNodes', () => {
     expect(by['B-10']).toMatchObject({ draggable: true, hidden: false, position: { x: 3, y: 4 }, width: 240 });
     expect(by['Strategy/No id.md']).toMatchObject({ draggable: false, hidden: false, data: { pinnable: false } });
     expect(by['CP']).toMatchObject({ hidden: true });
-    expect(nodes.every((n) => n.connectable === false && n.deletable === false)).toBe(true);
+    expect(nodes.every((n) => n.connectable === true && n.deletable === false)).toBe(true);
   });
 });
 
@@ -107,5 +110,140 @@ describe('unsavedPositions', () => {
       'FP-1': { x: 7, y: 8 },
       'A-1': { x: 7, y: 8 },
     });
+  });
+});
+
+describe('smell badges (Phase 5b)', () => {
+  it('puts each node\'s smells in its data', async () => {
+    const graph = await graphOf(files);
+    const smells = findSmells(graph, { today: '2026-10-01' });
+    const by = Object.fromEntries(toFlowNodes(graph, {}, smells).map((n) => [n.id, n.data.smells.map((s) => s.code)]));
+    expect(by['B-2']).toEqual(['orphan-bet']);
+    expect(by['B-10']).toEqual(['gating-violation']);
+    expect(by['FP-1']).toEqual([]);
+    expect(toFlowNodes(graph, {}).every((n) => n.data.smells.length === 0)).toBe(true); // no smells given, no badges
+  });
+
+  it('groups smells by node', () => {
+    const smell = (node: string, code: 'orphan-bet' | 'overdue-bet') => ({ code, node, message: '', related: [] });
+    const grouped = groupSmells([smell('B-1', 'orphan-bet'), smell('B-2', 'orphan-bet'), smell('B-1', 'overdue-bet')]);
+    expect(grouped.get('B-1')?.map((s) => s.code)).toEqual(['orphan-bet', 'overdue-bet']);
+    expect(grouped.get('B-2')).toHaveLength(1);
+  });
+});
+
+describe('edge styles (Phase 5b)', () => {
+  const vault = {
+    'Strategy/FP-1 Live.md': md({ id: 'FP-1', type: 'fixed-point' }),
+    'Strategy/A-1 Rent.md': md({ id: 'A-1', type: 'assumption', status: 'unverified' }),
+    'Strategy/A-2 Sure.md': md({ id: 'A-2', type: 'assumption', status: 'confirmed' }),
+    'Strategy/B-1 Shaky.md': md({ id: 'B-1', type: 'bet', status: 'active', serves: ['[[FP-1 Live]]'], assumptions: ['[[A-1 Rent]]', '[[A-2 Sure]]'] }),
+    'Strategy/B-2 Solid.md': md({ id: 'B-2', type: 'bet', status: 'active', serves: ['[[FP-1 Live]]'], assumptions: ['[[A-2 Sure]]'] }),
+    'Strategy/B-3 Bare.md': md({ id: 'B-3', type: 'bet', status: 'active', serves: ['[[FP-1 Live]]'] }),
+    'Strategy/B-4 Chainless.md': md({ id: 'B-4', type: 'bet', status: 'active', 'ultimately-serves': ['[[FP-1 Live]]'] }),
+    'Strategy/B-5 Chained.md': md({ id: 'B-5', type: 'bet', status: 'active', serves: ['[[B-3 Bare]]'], 'ultimately-serves': ['[[FP-1 Live]]'] }),
+  };
+
+  it('dashes a serve whose holder leans on an assumption that is not confirmed', async () => {
+    const graph = await graphOf(vault);
+    expect(Array.from(unverifiedServes(graph))).toEqual(['serves:B-1>FP-1']);
+    const classes = Object.fromEntries(toFlowEdges(graph, {}).map((e) => [e.id, e.className]));
+    expect(classes['serves:B-1>FP-1']).toBe('gs-edge gs-edge-serves gs-edge-unverified');
+    expect(classes['serves:B-2>FP-1']).toBe('gs-edge gs-edge-serves');
+    expect(classes['serves:B-3>FP-1']).toBe('gs-edge gs-edge-serves');
+  });
+
+  it('shows ultimately-serves on the toggle, or for a bet with no serves chain', async () => {
+    const graph = await graphOf(vault);
+    const hidden = (view = {}) => Object.fromEntries(toFlowEdges(graph, {}, view).filter((e) => e.data?.kind === 'ultimately-serves').map((e) => [e.source, e.hidden]));
+    expect(hidden()).toEqual({ 'B-4': true, 'B-5': true });
+    expect(hidden({ showUltimate: true })).toEqual({ 'B-4': false, 'B-5': false });
+    const smells = findSmells(graph, { today: '2026-10-01' });
+    expect(hidden({ smells })).toEqual({ 'B-4': false, 'B-5': true }); // B-5's chain reaches FP-1 already
+  });
+
+  it('labels the ultimately-serves edge', async () => {
+    const edges = toFlowEdges(await graphOf(vault), {}, { showUltimate: true });
+    expect(edges.find((e) => e.data?.kind === 'ultimately-serves')?.label).toBe('ultimately');
+  });
+});
+
+describe('localToday', () => {
+  it('is the local date as YYYY-MM-DD', () => {
+    expect(localToday()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('free cards, frames and links (Phase 7)', () => {
+  const card: GsCard = { id: 'c1', kind: 'text', text: 'idea', x: 10, y: 20, width: 250, height: 60, color: '2' };
+  const frame: GsFrame = { id: 'f1', label: 'Visa route', x: -100, y: -100, width: 1800, height: 900 };
+
+  it('draws cards and frames as nodes whose ids cannot be a note key, frames behind everything', () => {
+    const [c] = toFlowCards([card], true);
+    expect(c).toMatchObject({ id: 'card:c1', type: 'card', position: { x: 10, y: 20 }, width: 250, height: 60, draggable: true, deletable: true });
+    const [f] = toFlowFrames([frame], true);
+    expect(f).toMatchObject({ id: 'frame:f1', type: 'frame', zIndex: -1, draggable: true, deletable: true, connectable: false });
+    expect(cardNodeId('x')).toBe('card:x');
+    expect(frameNodeId('x')).toBe('frame:x');
+    expect(isCardNode(c) && !isFrameNode(c) && !isStrategyNode(c)).toBe(true);
+  });
+
+  it('cannot move or delete them when the map cannot be written', () => {
+    expect(toFlowCards([card], false)[0]).toMatchObject({ draggable: false, deletable: false });
+    expect(toFlowFrames([frame], false)[0]).toMatchObject({ draggable: false, deletable: false });
+  });
+
+  it('maps the canvas colour presets and hex colours, and nothing else', () => {
+    expect(cssColor('1')).toContain('--color-red');
+    expect(cssColor('6')).toContain('--color-purple');
+    expect(cssColor('#a1b2c3')).toBe('#a1b2c3');
+    expect(cssColor('red')).toBeUndefined();
+    expect(cssColor(undefined)).toBeUndefined();
+  });
+
+  const rects = new Map([
+    ['card:c1', { x: 0, y: 0, width: 250, height: 60 }],
+    ['B-1', { x: 400, y: 0, width: 240, height: 84 }],
+  ]);
+  const link = (extra: Partial<GsLink> = {}): GsLink => ({ id: 'l1', from: { card: 'c1' }, to: { note: 'B-1' }, ...extra });
+
+  it('draws a link between a card and a note, with the canvas\'s sides, dashes, colour, label and ends', () => {
+    expect(endpointNodeId({ card: 'c1' })).toBe('card:c1');
+    expect(endpointNodeId({ note: 'B-1' })).toBe('B-1');
+    const [plain] = toFlowLinks([link()], rects, true);
+    expect(plain).toMatchObject({ id: 'link:l1', source: 'card:c1', target: 'B-1', sourceHandle: 'right-source', targetHandle: 'left-target', className: 'gs-link', selectable: true, deletable: true });
+    expect(plain.markerEnd).toBeDefined();
+    expect(plain.markerStart).toBeUndefined();
+    const [styled] = toFlowLinks(
+      [link({ label: 'Only A-6', color: '4', fromSide: 'bottom', toSide: 'top', style: { path: 'long-dashed', pathfindingMethod: 'square' }, fromEnd: 'arrow', toEnd: 'none' })],
+      rects,
+      true
+    );
+    expect(styled).toMatchObject({ label: 'Only A-6', sourceHandle: 'bottom-source', targetHandle: 'top-target', type: 'smoothstep', className: 'gs-link gs-link--long-dashed' });
+    expect(styled.style?.stroke).toContain('--color-green');
+    expect(styled.markerStart).toBeDefined();
+    expect(styled.markerEnd).toBeUndefined();
+  });
+
+  it('leaves out a link whose end is not on the graph, and makes none selectable when read-only', () => {
+    expect(toFlowLinks([link({ to: { note: 'B-404' } })], rects, true)).toEqual([]);
+    expect(toFlowLinks([link()], rects, false)[0]).toMatchObject({ selectable: false, deletable: false });
+  });
+});
+
+describe('smells panel groups (Phase 8)', () => {
+  it('lists every smell code the core can produce, worst first, and leaves empty groups out', async () => {
+    const graph = await graphOf(files);
+    const smells = findSmells(graph, { today: '2026-10-01' });
+    const groups = groupSmellsForPanel(smells);
+    expect(groups.map((g) => g.code)).toEqual(['gating-violation', 'orphan-bet']);
+    expect(groups.find((g) => g.code === 'orphan-bet')!.smells.map((s) => s.node)).toEqual(['B-2', 'No id.md'.replace(/^/, 'Strategy/')]);
+    expect(groupSmellsForPanel([])).toEqual([]);
+  });
+
+  it('has a title for each of the core\'s smell codes, no more and no fewer', () => {
+    expect(SMELL_GROUPS.map((g) => g.code).sort()).toEqual(
+      ['dormant-not-next', 'falsified-dependency', 'gating-violation', 'orphan-bet', 'overdue-bet', 'requires-open-milestone', 'unreached-fixed-point'].sort()
+    );
   });
 });

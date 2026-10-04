@@ -29,14 +29,17 @@ renders the strategy as a data-driven graph. The full plan, decisions (D1–D19)
 - **The legacy plugin oracle is gone.** Phase 4 intentionally changed the notes the plugin writes (schema v2), so
   `tests/legacy/main.js` and its `legacy` test entries were removed; the goldens now pin the v2 output alone.
   Write-side behavior is tied to `buildGraph` by `tests/characterization/v2-graph.test.ts`: every note the plugin
-  creates must build a clean graph. Existing notes are only ever changed by appending a link to a frontmatter list
-  (`processFrontMatter`), never in the body.
+  creates must build a clean graph. Existing notes change in
+  exactly the ways `src/core/writes.ts` lists and no others: a frontmatter field is set, a link is added to or
+  removed from a relation field (`processFrontMatter`), a dated line is appended under `## Log`, or the
+  assumption's "How I'd Know It's False" section is replaced (`vault.process`, body only, frontmatter untouched).
+  Every one comes from an intent in `src/core/edits.ts` (Phase 6); never write a note any other way.
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `src/core/` | Pure TS: helpers, content builders, `actions.ts` (creation intents → planned writes), schema, graph, smells, `.gsmap` format and position store, ELK layout (`layout.ts`), `graph-session.ts` (everything the graph view does that isn't Obsidian or React) |
+| `src/core/` | Pure TS: helpers, content builders, `actions.ts` (creation intents → planned writes), `edits.ts` + `writes.ts` (edit intents from the graph, and the write kinds both planners produce), schema, graph, smells, `.gsmap` format and position store, ELK layout (`layout.ts`), `graph-session.ts` (everything the graph view does that isn't Obsidian or React) |
 | `src/obsidian/` | Obsidian adapter: modals, create flows (execute the planned writes), the graph `FileView` (`graph-view.ts`) and its commands |
 | `src/ui/` | React components: `<StrategyGraph>` (React Flow), `mount.tsx` (shared by the plugin and the dev page) |
 | `dev/` | Vite dev page (`npm run dev:web`): the graph over the test vault, no Obsidian; `window.gsDev` drives it from Playwright |
@@ -92,6 +95,12 @@ Release.
   (`panOnScrollSpeed={1}`), as do Space+drag and middle-drag; pinch or Cmd/Ctrl+scroll zooms. Dragging any selected node moves the selection; arrow keys nudge it and are saved.
 - The reset button (circular arrow in the controls) empties `positions` after a confirmation (`clearPositions`, through the
   same write queue as moves), and the view fits the new automatic layout.
+- Free cards, frames and `.gsmap` links (Phase 7) are drawn from the map and edited through `GsOp`s (`gsmap.ts`: `put-card`,
+  `delete-card`, …, `promote-card`), which the store shows at once and writes with the position moves in one `vault.process`.
+  `writeOps` changes only the touched items; unknown keys survive. Their React Flow ids are `card:<id>` / `frame:<id>` /
+  `link:<id>`, so they can never clash with a note key. Frames are backdrops (`pointer-events: none` except the label) and a
+  selection box never selects them. A card on either end of a dragged link makes a free link; two notes make a relation.
+  Promoting a card creates the note first (an edit intent), then runs `promote-card` (links and place move to the note).
 - Rebuilt React Flow nodes must keep `measured`: without it React Flow drops the node's measured handles and draws none of
   its edges until it re-measures (the "all edges vanish while dragging" bug).
 - Layout rule (plan D19): left → right is time; assumptions are never on the time axis but above their host (below if

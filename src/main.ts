@@ -45,6 +45,8 @@ export default class StrategyBetCreator extends Plugin {
     // The strategy graph (plan Phase 5a): `.gsmap` files open as a graph tab.
     this.registerView(VIEW_TYPE, (leaf) => new StrategyGraphView(leaf));
     this.registerExtensions([GSMAP_EXTENSION], VIEW_TYPE);
+    // Lets Obsidian's page preview show a note when the pointer is over its node (hold Ctrl/Cmd, the default).
+    this.registerHoverLinkSource(VIEW_TYPE, { display: 'Strategy graph', defaultMod: true });
 
     const openGraph = () => reportErrors('opening the graph', () => openStrategyGraph(this.app));
     this.addRibbonIcon('network', 'Open strategy graph', openGraph);

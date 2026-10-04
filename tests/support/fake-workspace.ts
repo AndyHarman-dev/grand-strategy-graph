@@ -9,6 +9,7 @@ import { resolveLinkpath } from '../../src/core/links';
 import type { GraphState } from '../../src/core/graph-session';
 import type { GraphHost, MountedGraph } from '../../src/ui/mount';
 import { StrategyGraphView } from '../../src/obsidian/graph-view';
+import { MemoryVault } from '../../src/core/memory-vault';
 import { Events, TFile } from '../mocks/obsidian';
 
 export interface FakeFile extends TFile {
@@ -185,6 +186,8 @@ export class FakeWorkspaceApp {
   readonly mounts: MountRecord[] = [];
   readonly opened: { path: string; how: unknown }[] = [];
   readonly revealed: FakeLeaf[] = [];
+  /** Every `workspace.trigger` call: the hover-link events the graph raises for page preview. */
+  readonly triggered: { name: string; args: unknown[] }[] = [];
   activeFile: FakeFile | null = null;
   readonly workspace = {
     getLeavesOfType: (type: string) => this.leaves.filter((l) => l.view?.getViewType() === type),
@@ -210,6 +213,16 @@ export class FakeWorkspaceApp {
       this.revealed.push(leaf);
     },
     getActiveFile: () => this.activeFile,
+    trigger: (name: string, ...args: unknown[]) => void this.triggered.push({ name, args }),
+  };
+
+  /** Obsidian's `processFrontMatter`: the same edit the dev page's MemoryVault makes, then a modify and a cache change like the real one. */
+  readonly fileManager = {
+    processFrontMatter: async (file: FakeFile, fn: (frontmatter: Record<string, unknown>) => void): Promise<void> => {
+      const scratch = { [file.path]: this.vault.text(file.path) };
+      await new MemoryVault(scratch).patchFrontmatter(file.path, fn);
+      if (scratch[file.path] !== this.vault.text(file.path)) this.vault.write(file.path, scratch[file.path], this.metadataCache);
+    },
   };
 
   constructor(files: Record<string, string>) {

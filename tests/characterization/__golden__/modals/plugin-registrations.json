@@ -64,5 +64,14 @@
       "viewType": "strategy-graph"
     }
   ],
+  "hoverLinkSources": [
+    {
+      "id": "strategy-graph",
+      "info": {
+        "display": "Strategy graph",
+        "defaultMod": true
+      }
+    }
+  ],
   "notices": 0
 }

@@ -1,7 +1,12 @@
-import { FileView, Notice, TFile, type WorkspaceLeaf } from 'obsidian';
+import { Component, FileView, MarkdownRenderer, Notice, TFile, type WorkspaceLeaf } from 'obsidian';
 import { GraphSession, type GraphState } from '../core/graph-session';
+import { changesGraph } from '../core/edits';
+import { performIntent } from '../core/perform';
+import { splitFrontmatter } from '../core/writes';
 import { mountGraph, type GraphHost, type MountedGraph } from '../ui/mount';
 import { ObsidianAdapter } from './adapter';
+import { ObsidianIO } from './io';
+import { today } from './today';
 
 export const VIEW_TYPE = 'strategy-graph';
 export const GSMAP_EXTENSION = 'gsmap';
@@ -81,12 +86,33 @@ export class StrategyGraphView extends FileView {
         if (!saved) new Notice(`Strategy graph: ${file.name} can't be read, so positions are not saved.`);
         return saved;
       },
+      editMap: (op) => {
+        const saved = session.editMap(op);
+        if (!saved) new Notice(`Strategy graph: ${file.name} can't be read, so this change was not saved.`);
+        return saved;
+      },
       resetPositions: () => {
         const saved = session.resetPositions();
         if (!saved) new Notice(`Strategy graph: ${file.name} can't be read, so positions can't be reset.`);
         return saved;
       },
       openNote: (path, newTab) => this.openNote(path, newTab),
+      hoverNote: (event, targetEl, path) =>
+        this.app.workspace.trigger('hover-link', { event, source: VIEW_TYPE, hoverParent: this, targetEl, linktext: path }),
+      today,
+      edit: async (intent) => {
+        const graph = session.state.graph;
+        if (!graph) return { ok: false, message: 'The graph has not been read yet.' };
+        const outcome = await performIntent(intent, { graph, vault: this.app.vault, today: today() }, new ObsidianIO(this.app));
+        // The next edit is planned from the graph: let it see this one first (Obsidian's cache lags a write).
+        if (outcome.ok && changesGraph(intent)) await session.settle();
+        return outcome;
+      },
+      readNote: (path) => {
+        const note = this.app.vault.getAbstractFileByPath(path);
+        return note instanceof TFile ? this.app.vault.read(note) : Promise.reject(new Error('Not a note: ' + path));
+      },
+      renderNote: (el, path) => this.renderNote(el, path),
     });
     session.loadMap(await this.app.vault.read(file));
     await session.rebuild();
@@ -125,6 +151,25 @@ export class StrategyGraphView extends FileView {
       this.pendingReveal = null;
       this.revealPath(path);
     }
+  }
+
+  /** The note's body (its frontmatter is shown as fields instead) rendered as in reading view; returns the cleanup. */
+  private renderNote(el: HTMLElement, path: string): () => void {
+    const component = new Component();
+    component.load();
+    let disposed = false;
+    const note = this.app.vault.getAbstractFileByPath(path);
+    if (note instanceof TFile) {
+      void this.app.vault
+        .read(note)
+        // Selecting another note meanwhile unloaded the component: rendering into it now would leak its children.
+        .then((text) => (disposed ? undefined : MarkdownRenderer.render(this.app, splitFrontmatter(text).body, el, path, component)))
+        .catch((error) => console.error('strategy graph: rendering the note failed', error));
+    }
+    return () => {
+      disposed = true;
+      component.unload();
+    };
   }
 
   private async reloadMap(file: TFile): Promise<void> {
