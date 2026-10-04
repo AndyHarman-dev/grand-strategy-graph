@@ -668,37 +668,44 @@
   box-sizing: border-box;
   width: 100%;
   height: 100%;
+  color: var(--text-normal);
+  font-size: var(--font-ui-small, 13px);
+  line-height: 1.35;
+}
+
+/* The card's look. Its own box, so the clipping of long text (and the diamond's shape) leaves the handles whole. */
+.gs-card-box {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
   padding: 6px 10px;
   border: 2px solid var(--gs-c);
   border-radius: 6px;
   background: color-mix(in srgb, var(--gs-c) 12%, var(--background-secondary));
-  color: var(--text-normal);
-  font-size: var(--font-ui-small, 13px);
-  line-height: 1.35;
   overflow: hidden;
 }
 
-.gs-card.is-selected {
+.gs-card.is-selected .gs-card-box {
   border-color: var(--interactive-accent);
 }
 
-.gs-card--dashed {
+.gs-card--dashed .gs-card-box {
   border-style: dashed;
 }
 
-.gs-card--invisible {
+.gs-card--invisible .gs-card-box {
   border-color: transparent;
   background: transparent;
 }
 
-.gs-card--center {
+.gs-card--center .gs-card-box {
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
 }
 
-.gs-card--diamond {
+.gs-card--diamond .gs-card-box {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -981,4 +988,78 @@
   display: flex;
   justify-content: space-between;
   margin-top: 10px;
+}
+
+/* The "AND" in front of a note that requires two or more others: a small diamond, drawn from the links. */
+.gs-junction {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gs-info);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: default;
+  /* React Flow turns pointer events off on a node nothing can be done with; the title still has to show. */
+  pointer-events: auto;
+}
+
+.gs-junction::before {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  transform: rotate(45deg);
+  border: 1.5px solid var(--gs-info);
+  border-radius: 3px;
+  background: var(--background-primary);
+}
+
+.gs-junction span {
+  position: relative;
+}
+
+.gs-junction .react-flow__handle {
+  visibility: hidden;
+}
+
+/* Icon groups in the style editor (border, shape, line, arrows), like the canvas's menus. */
+.gs-icon-choices {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.gs-icon-choices-label {
+  min-width: 52px;
+  color: var(--text-muted);
+}
+
+.gs-graph button.gs-icon-choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 5px;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.gs-graph button.gs-icon-choice:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.gs-graph button.gs-icon-choice.is-active {
+  border-color: var(--interactive-accent);
+  background: color-mix(in srgb, var(--interactive-accent) 15%, var(--background-primary));
+  color: var(--interactive-accent);
 }

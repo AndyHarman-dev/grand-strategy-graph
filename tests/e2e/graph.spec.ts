@@ -47,10 +47,11 @@ test('shows every strategy note of the migrated test vault', async ({ page }) =>
   // phantom link (kept as is, D13), plus B-7's two retargeted by the fixture answers. It has no
   // `ultimately-serves`, which would be hidden.
   await expect(page.locator('.react-flow__edge:not(.gs-link)')).toHaveCount(19);
-  // The canvas's free part comes along: its 6 cards, 2 frames and the 8 lines that touch cards or are annotations.
-  await expect(page.locator('.react-flow__node-card')).toHaveCount(6);
+  // The canvas's free part comes along: its 5 cards (the "AND" diamond is drawn from B-4's requires instead),
+  // 2 frames and the 5 lines that touch cards or are annotations.
+  await expect(page.locator('.react-flow__node-card')).toHaveCount(5);
   await expect(page.locator('.react-flow__node-frame')).toHaveCount(2);
-  await expect(page.locator('.react-flow__edge.gs-link')).toHaveCount(8);
+  await expect(page.locator('.react-flow__edge.gs-link')).toHaveCount(5);
 });
 
 test('saves a dragged bet once, on drag end, leaving the rest alone', async ({ page }) => {
@@ -87,6 +88,68 @@ test('a dragged bet takes its assumptions along, and both are saved in one write
   expect(moved('B-1').dy).toBeGreaterThan(0);
   // B-2, B-1's sequel, is not an assumption: it stays.
   expect(after['B-2']).toEqual(before['B-2']);
+});
+
+test('dragging a bet pushes what it requires to the left, horizontally only, and only when it comes too close', async ({ page }) => {
+  // B-4 requires B-3 and B-5 (both 600 left of it, B-3 hosting A-3 and A-4).
+  const before = await positions(page);
+  const [b3, b4] = [(await node(page, 'B-3').boundingBox())!, (await node(page, 'B-4').boundingBox())!];
+  const a3 = await offset(page, 'A-3', 'B-3');
+  // A small move to the right leaves them alone.
+  await drag(page, 'B-4', 60, 0);
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(1);
+  let after = await positions(page);
+  for (const key of ['B-3', 'B-5', 'A-3']) expect(after[key], key).toEqual(before[key]);
+
+  // Onto B-3's column: both are pushed, during the drag already, and their assumptions go with them.
+  const start = (await node(page, 'B-4').boundingBox())!;
+  await drag(page, 'B-4', b3.x - start.x, 0, { release: false });
+  expect((await node(page, 'B-3').boundingBox())!.x).toBeLessThan(b3.x - 10);
+  expect(await offset(page, 'A-3', 'B-3')).toEqual(a3);
+  // Back where it started: so are they.
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2, { steps: 5 });
+  expect(Math.round((await node(page, 'B-3').boundingBox())!.x)).toBe(Math.round(b3.x));
+  await page.mouse.move(start.x + start.width / 2 + b3.x - start.x, start.y + start.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(2);
+  after = await positions(page);
+  for (const key of ['B-3', 'B-5']) {
+    expect(after[key].x, key).toBeLessThan(after['B-4'].x - 200); // still left of it, a card's width and a gap
+    expect(after[key].y, key).toBe(before[key].y);
+  }
+  expect(after['A-3'].x - before['A-3'].x).toBe(after['B-3'].x - before['B-3'].x);
+  // The rest stayed.
+  for (const key of ['B-1', 'B-2', 'B-6', 'B-7', 'B-8', 'FP-1', 'CP']) expect(after[key], key).toEqual(before[key]);
+  expect(b4.x).toBeGreaterThan(b3.x);
+});
+
+test('a note that requires two or more gets an AND in front of it, which moves with it alone', async ({ page }) => {
+  const and = page.locator('.react-flow__node-junction[data-id="and:B-4"]');
+  await expect(and).toContainText('AND');
+  await expect(page.locator('.react-flow__node-junction')).toHaveCount(1); // B-4 is the only one
+  // B-3 and B-5 point at the AND, and the AND at B-4; the serves twins of those requires are not drawn again.
+  const edge = (from: string, to: string) => page.getByRole('img', { name: `Edge from ${from} to ${to}`, exact: true });
+  await expect(edge('B-3', 'and:B-4')).toHaveCount(1);
+  await expect(edge('B-5', 'and:B-4')).toHaveCount(1);
+  await expect(edge('and:B-4', 'B-4')).toHaveCount(1);
+  await expect(edge('B-5', 'B-4')).toHaveCount(0); // B-5 serves B-4 too
+  const and0 = await offset(page, 'and:B-4', 'B-4');
+  expect(and0.dx).toBeLessThan(0); // just left of its holder
+
+  await drag(page, 'B-4', 70, 90, { release: false });
+  expect(await offset(page, 'and:B-4', 'B-4')).toEqual(and0); // during the drag
+  await page.mouse.up();
+  expect(await offset(page, 'and:B-4', 'B-4')).toEqual(and0);
+  for (const key of ['B-3', 'B-5']) {
+    await drag(page, key, -40, 120);
+    expect(await offset(page, 'and:B-4', 'B-4'), key).toEqual(and0);
+  }
+  // It is not a note: it says what it joins, has no menu of its own, and is never saved.
+  await expect(and.locator('.gs-junction')).toHaveAttribute('title', 'Requires all of: B-3, B-5');
+  await and.click({ button: 'right' });
+  await expect(page.getByRole('menu')).toHaveCount(0);
+  await page.evaluate(() => window.gsDev.flush());
+  expect(Object.keys(await positions(page))).not.toContain('and:B-4');
 });
 
 test('edges stay drawn through drags and saves, every frame', async ({ page }) => {
@@ -736,7 +799,7 @@ test.describe('free cards, frames and links (Phase 7)', () => {
     await expect(card(page, 't-route')).toContainText('Visa Route');
     await expect(card(page, 'note')).toContainText('lisbon-neighbourhoods-research');
     await expect(card(page, 't-routec').locator('.gs-card')).toHaveClass(/gs-card--dashed/);
-    await expect(card(page, 't-and').locator('.gs-card')).toHaveClass(/gs-card--diamond/);
+    await expect(page.locator('.react-flow__node-junction[data-id="and:B-4"]')).toContainText('AND');
     await expect(frame(page, 'g-visa')).toContainText('Visa route');
     // A labelled link between a card and a note.
     await expect(page.locator('.react-flow__edge[data-id="link:e10"]')).toContainText('Only A-6');
@@ -778,7 +841,7 @@ test.describe('free cards, frames and links (Phase 7)', () => {
     expect(await page.evaluate(() => window.gsDev.writes())).toBe(1);
   });
 
-  test('dragging a card or a frame saves its place in the .gsmap, once, and nothing else moves', async ({ page }) => {
+  test('dragging a card saves its place in the .gsmap, once, and nothing else moves; a frame carries what lies in it', async ({ page }) => {
     const before = await map(page);
     await drag(page, 't-route'.replace(/^/, 'card:'), 90, 60);
     await saved(page, 1);
@@ -794,12 +857,21 @@ test.describe('free cards, frames and links (Phase 7)', () => {
     await page.mouse.down();
     await page.mouse.move(label.x + 60, label.y + 40, { steps: 6 });
     await page.mouse.up();
-    await saved(page, 2);
-    const moved = (await map(page)).frames.find((f) => f.id === 'g-studio')!;
+    await settle(page);
+    const done = await map(page);
+    const moved = done.frames.find((f) => f.id === 'g-studio')!;
     const original = before.frames.find((f) => f.id === 'g-studio')!;
-    expect(moved.x).toBeGreaterThan(original.x);
-    expect(moved.width).toBe(original.width); // the frame moved, the notes on it did not
-    expect((await map(page)).positions).toEqual(before.positions);
+    const [dx, dy] = [moved.x - original.x, moved.y - original.y];
+    expect(dx).toBeGreaterThan(0);
+    expect(moved.width).toBe(original.width);
+    // As on a canvas: everything wholly inside the frame went with it, by the same amount; nothing else moved.
+    for (const key of ['B-3', 'B-4', 'B-5', 'B-6', 'B-7', 'B-8', 'A-3', 'A-4', 'A-5', 'A-7']) {
+      expect(done.positions[key], key).toEqual({ x: before.positions[key].x + dx, y: before.positions[key].y + dy });
+    }
+    for (const key of ['B-1', 'B-2', 'A-1', 'A-2', 'FP-1', 'FP-2', 'CP']) expect(done.positions[key], key).toEqual(before.positions[key]);
+    const elab = [before, done].map((m) => m.cards.find((c) => c.id === 't-elab')!);
+    expect(elab[1]).toMatchObject({ x: elab[0].x + dx, y: elab[0].y + dy });
+    expect(done.frames.find((f) => f.id === 'g-visa')).toEqual(before.frames.find((f) => f.id === 'g-visa'));
   });
 
   test('a selected frame or card is resized by its handles, and the size is saved', async ({ page }) => {
@@ -867,8 +939,9 @@ test.describe('free cards, frames and links (Phase 7)', () => {
     await editor.getByLabel('Label').fill('maybe');
     await editor.getByLabel('Label').blur();
     await editor.getByRole('radio', { name: 'green' }).click();
-    await editor.getByLabel('Line').selectOption('dotted');
-    await editor.getByLabel('Arrows').selectOption('fromto');
+    await editor.getByRole('radio', { name: 'Dotted line' }).click();
+    await editor.getByRole('radio', { name: 'Arrows at both ends' }).click();
+    await expect(editor.getByRole('radio', { name: 'Arrows at both ends' })).toHaveAttribute('aria-checked', 'true');
     await settle(page);
     const link = (await map(page)).links.find((l) => l.id === 'e17')!;
     expect(link).toMatchObject({ label: 'maybe', color: '4', fromEnd: 'arrow', style: { path: 'dotted' } });
@@ -887,15 +960,17 @@ test.describe('free cards, frames and links (Phase 7)', () => {
     await page.getByRole('menuitem', { name: 'Style…' }).click();
     const editor = page.getByRole('dialog', { name: 'Card style' });
     await editor.getByRole('radio', { name: 'purple' }).click();
-    await editor.getByLabel('Border').selectOption('dashed');
-    await editor.getByLabel('Shape').selectOption('diamond');
+    // Icons, as on a canvas: one group for the border, one for the shape.
+    await editor.getByRole('radiogroup', { name: 'Border' }).getByRole('radio', { name: 'Dashed border' }).click();
+    await editor.getByRole('radiogroup', { name: 'Shape' }).getByRole('radio', { name: 'Diamond' }).click();
+    await expect(editor.getByRole('radio', { name: 'Diamond' })).toHaveAttribute('aria-checked', 'true');
     await settle(page);
     expect((await map(page)).cards.find((c) => c.id === 't-elab')).toMatchObject({ color: '6', style: { border: 'dashed', shape: 'diamond' } });
     await expect(card(page, 't-elab').locator('.gs-card')).toHaveClass(/gs-card--diamond/);
     // Putting it back leaves no trace of the options in the file.
     await editor.getByRole('radio', { name: 'none' }).click();
-    await editor.getByLabel('Border').selectOption('solid');
-    await editor.getByLabel('Shape').selectOption('box');
+    await editor.getByRole('radio', { name: 'Solid border' }).click();
+    await editor.getByRole('radio', { name: 'Box' }).click();
     await settle(page);
     const back = (await map(page)).cards.find((c) => c.id === 't-elab')!;
     expect(back.color).toBeUndefined();
@@ -903,14 +978,14 @@ test.describe('free cards, frames and links (Phase 7)', () => {
   });
 
   test('Delete removes a selected card and the links on it, in one write; notes cannot be deleted', async ({ page }) => {
-    await card(page, 't-and').click();
+    await card(page, 't-ghost').click();
     await node(page, 'B-3').click({ modifiers: ['Shift'] });
     await page.keyboard.press('Delete');
     await settle(page);
     const after = await map(page);
-    expect(after.cards.map((c) => c.id)).not.toContain('t-and');
-    expect(after.links.map((l) => l.id)).not.toEqual(expect.arrayContaining(['e5']));
-    expect(after.links.some((l) => JSON.stringify(l).includes('t-and'))).toBe(false);
+    expect(after.cards.map((c) => c.id)).not.toContain('t-ghost');
+    expect(after.links.map((l) => l.id)).not.toContain('e10');
+    expect(after.links.some((l) => JSON.stringify(l).includes('t-ghost'))).toBe(false);
     await expect(node(page, 'B-3')).toBeVisible(); // the note stays
   });
 
@@ -918,13 +993,13 @@ test.describe('free cards, frames and links (Phase 7)', () => {
     await page.locator('.react-flow__pane').click({ position: { x: 700, y: 20 } });
     await page.keyboard.press('Control+a');
     await expect(page.locator('.react-flow__node-frame.selected')).toHaveCount(0);
-    await expect(page.locator('.react-flow__node-card.selected')).toHaveCount(6);
+    await expect(page.locator('.react-flow__node-card.selected')).toHaveCount(5);
     await page.keyboard.press('Delete');
     const dialog = page.getByRole('dialog', { name: 'Delete' });
-    await expect(dialog).toContainText('Delete 6 selected cards, frames and links');
+    await expect(dialog).toContainText('Delete 5 selected cards, frames and links');
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await settle(page);
-    expect((await map(page)).cards).toHaveLength(6);
+    expect((await map(page)).cards).toHaveLength(5);
     expect(await page.evaluate(() => window.gsDev.writes())).toBe(0);
     await page.keyboard.press('Delete');
     await page.getByRole('dialog', { name: 'Delete' }).getByRole('button', { name: 'Delete' }).click();
@@ -973,6 +1048,63 @@ test.describe('free cards, frames and links (Phase 7)', () => {
     await card(page, 't-route').click({ button: 'right' });
     await page.getByRole('menuitem', { name: 'Promote to assumption…' }).click();
     await expect(page.getByRole('form', { name: 'Promote to assumption' }).getByLabel('The assumption')).toHaveValue('Visa Route');
+  });
+
+  test('a vault note dropped on the graph, or picked from the empty-space menu, becomes a note card; a strategy note is shown instead', async ({ page }) => {
+    const pane = page.locator('.react-flow__pane');
+    const box = (await pane.boundingBox())!;
+    const drop = async (path: string, x: number, y: number) => {
+      const dataTransfer = await page.evaluateHandle((p) => {
+        const data = new DataTransfer();
+        data.setData('text/plain', p);
+        return data;
+      }, path);
+      await pane.dispatchEvent('dragover', { dataTransfer, clientX: x, clientY: y });
+      await pane.dispatchEvent('drop', { dataTransfer, clientX: x, clientY: y });
+    };
+    const before = (await map(page)).cards.length;
+    await drop('Strategy/Strategic Inbox.md', box.x + 120, box.y + 700);
+    await settle(page);
+    let cards = (await map(page)).cards;
+    expect(cards).toHaveLength(before + 1);
+    expect(cards[cards.length - 1]).toMatchObject({ kind: 'note-ref', file: 'Strategy/Strategic Inbox.md', width: 250, height: 60 });
+    await expect(page.locator('.react-flow__node-card', { hasText: 'Strategic Inbox' })).toBeVisible();
+
+    // A strategy note is a node already: no card, the view goes to it.
+    await drop('Strategy/Bets/B-3 Sell pottery at weekend markets.md', box.x + 600, box.y + 700);
+    await expect(page.getByRole('status')).toContainText('B-3 is on the graph already.');
+    await settle(page);
+    expect((await map(page)).cards).toHaveLength(before + 1);
+
+    // The menu asks the host for a note (the dev page's picker is a prompt).
+    page.once('dialog', (dialog) => dialog.accept('Templates/Bet Template.md'));
+    await page.mouse.click(box.x + 300, box.y + 40, { button: 'right' });
+    await page.getByRole('menuitem', { name: 'Add note card…' }).click();
+    await settle(page);
+    cards = (await map(page)).cards;
+    expect(cards).toHaveLength(before + 2);
+    expect(cards[cards.length - 1]).toMatchObject({ kind: 'note-ref', file: 'Templates/Bet Template.md' });
+  });
+
+  test('a card\'s handles are drawn whole, outside its box, as on a note', async ({ page }) => {
+    const c = card(page, 't-route');
+    await c.hover();
+    const box = (await c.locator('.gs-card-box').boundingBox())!;
+    for (const side of ['top', 'right', 'bottom', 'left']) {
+      const handle = c.locator(`.react-flow__handle-${side}.source`);
+      await expect(handle).toHaveCount(1);
+      const h = (await handle.boundingBox())!;
+      // The half of the handle outside the box is there to be hit, not clipped away.
+      const outside = {
+        top: { x: h.x + h.width / 2, y: h.y + 1 },
+        right: { x: h.x + h.width - 1, y: h.y + h.height / 2 },
+        bottom: { x: h.x + h.width / 2, y: h.y + h.height - 1 },
+        left: { x: h.x + 1, y: h.y + h.height / 2 },
+      }[side]!;
+      expect(overlap({ ...outside, width: 0.1, height: 0.1 }, box), side).toBe(false);
+      const hit = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('.react-flow__handle')?.className ?? '', outside);
+      expect(hit, side).toContain(`react-flow__handle-${side}`);
+    }
   });
 
   test('a note-reference card opens its note', async ({ page }) => {

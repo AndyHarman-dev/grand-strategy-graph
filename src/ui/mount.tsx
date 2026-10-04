@@ -25,6 +25,10 @@ export interface GraphHost {
   renderNote?(el: HTMLElement, path: string): () => void;
   /** Today as `YYYY-MM-DD` (the overdue smell). Defaults to the browser's local date. */
   today?(): string;
+  /** Ask for a note (Obsidian's note picker) and call back with its path: "Add note card…". */
+  pickNote?(onPick: (path: string) => void): void;
+  /** The notes a drag dropped on the graph carries (from the file explorer), by path; empty when none. */
+  droppedNotes?(event: DragEvent): string[];
 }
 
 export interface MountedGraph {
@@ -48,6 +52,8 @@ export function mountGraph(el: HTMLElement, host: GraphHost, options: MountOptio
   const onEditMap = host.editMap?.bind(host);
   const readNote = host.readNote?.bind(host);
   const renderNote = host.renderNote?.bind(host);
+  const pickNote = host.pickNote?.bind(host);
+  const droppedNotes = host.droppedNotes?.bind(host);
   return {
     render(state, reveal = null) {
       if (!state.graph) {
@@ -71,6 +77,8 @@ export function mountGraph(el: HTMLElement, host: GraphHost, options: MountOptio
             onEditMap={state.map ? onEditMap : null}
             readNote={readNote}
             renderNote={renderNote}
+            pickNote={pickNote}
+            droppedNotes={droppedNotes}
             today={host.today?.()}
             reveal={reveal}
             notices={state.notices}

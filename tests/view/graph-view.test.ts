@@ -3,7 +3,7 @@ import { GSMAP_PATH, parseGsMap, serializeGsMap, emptyGsMap } from '../../src/co
 import { isGraphNote, openStrategyGraph, revealInStrategyGraph } from '../../src/obsidian/graph-commands';
 import { StrategyGraphView } from '../../src/obsidian/graph-view';
 import { plannedTestVault } from '../../tools/test-vault';
-import { notices, rendered, resetObsidianMock } from '../mocks/obsidian';
+import { notices, openedModals, rendered, resetObsidianMock } from '../mocks/obsidian';
 import { FakeWorkspaceApp, type MountRecord } from '../support/fake-workspace';
 import { md } from '../support/v2';
 
@@ -280,6 +280,38 @@ describe('opening a note from the graph', () => {
       { path: B1, how: 'tab' },
       { path: B1, how: 'split' },
     ]);
+  });
+});
+
+describe('putting notes on the graph as note cards (bug 2)', () => {
+  const LISBON = 'lisbon-neighbourhoods-research.md';
+  const drop = (text = '') => ({ dataTransfer: { getData: (type: string) => (type === 'text/plain' ? text : '') } }) as unknown as DragEvent;
+
+  it('"Add note card…" opens the note picker over every note and calls back with the path picked', async () => {
+    const { mount } = await open();
+    const picked: string[] = [];
+    mount.host.pickNote!((path) => picked.push(path));
+    const modal = openedModals[openedModals.length - 1] as unknown as { getItems(): { path: string }[]; onChooseItem(file: unknown): void };
+    expect(modal.getItems().map((f) => f.path)).toContain(LISBON);
+    modal.onChooseItem(app.vault.getAbstractFileByPath(LISBON));
+    expect(picked).toEqual([LISBON]);
+  });
+
+  it('reads the dragged files off the file explorer\'s drag manager', async () => {
+    const { mount } = await open();
+    const file = app.vault.getAbstractFileByPath(LISBON);
+    (app as unknown as { dragManager: unknown }).dragManager = { draggable: { type: 'file', file } };
+    expect(mount.host.droppedNotes!(drop())).toEqual([LISBON]);
+    (app as unknown as { dragManager: unknown }).dragManager = { draggable: { type: 'files', files: [file, app.vault.getAbstractFileByPath(B1)] } };
+    expect(mount.host.droppedNotes!(drop())).toEqual([LISBON, B1]);
+  });
+
+  it('falls back to an obsidian:// URL or a link in the dropped text, and finds nothing in other text', async () => {
+    const { mount } = await open();
+    expect(mount.host.droppedNotes!(drop('obsidian://open?vault=test&file=lisbon-neighbourhoods-research'))).toEqual([LISBON]);
+    expect(mount.host.droppedNotes!(drop('[[B-1 Get a D7 visa]]'))).toEqual([B1]);
+    expect(mount.host.droppedNotes!(drop('just some words'))).toEqual([]);
+    expect(mount.host.droppedNotes!(drop('obsidian://open?vault=test&file=No%20such%20note'))).toEqual([]);
   });
 });
 

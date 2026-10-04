@@ -22,6 +22,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent as ReactDragEvent,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -29,7 +30,7 @@ import {
 import { relationCandidates, type Intent } from '../core/edits';
 import type { GraphNotice } from '../core/graph-session';
 import type { GsCard, GsFrame, GsLink, GsMap, GsOp, GsPosition } from '../core/gsmap';
-import { elkPositions, layoutKey, needsElk as needsElkFor, pinnedPositions, placeNodes, structureOf } from '../core/layout';
+import { elkPositions, layoutKey, needsElk as needsElkFor, pinnedPositions, placeNodes, structureOf, type Size } from '../core/layout';
 import type { EditOutcome } from '../core/perform';
 import type { Graph } from '../core/schema';
 import { findSmells } from '../core/smells';
@@ -44,16 +45,22 @@ import {
   CARD_TYPE,
   FRAME_DEFAULT_SIZE,
   FRAME_TYPE,
-  followersOf,
+  dragCompanions,
+  frameContents,
   isCardNode,
   isFrameNode,
+  isJunctionNode,
   isStrategyNode,
+  JUNCTION_TYPE,
+  junctionsOf,
   localToday,
   movedPositions,
   NODE_TYPE,
+  requiresOf,
   toFlowCards,
   toFlowEdges,
   toFlowFrames,
+  toFlowJunctions,
   toFlowLinks,
   toFlowNodes,
   unsavedPositions,
@@ -61,7 +68,7 @@ import {
 } from './model';
 import { CardNode, FrameNode } from './FreeNodes';
 import { ItemEditor, type EditedItem } from './ItemEditor';
-import { StrategyNode } from './StrategyNode';
+import { JunctionNode, StrategyNode } from './StrategyNode';
 
 export interface StrategyGraphProps {
   graph: Graph;
@@ -95,11 +102,15 @@ export interface StrategyGraphProps {
   reveal?: { key: string; nonce: number } | null;
   /** Problems to list on the graph (graph issues, changed ids, an unreadable `.gsmap`). */
   notices?: readonly GraphNotice[];
+  /** "Add note card…": ask for a note, and call back with its path. Absent: the item is not offered. */
+  pickNote?: (onPick: (path: string) => void) => void;
+  /** The notes a drop on the graph carries, by path. Absent: dropping does nothing. */
+  droppedNotes?: (event: DragEvent) => string[];
   /** The automatic layout of the time axis. ELK (`elkPositions`); the dev page swaps it to test a failure. */
   autoLayout?: (graph: Graph) => Promise<Record<string, GsPosition>>;
 }
 
-const nodeTypes = { [NODE_TYPE]: StrategyNode, [CARD_TYPE]: CardNode, [FRAME_TYPE]: FrameNode };
+const nodeTypes = { [NODE_TYPE]: StrategyNode, [CARD_TYPE]: CardNode, [FRAME_TYPE]: FrameNode, [JUNCTION_TYPE]: JunctionNode };
 
 /** Keys React Flow moves the selected nodes with (5 px, 20 with Shift). */
 const ARROW_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
@@ -203,6 +214,8 @@ function Flow({
   links = NO_LINKS,
   readNote,
   renderNote,
+  pickNote,
+  droppedNotes,
   today,
   reveal,
   notices,
@@ -356,16 +369,47 @@ function Flow({
       return next ?? current;
     });
   }, []);
+  // "AND" junctions are drawn from the links and sit by their holder, wherever it is drawn: not part of `nodes`.
+  const junctions = useMemo(() => junctionsOf(graph), [graph]);
+  const shownNodes = useMemo(() => {
+    const extra = toFlowJunctions(graph, junctions, drawn);
+    return extra.length ? [...nodes, ...extra] : nodes;
+  }, [graph, junctions, drawn, nodes]);
   const edges = useMemo(
     () =>
-      [...toFlowEdges(graph, drawn, { smells, showUltimate, editable: onEdit !== undefined }), ...toFlowLinks(links, rects, canEditMap)].map((edge) =>
+      [...toFlowEdges(graph, drawn, { smells, showUltimate, editable: onEdit !== undefined, junctions }), ...toFlowLinks(links, rects, canEditMap)].map((edge) =>
         selectedEdges.has(edge.id) ? { ...edge, selected: true } : edge
       ),
-    [graph, drawn, smells, showUltimate, onEdit, selectedEdges, links, rects, canEditMap]
+    [graph, drawn, smells, showUltimate, onEdit, selectedEdges, links, rects, canEditMap, junctions]
   );
   const satellites = useMemo(() => structureOf(graph).satellites, [graph]);
-  /** Assumptions moving with the current drag: where each started, and its host's start (D19). */
-  const following = useRef<Map<string, { start: { x: number; y: number }; host: string; hostStart: { x: number; y: number } }>>(new Map());
+  const requires = useMemo(() => requiresOf(graph), [graph]);
+  /** The shown notes as they were when the current drag began, and what the drag has moved along so far. */
+  const dragging = useRef<{
+    start: Map<string, GsPosition & Size>;
+    movable: Set<string>;
+    along: Map<string, GsPosition>;
+    /** What the dragged frames carry: node id → the frame, and where both were at the start. */
+    carried: Map<string, { frame: GsPosition; from: GsPosition; by: string }>;
+  } | null>(null);
+  /**
+   * What moves along with `moved` (note key → where it is now): hosted assumptions, and prerequisites
+   * pushed left (`dragCompanions`), measured from the notes as they were in `from`.
+   */
+  const companions = useCallback(
+    (from: readonly GraphFlowNode[], moved: ReadonlyMap<string, GsPosition>) => {
+      const start = new Map<string, GsPosition & Size>();
+      const movable = new Set<string>();
+      for (const n of from) {
+        if (!isStrategyNode(n) || n.hidden) continue;
+        start.set(n.id, { ...n.position, width: n.width ?? 0, height: n.height ?? 0 });
+        if (n.draggable !== false) movable.add(n.id);
+      }
+      const notes = new Map(Array.from(moved).filter(([id]) => start.has(id)));
+      return { start, movable, along: dragCompanions({ satellites, requires, start, movable, moved: notes }) };
+    },
+    [satellites, requires]
+  );
   const [ready, setReady] = useState(false);
   const revealed = useRef<number | null>(null);
   const [confirmingReset, setConfirmingReset] = useState(false);
@@ -416,17 +460,14 @@ function Flow({
         setNodes((current) => applyNodeChanges(changes, current));
         return;
       }
-      // Arrow keys move the selection without a drag: take the hosted assumptions along and save, as a drag does.
+      // Arrow keys move the selection without a drag: take the hosted assumptions along, push prerequisites, and save, as a drag does.
       const before = new Map(nodesRef.current.map((n) => [n.id, n]));
       const to = new Map(nudged.map((c) => [c.id, c.position!]));
-      for (const [key, host] of followersOf(satellites, Array.from(to.keys()))) {
-        const [node, from, at] = [before.get(key), before.get(host), to.get(host)];
-        if (node && from && at && !node.hidden) to.set(key, { x: node.position.x + at.x - from.position.x, y: node.position.y + at.y - from.position.y });
-      }
+      for (const [key, at] of companions(nodesRef.current, to).along) to.set(key, at);
       setNodes((current) => applyNodeChanges(changes, current).map((n) => (to.has(n.id) ? { ...n, position: to.get(n.id)! } : n)));
       save(Array.from(to).flatMap(([id, position]) => (before.has(id) ? [{ ...before.get(id)!, position }] : [])));
     },
-    [satellites, save]
+    [companions, save]
   );
 
   // A selection box over empty space inside a frame is not a wish to select (and then move) the frame: frames
@@ -476,45 +517,67 @@ function Flow({
 
   const onNodeDragStart = useCallback(
     (_event: unknown, _node: GraphFlowNode, dragged: GraphFlowNode[]) => {
-      const byId = new Map(nodes.map((n) => [n.id, n]));
-      const hosts = new Map(dragged.map((n) => [n.id, n.position]));
-      following.current = new Map();
-      for (const [key, host] of followersOf(satellites, dragged.map((n) => n.id))) {
-        const node = byId.get(key);
-        if (node && !node.hidden) following.current.set(key, { start: node.position, host, hostStart: hosts.get(host)! });
+      const { start, movable } = companions(nodesRef.current, new Map(dragged.map((n) => [n.id, n.position])));
+      // A dragged frame carries what lies inside it (what can move: not fixed points, not what is dragged anyway).
+      const rectOf = (n: GraphFlowNode) => ({ ...n.position, width: n.width ?? n.measured?.width ?? 0, height: n.height ?? n.measured?.height ?? 0 });
+      const frames = new Map(dragged.filter(isFrameNode).map((n) => [n.id, rectOf(n)]));
+      const draggedIds = new Set(dragged.map((n) => n.id));
+      const items = new Map(
+        nodesRef.current.filter((n) => !n.hidden && !draggedIds.has(n.id) && n.draggable !== false && !isJunctionNode(n)).map((n) => [n.id, rectOf(n)])
+      );
+      const carried = new Map<string, { frame: GsPosition; from: GsPosition; by: string }>();
+      if (frames.size) {
+        for (const [id, frame] of frameContents(frames, items)) carried.set(id, { frame: frames.get(frame)!, from: items.get(id)!, by: frame });
       }
+      dragging.current = { start, movable, along: new Map(), carried };
     },
-    [nodes, satellites]
+    [companions]
   );
 
-  const onNodeDrag = useCallback((_event: unknown, _node: GraphFlowNode, dragged: GraphFlowNode[]) => {
-    if (!following.current.size) return;
-    const now = new Map(dragged.map((n) => [n.id, n.position]));
-    setNodes((current) =>
-      current.map((n) => {
-        const f = following.current.get(n.id);
-        const host = f && now.get(f.host);
-        if (!f || !host) return n;
-        return { ...n, position: { x: f.start.x + host.x - f.hostStart.x, y: f.start.y + host.y - f.hostStart.y } };
-      })
-    );
-  }, []);
+  /** Where the drag has moved the other notes now: what moves along, and what no longer does back where it was. */
+  const follow = useCallback(
+    (dragged: GraphFlowNode[]) => {
+      const drag = dragging.current;
+      if (!drag) return new Map<string, GsPosition>();
+      const now = new Map(dragged.map((n) => [n.id, n.position]));
+      const carried = new Map<string, GsPosition>();
+      for (const [id, { frame, from, by }] of drag.carried) {
+        const at = now.get(by);
+        if (at) carried.set(id, { x: from.x + at.x - frame.x, y: from.y + at.y - frame.y });
+      }
+      // Notes a frame carries count as dragged: their assumptions come along, their prerequisites get pushed.
+      const moved = new Map([...now, ...carried].filter(([id]) => drag.start.has(id)));
+      const along = new Map([...carried, ...dragCompanions({ satellites, requires, start: drag.start, movable: drag.movable, moved })]);
+      const changed = new Map(along);
+      for (const key of drag.along.keys()) {
+        const was = drag.start.get(key);
+        if (!along.has(key) && was) changed.set(key, { x: was.x, y: was.y });
+      }
+      drag.along = along;
+      return changed;
+    },
+    [satellites, requires]
+  );
+
+  const onNodeDrag = useCallback(
+    (_event: unknown, _node: GraphFlowNode, dragged: GraphFlowNode[]) => {
+      const changed = follow(dragged);
+      if (changed.size) setNodes((current) => current.map((n) => (changed.has(n.id) ? { ...n, position: changed.get(n.id)! } : n)));
+    },
+    [follow]
+  );
 
   const onNodeDragStop = useCallback(
     (_event: unknown, _node: GraphFlowNode, dragged: GraphFlowNode[]) => {
-      // The hosted assumptions moved too: save them with their host.
-      const now = new Map(dragged.map((n) => [n.id, n.position]));
-      const followers = nodes
-        .filter((n) => following.current.has(n.id))
-        .map((n) => {
-          const f = following.current.get(n.id)!;
-          const host = now.get(f.host)!;
-          return { ...n, position: { x: f.start.x + host.x - f.hostStart.x, y: f.start.y + host.y - f.hostStart.y } };
-        });
-      following.current = new Map();
-      save([...dragged, ...followers]);
+      // Hosted assumptions and pushed prerequisites moved too: save them with the dragged notes.
+      const changed = follow(dragged);
+      const along = dragging.current?.along ?? new Map<string, GsPosition>();
+      dragging.current = null;
+      if (changed.size) setNodes((current) => current.map((n) => (changed.has(n.id) ? { ...n, position: changed.get(n.id)! } : n)));
+      const others = nodesRef.current.filter((n) => along.has(n.id)).map((n) => ({ ...n, position: along.get(n.id)! }));
+      save([...dragged, ...others]);
     },
-    [save, nodes]
+    [follow, save]
   );
 
   const onNodeDoubleClick = useCallback(
@@ -585,6 +648,25 @@ function Flow({
     },
     [freshId, mapOp]
   );
+  /**
+   * Put notes on the graph as note cards (bug 2), stacked from `at`: any note of the vault, as on a
+   * canvas. A strategy note is on the graph already: the view goes to it instead.
+   */
+  const addNoteCards = useCallback(
+    (paths: readonly string[], at: { x: number; y: number }) => {
+      const shown = paths.map((path) => graph.nodes.find((n) => n.path === path)).filter((n) => n !== undefined);
+      let y = Math.round(at.y);
+      for (const file of paths.filter((path) => !graph.nodes.some((n) => n.path === path))) {
+        if (!mapOp({ op: 'put-card', card: { id: freshId(), kind: 'note-ref', file, x: Math.round(at.x), y, ...CARD_DEFAULT_SIZE } })) return;
+        y += CARD_DEFAULT_SIZE.height + 20;
+      }
+      if (!shown.length) return;
+      const names = shown.map((n) => n.id ?? n.basename);
+      setOutcome({ ok: true, message: `${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} on the graph already.`, id: ++outcomeId.current });
+      if (paths.length === 1) focusNodeRef.current(shown[0].key);
+    },
+    [graph, mapOp, freshId]
+  );
   const onPaneContextMenu = useCallback(
     (event: MouseEvent | ReactMouseEvent) => {
       event.preventDefault();
@@ -595,11 +677,33 @@ function Flow({
         label: 'Graph',
         items: [
           { label: 'New card here', run: () => newCard(at) },
+          ...(pickNote ? [{ label: 'Add note card…', run: () => pickNote((path) => addNoteCards([path], at)) }] : []),
           { label: 'New frame here', run: () => newFrame(at) },
         ],
       });
     },
-    [canEditMap, flow, placeOf, newCard, newFrame]
+    [canEditMap, flow, placeOf, newCard, newFrame, pickNote, addNoteCards]
+  );
+  // A note dragged in from the file explorer becomes a note card where it is dropped, as on a canvas.
+  const takesDrops = canEditMap && droppedNotes !== undefined;
+  const onDragOver = useCallback(
+    (event: ReactDragEvent) => {
+      if (!takesDrops) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = 'copy';
+    },
+    [takesDrops]
+  );
+  const onDrop = useCallback(
+    (event: ReactDragEvent) => {
+      if (!takesDrops) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const paths = droppedNotes!(event.nativeEvent);
+      if (paths.length) addNoteCards(paths, flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+    },
+    [takesDrops, droppedNotes, addNoteCards, flow]
   );
   // A double-click on empty space makes a card there, as on a canvas.
   const onDoubleClickCapture = useCallback(
@@ -652,6 +756,7 @@ function Flow({
       event.preventDefault();
       if (isCardNode(flowNode)) return openCardMenu(event, flowNode.data.card);
       if (isFrameNode(flowNode)) return openFrameMenu(event, flowNode.data.frame);
+      if (!isStrategyNode(flowNode)) return;
       const n = flowNode.data.node;
       const items: MenuItem[] = [];
       const ask = (request: QuickCreateKind) => () => setCreate({ request, anchor: n.key });
@@ -817,7 +922,7 @@ function Flow({
   return (
     <NodeActionsContext.Provider value={actions}>
       <ReactFlow<GraphFlowNode>
-        nodes={nodes}
+        nodes={shownNodes}
         edges={edges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
@@ -841,6 +946,8 @@ function Flow({
         onNodeContextMenu={onNodeContextMenu}
         onEdgeContextMenu={onEdgeContextMenu}
         onPaneContextMenu={onPaneContextMenu}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
         onSelectionChange={onSelectionChange}
         onSelectionEnd={onSelectionEnd}
         zoomOnDoubleClick={false}

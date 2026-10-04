@@ -76,14 +76,17 @@ function CardNodeView({ data, selected }: NodeProps<CardFlowNode>) {
       {SIDES.map(([side, position]) => (
         <Handle key={`${side}-t`} id={handleId(side, 'target')} type="target" position={position} isConnectable={false} />
       ))}
-      {editing && card.kind === 'text' ? (
-        <InlineText initial={card.text} label="Card text" onCommit={(text) => actions.commitText('card', card.id, text)} onCancel={actions.cancelEdit} />
-      ) : (
-        <div className="gs-card-text">
-          {card.kind !== 'text' && <span className="gs-card-kind">{card.kind === 'note-ref' ? 'note' : 'link'}</span>}
-          {shown || <span className="gs-card-empty">empty card</span>}
-        </div>
-      )}
+      {/* The box clips the text (and its shape); the handles sit outside it, on the edge, as on a note. */}
+      <div className="gs-card-box">
+        {editing && card.kind === 'text' ? (
+          <InlineText initial={card.text} label="Card text" onCommit={(text) => actions.commitText('card', card.id, text)} onCancel={actions.cancelEdit} />
+        ) : (
+          <div className="gs-card-text">
+            {card.kind !== 'text' && <span className="gs-card-kind">{card.kind === 'note-ref' ? 'note' : 'link'}</span>}
+            {shown || <span className="gs-card-empty">empty card</span>}
+          </div>
+        )}
+      </div>
       {SIDES.map(([side, position]) => (
         <Handle key={`${side}-s`} id={handleId(side, 'source')} type="source" position={position} isConnectable={actions.canEditMap} isConnectableEnd={false} />
       ))}

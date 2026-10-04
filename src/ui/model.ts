@@ -2,7 +2,7 @@
  * Graph + positions → what React Flow draws. Pure, so the mapping is unit-tested without a DOM.
  * The look itself (shapes, colours, dashes) is `graph.css`; this decides the classes and data it needs.
  */
-import type { Edge, Node } from '@xyflow/react';
+import { Position, type Edge, type Node, type NodeHandle } from '@xyflow/react';
 import type { GsCard, GsFrame, GsLink, GsPosition } from '../core/gsmap';
 import { canPin, flowOf, HIDDEN_EDGE_KINDS, NODE_SIZES, type Size } from '../core/layout';
 import type { Graph, GraphNode } from '../core/schema';
@@ -26,8 +26,11 @@ export const CARD_TYPE = 'card';
 export const FRAME_TYPE = 'frame';
 export type CardFlowNode = Node<{ card: GsCard }, typeof CARD_TYPE>;
 export type FrameFlowNode = Node<{ frame: GsFrame }, typeof FRAME_TYPE>;
+/** The "AND" in front of a note that requires two or more others: drawn from the links, never stored. */
+export const JUNCTION_TYPE = 'junction';
+export type JunctionFlowNode = Node<{ holder: string; prerequisites: readonly string[] }, typeof JUNCTION_TYPE>;
 /** Everything on the graph that is a node. */
-export type GraphFlowNode = StrategyFlowNode | CardFlowNode | FrameFlowNode;
+export type GraphFlowNode = StrategyFlowNode | CardFlowNode | FrameFlowNode | JunctionFlowNode;
 
 export const cardNodeId = (id: string) => `card:${id}`;
 export const frameNodeId = (id: string) => `frame:${id}`;
@@ -35,6 +38,8 @@ export const linkEdgeId = (id: string) => `link:${id}`;
 export const isStrategyNode = (node: { type?: string }): node is StrategyFlowNode => node.type === NODE_TYPE;
 export const isCardNode = (node: { type?: string }): node is CardFlowNode => node.type === CARD_TYPE;
 export const isFrameNode = (node: { type?: string }): node is FrameFlowNode => node.type === FRAME_TYPE;
+export const isJunctionNode = (node: { type?: string }): node is JunctionFlowNode => node.type === JUNCTION_TYPE;
+export const junctionNodeId = (holder: string) => `and:${holder}`;
 
 /** The note's title without its id prefix: `B-10  byTalent backend` → `byTalent backend`. */
 export function titleOf(node: Pick<GraphNode, 'id' | 'basename'>): string {
@@ -124,6 +129,80 @@ export function unverifiedServes(graph: Graph): Set<string> {
   return new Set(graph.edges.filter((e) => e.kind === 'serves' && shaky.has(e.from)).map((e) => e.key));
 }
 
+// ------------------------------------------------------------------ "AND" junctions
+
+/** A note that requires two or more others: all of them must be done first, so their links meet in an "AND". */
+export interface Junction {
+  holder: string;
+  /** Keys of what it requires, in edge order. */
+  prerequisites: string[];
+}
+
+/** The junction box: a small diamond, with this much room on each side between it and its holder. */
+export const JUNCTION_SIZE = 36;
+const JUNCTION_GAP = 32;
+
+/** Junctions by holder key: every note with two or more `requires`. */
+export function junctionsOf(graph: Graph): Map<string, Junction> {
+  const required = new Map<string, string[]>();
+  for (const edge of graph.edges) if (edge.kind === 'requires') required.set(edge.from, [...(required.get(edge.from) ?? []), edge.to]);
+  const out = new Map<string, Junction>();
+  for (const [holder, prerequisites] of required) if (prerequisites.length > 1) out.set(holder, { holder, prerequisites });
+  return out;
+}
+
+/** Where a junction sits: just left of its holder, level with its middle. It goes wherever the holder goes. */
+export function junctionRect(holder: GsPosition & Size): GsPosition & Size {
+  return {
+    x: holder.x - JUNCTION_GAP - JUNCTION_SIZE,
+    y: holder.y + holder.height / 2 - JUNCTION_SIZE / 2,
+    width: JUNCTION_SIZE,
+    height: JUNCTION_SIZE,
+  };
+}
+
+/** One handle of each kind per side, at the middle of the side, as the node component draws them. */
+const JUNCTION_HANDLES: NodeHandle[] = (
+  [
+    ['top', Position.Top, JUNCTION_SIZE / 2, 0],
+    ['right', Position.Right, JUNCTION_SIZE, JUNCTION_SIZE / 2],
+    ['bottom', Position.Bottom, JUNCTION_SIZE / 2, JUNCTION_SIZE],
+    ['left', Position.Left, 0, JUNCTION_SIZE / 2],
+  ] as const
+).flatMap(([side, position, x, y]) => (['source', 'target'] as const).map((type) => ({ id: handleId(side, type), type, position, x, y, width: 1, height: 1 })));
+
+/**
+ * The junction nodes for the holders drawn at `positions`. They are rebuilt whenever a holder moves,
+ * so they carry their size and handles themselves: React Flow then never has to measure them, and
+ * their edges never blink out.
+ */
+export function toFlowJunctions(graph: Graph, junctions: ReadonlyMap<string, Junction>, positions: Readonly<Record<string, GsPosition>>): JunctionFlowNode[] {
+  const typeOf = new Map(graph.nodes.map((n) => [n.key, n.type]));
+  const out: JunctionFlowNode[] = [];
+  for (const junction of junctions.values()) {
+    const at = positions[junction.holder];
+    const type = typeOf.get(junction.holder);
+    if (!at || !type) continue;
+    const rect = junctionRect({ ...at, ...NODE_SIZES[type] });
+    out.push({
+      id: junctionNodeId(junction.holder),
+      type: JUNCTION_TYPE,
+      position: { x: rect.x, y: rect.y },
+      width: JUNCTION_SIZE,
+      height: JUNCTION_SIZE,
+      measured: { width: JUNCTION_SIZE, height: JUNCTION_SIZE },
+      handles: JUNCTION_HANDLES,
+      draggable: false,
+      selectable: false,
+      deletable: false,
+      connectable: false,
+      focusable: false,
+      data: { holder: junction.holder, prerequisites: junction.prerequisites },
+    });
+  }
+  return out;
+}
+
 export interface EdgeView {
   /** Smells, for the bets with no `serves` chain: their `ultimately-serves` shows (plan Schema section). */
   smells?: readonly Smell[];
@@ -131,21 +210,37 @@ export interface EdgeView {
   showUltimate?: boolean;
   /** Edits are possible: a link can be selected and removed. */
   editable?: boolean;
+  /** "AND" junctions (`junctionsOf`): the `requires` of their holder run into the junction, which runs into the holder. */
+  junctions?: ReadonlyMap<string, Junction>;
 }
 
-/** One React Flow edge per graph edge, attached to the sides that face each other at `positions`. */
+/**
+ * One React Flow edge per graph edge, attached to the sides that face each other at `positions`.
+ * A `requires` already says what its `serves` twin says (the prerequisite serves its holder), so
+ * that `serves` is not drawn a second time. A note with two or more `requires` gets an "AND": its
+ * prerequisites' links end there, and one link runs from it to the note.
+ */
 export function toFlowEdges(graph: Graph, positions: Readonly<Record<string, GsPosition>>, view: EdgeView = {}): Edge[] {
   const typeOf = new Map(graph.nodes.map((n) => [n.key, n.type]));
   const unverified = unverifiedServes(graph);
   const chainless = new Set((view.smells ?? []).filter((s) => s.code === 'orphan-bet').map((s) => s.node));
-  return graph.edges.map((edge) => {
-    const { source, target } = flowOf(edge);
-    const [from, to] = [positions[source], positions[target]];
+  const junctions = view.junctions ?? new Map<string, Junction>();
+  const required = new Set(graph.edges.filter((e) => e.kind === 'requires').map((e) => `${e.to}>${e.from}`));
+  const rectOf = (key: string): (GsPosition & Size) | null => {
+    const at = positions[key];
+    return at && typeOf.has(key) ? { ...at, ...NODE_SIZES[typeOf.get(key)!] } : null;
+  };
+  const edges: Edge[] = graph.edges.map((edge) => {
+    const { source, target: holderEnd } = flowOf(edge);
+    const junction = edge.kind === 'requires' ? junctions.get(edge.from) : undefined;
+    const target = junction ? junctionNodeId(junction.holder) : holderEnd;
+    const from = rectOf(source);
+    const to = junction ? (rectOf(holderEnd) && junctionRect(rectOf(holderEnd)!)) : rectOf(target);
     const alongTime = edge.kind === 'serves' || edge.kind === 'requires';
-    const sides =
-      from && to ? sidesOf({ ...from, ...NODE_SIZES[typeOf.get(source)!] }, { ...to, ...NODE_SIZES[typeOf.get(target)!] }, alongTime) : null;
+    const sides = from && to ? sidesOf(from, to, alongTime) : null;
     const hiddenKind = HIDDEN_EDGE_KINDS.includes(edge.kind);
-    const shown = !hiddenKind || view.showUltimate === true || chainless.has(edge.from);
+    const twin = edge.kind === 'serves' && required.has(`${edge.from}>${edge.to}`);
+    const shown = !twin && (!hiddenKind || view.showUltimate === true || chainless.has(edge.from));
     return {
       id: edge.key,
       source,
@@ -158,20 +253,107 @@ export function toFlowEdges(graph: Graph, positions: Readonly<Record<string, GsP
       interactionWidth: 12,
       ...(edge.kind === 'next' ? { label: 'on kill' } : {}),
       ...(edge.kind === 'ultimately-serves' ? { label: 'ultimately' } : {}),
-      ...(edge.kind === 'assumption' ? {} : { markerEnd: { type: 'arrowclosed' as const } }),
+      // Links meeting in an "AND" end without arrowheads; the one from the "AND" to the note has it.
+      ...(edge.kind === 'assumption' || junction ? {} : { markerEnd: { type: 'arrowclosed' as const } }),
       data: { kind: edge.kind },
     } satisfies Edge;
   });
+  for (const junction of junctions.values()) {
+    const holder = rectOf(junction.holder);
+    const sides = holder ? sidesOf(junctionRect(holder), holder, true) : null;
+    edges.push({
+      id: `${junctionNodeId(junction.holder)}>`,
+      source: junctionNodeId(junction.holder),
+      target: junction.holder,
+      ...(sides ? { sourceHandle: handleId(sides.source, 'source'), targetHandle: handleId(sides.target, 'target') } : {}),
+      className: 'gs-edge gs-edge-requires gs-edge-junction',
+      deletable: false,
+      selectable: false,
+      focusable: false,
+      markerEnd: { type: 'arrowclosed' as const },
+      data: { kind: 'junction' },
+    });
+  }
+  return edges;
+}
+
+/** A prerequisite pushed by a drag keeps the gap it had to what requires it, but never needs more than a column's (ELK's 100). */
+export const PREREQUISITE_GAP = 100;
+
+/** Holder → the keys it `requires`. */
+export function requiresOf(graph: Graph): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const edge of graph.edges) if (edge.kind === 'requires') out.set(edge.from, [...(out.get(edge.from) ?? []), edge.to]);
+  return out;
 }
 
 /**
- * The assumptions that move with a drag (D19): those hosted by a dragged node, unless they are
- * being dragged themselves. Keyed by assumption, valued by its host.
+ * What moves along with a drag (or an arrow-key nudge), besides the dragged nodes themselves:
+ *
+ * - the assumptions a moved note hosts, by the same amount (D19);
+ * - the notes a dragged note `requires`, and theirs in turn: time runs left to right, so a
+ *   prerequisite is pushed left, and only left, when the note that requires it would come closer
+ *   than the gap they had when the drag began (`PREREQUISITE_GAP` at most). It never follows the
+ *   drag up or down, and goes back to where it was if the drag goes back. A prerequisite that was
+ *   not left of its note to begin with is left alone.
+ *
+ * `start` has the shown notes where they were when the drag began; `movable` the ones that may be
+ * moved (saved by id, not fixed points); `moved` the dragged nodes where they are now. Returns the
+ * new position of every other node that moves.
  */
-export function followersOf(satellites: ReadonlyMap<string, readonly string[]>, dragged: readonly string[]): Map<string, string> {
-  const draggedSet = new Set(dragged);
+export function dragCompanions(input: {
+  satellites: ReadonlyMap<string, readonly string[]>;
+  requires: ReadonlyMap<string, readonly string[]>;
+  start: ReadonlyMap<string, GsPosition & Size>;
+  movable: ReadonlySet<string>;
+  moved: ReadonlyMap<string, GsPosition>;
+}): Map<string, GsPosition> {
+  const { satellites, requires, start, movable, moved } = input;
+  const out = new Map<string, GsPosition>();
+  const now = (key: string) => moved.get(key) ?? out.get(key) ?? start.get(key);
+  // Prerequisites, outward from the dragged nodes. A push only ever lowers x, so this ends.
+  const queue = Array.from(moved.keys());
+  for (let guard = 0; queue.length && guard < 10_000; guard++) {
+    const holder = queue.shift()!;
+    const [from, at] = [start.get(holder), now(holder)];
+    if (!from || !at) continue;
+    for (const key of requires.get(holder) ?? []) {
+      const was = start.get(key);
+      if (!was || moved.has(key) || !movable.has(key)) continue;
+      const gap = from.x - (was.x + was.width);
+      if (gap < 0) continue;
+      const x = Math.min(was.x, out.get(key)?.x ?? was.x, at.x - Math.min(gap, PREREQUISITE_GAP) - was.width);
+      if (x >= (out.get(key)?.x ?? was.x)) continue;
+      out.set(key, { x, y: was.y });
+      queue.push(key);
+    }
+  }
+  // Hosted assumptions go with their host, dragged or pushed.
+  for (const host of [...moved.keys(), ...out.keys()]) {
+    const [from, at] = [start.get(host), now(host)];
+    if (!from || !at) continue;
+    for (const key of satellites.get(host) ?? []) {
+      const was = start.get(key);
+      if (!was || moved.has(key) || out.has(key)) continue;
+      out.set(key, { x: was.x + at.x - from.x, y: was.y + at.y - from.y });
+    }
+  }
+  return out;
+}
+
+/**
+ * What a dragged frame carries, as on an Obsidian canvas: every other node that lies wholly inside
+ * it when the drag begins (notes, cards, frames nested in it). Keyed by node id, valued by the frame
+ * that carries it (the first one that holds it, for a node inside two dragged frames).
+ */
+export function frameContents(frames: ReadonlyMap<string, GsPosition & Size>, items: ReadonlyMap<string, GsPosition & Size>): Map<string, string> {
   const out = new Map<string, string>();
-  for (const host of dragged) for (const key of satellites.get(host) ?? []) if (!draggedSet.has(key)) out.set(key, host);
+  for (const [frame, f] of frames) {
+    for (const [id, r] of items) {
+      if (id === frame || out.has(id) || frames.has(id)) continue;
+      if (r.x >= f.x && r.y >= f.y && r.x + r.width <= f.x + f.width && r.y + r.height <= f.y + f.height) out.set(id, frame);
+    }
+  }
   return out;
 }
 

@@ -99,12 +99,22 @@ Release.
   `delete-card`, …, `promote-card`), which the store shows at once and writes with the position moves in one `vault.process`.
   `writeOps` changes only the touched items; unknown keys survive. Their React Flow ids are `card:<id>` / `frame:<id>` /
   `link:<id>`, so they can never clash with a note key. Frames are backdrops (`pointer-events: none` except the label) and a
-  selection box never selects them. A card on either end of a dragged link makes a free link; two notes make a relation.
-  Promoting a card creates the note first (an edit intent), then runs `promote-card` (links and place move to the note).
+  selection box never selects them. Dragging a frame (by its label) carries every node wholly inside it at the start, as an
+  Obsidian canvas group does (`frameContents`); frames stay visual only, nothing is written to notes. A card on either end of
+  a dragged link makes a free link; two notes make a relation. Promoting a card creates the note first (an edit intent), then
+  runs `promote-card` (links and place move to the note). Any vault note can be put on the graph as a note card: drop it from
+  the file explorer (`GraphHost.droppedNotes`, reading Obsidian's `dragManager`) or right-click → "Add note card…" (`pickNote`).
 - Rebuilt React Flow nodes must keep `measured`: without it React Flow drops the node's measured handles and draws none of
   its edges until it re-measures (the "all edges vanish while dragging" bug).
 - Layout rule (plan D19): left → right is time; assumptions are never on the time axis but above their host (below if
   no room, aside if a sequel is below); a `next` sequel sits under its bet; a dragged bet takes its hosted assumptions.
+  A drag also pushes what the dragged note `requires` (the whole chain) to the left, horizontally only and only when the
+  note would come closer than the gap they had (`PREREQUISITE_GAP` at most); `dragCompanions` decides all of it.
+- `requires` implies `serves` (bug 8): adding "H requires X" also writes "X serves H" where the relation table allows it
+  (`requiresImpliesServes`); the migration writes the same. A bet, milestone or fixed point may `require`. The `serves` twin of
+  a `requires` is not drawn a second time, and a note with two or more `requires` gets an automatic "AND" junction
+  (`junctionsOf`, React Flow id `and:<key>`): never stored, not editable, placed just left of its holder and moving with it only.
+  The migration no longer keeps canvas "AND" cards whose `requires` are in the notes.
 - Playwright screenshot baselines (`tests/e2e/graph.spec.ts-snapshots/`, tagged `@visual`) are like goldens: update
   them (`npx playwright test -g @visual --update-snapshots`) only for a deliberate visual change, and say so in the
   commit. They are Linux/Chromium baselines from cloud sessions; CI runs `--grep-invert @visual`.
