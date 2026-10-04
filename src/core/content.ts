@@ -77,12 +77,14 @@ export interface BetContentOptions {
   requiresBasenames?: string[];
   /** The sequel activated when this bet is killed. */
   nextBasename?: string | null;
+  /** `active` unless the bet waits for a kill to start: a sequel is `dormant`. */
+  status?: 'active' | 'dormant';
   assumptionBasenames: string[];
 }
 
 /** Bet note, mirroring Templates/Bet Template.md. */
 export function buildBetContent(opts: BetContentOptions): string {
-  const frontmatter = ['---', 'id: ' + opts.id, 'type: bet', 'status: active', 'started: ' + opts.today];
+  const frontmatter = ['---', 'id: ' + opts.id, 'type: bet', 'status: ' + (opts.status ?? 'active'), 'started: ' + opts.today];
   frontmatter.push('deadline:' + (opts.deadline ? ' ' + opts.deadline : ''));
   frontmatter.push('expected-result: ' + yamlString(opts.y));
   frontmatter.push(...linkList('serves', opts.servesBasenames));

@@ -193,6 +193,7 @@ export function planBet<F extends FileRef>(vault: VaultLike<F>, data: BetFormDat
       ultimatelyServesBasenames: links(ultimatelyServes),
       requiresBasenames: links(requires),
       nextBasename: next ? next.basename : null,
+      ...(data.status ? { status: data.status } : {}),
       assumptionBasenames,
     }),
   });

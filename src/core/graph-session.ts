@@ -53,6 +53,8 @@ export class GraphSession {
   private generation = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   private disposed = false;
+  /** Callers of `settle()` waiting for the next rebuild that reads the vault after they asked. */
+  private waiters: (() => void)[] = [];
   private readonly rebuildDelayMs: number;
 
   constructor(private readonly options: GraphSessionOptions) {
@@ -113,8 +115,42 @@ export class GraphSession {
     this.requestRebuild();
   }
 
+  /**
+   * Rebuild soon, as a change to a note would, and resolve once that rebuild has read the vault (or
+   * after `timeoutMs`). For a caller that has just written notes and plans its next step from the
+   * graph: Obsidian's cache catches up with a write a moment later.
+   */
+  settle(timeoutMs = 2000): Promise<void> {
+    return new Promise((resolve) => {
+      const timer = setTimeout(done, timeoutMs);
+      const waiter = () => done();
+      function done() {
+        clearTimeout(timer);
+        resolve();
+      }
+      this.waiters.push(waiter);
+      this.requestRebuild();
+    });
+  }
+
+  private releaseWaiters(): void {
+    const waiting = this.waiters;
+    this.waiters = [];
+    for (const waiter of waiting) waiter();
+  }
+
   /** Rebuild now. If another rebuild starts before this one has read the vault, this one is dropped. */
   async rebuild(): Promise<void> {
+    let latest = false;
+    try {
+      await this.rebuildNow(() => (latest = true));
+    } finally {
+      // A rebuild that was overtaken leaves the waiters to the newer one.
+      if (latest || this.disposed) this.releaseWaiters();
+    }
+  }
+
+  private async rebuildNow(markLatest: () => void): Promise<void> {
     if (this.disposed) return;
     if (this.timer !== null) {
       clearTimeout(this.timer);
@@ -129,6 +165,7 @@ export class GraphSession {
       return;
     }
     if (generation !== this.generation || this.disposed) return;
+    markLatest();
     for (const change of this.ids.update(graph.nodes)) {
       const earlier = this.idNotices.get(change.path);
       const from = earlier?.from ?? change.from;
@@ -179,6 +216,7 @@ export class GraphSession {
     this.disposed = true;
     if (this.timer !== null) clearTimeout(this.timer);
     this.timer = null;
+    this.releaseWaiters();
     await this.store.flush();
   }
 

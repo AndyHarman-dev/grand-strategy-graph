@@ -40,9 +40,17 @@ export class GsMapStore {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private queue: Promise<void> = Promise.resolve();
   private readonly delayMs: number;
+  /** Counts changes of what `map` shows, so the overlay is built once per change, not once per read. */
+  private rev = 0;
+  private overlay: { rev: number; map: GsMap } | null = null;
 
   constructor(private readonly options: GsMapStoreOptions) {
     this.delayMs = options.delayMs ?? 400;
+  }
+
+  private changed(): void {
+    this.rev++;
+    this.options.onChange?.();
   }
 
   /** Take the file's current text (on open, and after every modify event). */
@@ -50,7 +58,7 @@ export class GsMapStore {
     const read = parseGsMap(text);
     this.base = read.ok ? read.map : null;
     this.readError = read.ok ? null : read.error;
-    this.options.onChange?.();
+    this.changed();
   }
 
   /** Why the file can't be used, or null. While set, `map` is null and moves are refused. */
@@ -63,10 +71,19 @@ export class GsMapStore {
     if (!this.base) return null;
     if (!this.resets && !this.inflight.size && !this.pending.size && !this.inflightOps.length && !this.pendingOps.length) return this.base;
     // After a reset, the disk still has the old positions until its write lands: show none of them.
+    if (this.overlay?.rev === this.rev) return this.overlay.map;
     const positions = this.resets ? {} : { ...this.base.positions };
     for (const [id, position] of this.inflight) positions[id] = position;
     for (const [id, position] of this.pending) positions[id] = position;
-    return applyOps({ ...this.base, positions }, [...this.inflightOps, ...this.pendingOps]);
+    let map: GsMap = { ...this.base, positions };
+    try {
+      map = applyOps(map, [...this.inflightOps, ...this.pendingOps]);
+    } catch (error) {
+      // An op that can't be shown: show the file as it is rather than break the view; the write reports it.
+      console.error('strategy graph: showing unsaved card edits failed', error);
+    }
+    this.overlay = { rev: this.rev, map };
+    return map;
   }
 
   get hasUnsaved(): boolean {
@@ -79,7 +96,7 @@ export class GsMapStore {
     const entries = Object.entries(updates);
     if (!entries.length) return true;
     for (const [id, { x, y }] of entries) this.pending.set(id, { x: Math.round(x), y: Math.round(y) });
-    this.options.onChange?.();
+    this.changed();
     this.scheduleFlush();
     return true;
   }
@@ -88,7 +105,7 @@ export class GsMapStore {
   edit(op: GsOp): boolean {
     if (!this.base) return false;
     this.pendingOps.push(op);
-    this.options.onChange?.();
+    this.changed();
     this.scheduleFlush();
     return true;
   }
@@ -116,7 +133,7 @@ export class GsMapStore {
     this.inflight.clear(); // still written, but the reset is queued after them and wipes them
     this.resets++;
     this.epoch++;
-    this.options.onChange?.();
+    this.changed();
     this.queue = this.queue.then(async () => {
       try {
         const written = await this.options.write(clearPositions);
@@ -128,7 +145,7 @@ export class GsMapStore {
         this.options.onWriteError?.(error);
       } finally {
         this.resets--;
-        this.options.onChange?.();
+        this.changed();
       }
     });
     return true;
@@ -169,7 +186,7 @@ export class GsMapStore {
         } finally {
           for (const [id, position] of batch) if (this.inflight.get(id) === position) this.inflight.delete(id);
           this.inflightOps = this.inflightOps.filter((op) => !ops.includes(op));
-          this.options.onChange?.();
+          this.changed();
         }
       });
     }

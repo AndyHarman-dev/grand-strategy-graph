@@ -914,6 +914,28 @@ test.describe('free cards, frames and links (Phase 7)', () => {
     await expect(node(page, 'B-3')).toBeVisible(); // the note stays
   });
 
+  test('Cmd/Ctrl+A then Delete asks before erasing more than a few cards and links, and never selects frames', async ({ page }) => {
+    await page.locator('.react-flow__pane').click({ position: { x: 700, y: 20 } });
+    await page.keyboard.press('Control+a');
+    await expect(page.locator('.react-flow__node-frame.selected')).toHaveCount(0);
+    await expect(page.locator('.react-flow__node-card.selected')).toHaveCount(6);
+    await page.keyboard.press('Delete');
+    const dialog = page.getByRole('dialog', { name: 'Delete' });
+    await expect(dialog).toContainText('Delete 6 selected cards, frames and links');
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await settle(page);
+    expect((await map(page)).cards).toHaveLength(6);
+    expect(await page.evaluate(() => window.gsDev.writes())).toBe(0);
+    await page.keyboard.press('Delete');
+    await page.getByRole('dialog', { name: 'Delete' }).getByRole('button', { name: 'Delete' }).click();
+    await settle(page);
+    const after = await map(page);
+    expect(after.cards).toEqual([]);
+    expect(after.frames).toHaveLength(2); // the frames were never selected
+    expect(Object.keys(after.positions)).toHaveLength(18); // nor were the notes deletable
+    await expect(node(page, 'B-1')).toBeVisible();
+  });
+
   test('promoting a card to a bet creates the note, moves the card\'s place and links to it, and removes the card', async ({ page }) => {
     const before = await map(page);
     const at = before.cards.find((c) => c.id === 't-ghost')!;

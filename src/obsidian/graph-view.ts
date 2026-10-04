@@ -1,5 +1,6 @@
 import { Component, FileView, MarkdownRenderer, Notice, TFile, type WorkspaceLeaf } from 'obsidian';
 import { GraphSession, type GraphState } from '../core/graph-session';
+import { changesGraph } from '../core/edits';
 import { performIntent } from '../core/perform';
 import { splitFrontmatter } from '../core/writes';
 import { mountGraph, type GraphHost, type MountedGraph } from '../ui/mount';
@@ -102,7 +103,10 @@ export class StrategyGraphView extends FileView {
       edit: async (intent) => {
         const graph = session.state.graph;
         if (!graph) return { ok: false, message: 'The graph has not been read yet.' };
-        return performIntent(intent, { graph, vault: this.app.vault, today: today() }, new ObsidianIO(this.app));
+        const outcome = await performIntent(intent, { graph, vault: this.app.vault, today: today() }, new ObsidianIO(this.app));
+        // The next edit is planned from the graph: let it see this one first (Obsidian's cache lags a write).
+        if (outcome.ok && changesGraph(intent)) await session.settle();
+        return outcome;
       },
       readNote: (path) => {
         const note = this.app.vault.getAbstractFileByPath(path);
@@ -153,14 +157,19 @@ export class StrategyGraphView extends FileView {
   private renderNote(el: HTMLElement, path: string): () => void {
     const component = new Component();
     component.load();
+    let disposed = false;
     const note = this.app.vault.getAbstractFileByPath(path);
     if (note instanceof TFile) {
       void this.app.vault
         .read(note)
-        .then((text) => MarkdownRenderer.render(this.app, splitFrontmatter(text).body, el, path, component))
+        // Selecting another note meanwhile unloaded the component: rendering into it now would leak its children.
+        .then((text) => (disposed ? undefined : MarkdownRenderer.render(this.app, splitFrontmatter(text).body, el, path, component)))
         .catch((error) => console.error('strategy graph: rendering the note failed', error));
     }
-    return () => component.unload();
+    return () => {
+      disposed = true;
+      component.unload();
+    };
   }
 
   private async reloadMap(file: TFile): Promise<void> {

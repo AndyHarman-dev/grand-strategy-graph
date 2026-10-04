@@ -300,6 +300,18 @@ describe('GsMapStore: card, frame and link edits (Phase 7)', () => {
     expect(store.hasUnsaved).toBe(false);
   });
 
+  it('builds what it shows once per change, not once per read', () => {
+    const { file, write } = disk(start);
+    const store = new GsMapStore({ write, delayMs: 100 });
+    store.load(file.text);
+    store.edit({ op: 'put-card', card: card('a') });
+    expect(store.map).toBe(store.map);
+    const before = store.map;
+    store.edit({ op: 'put-card', card: card('b') });
+    expect(store.map).not.toBe(before);
+    expect(store.map!.cards.map((c) => c.id)).toEqual(['a', 'b']);
+  });
+
   it('refuses edits while the file cannot be read, and writes nothing', async () => {
     const { file, write } = disk('not json');
     const store = new GsMapStore({ write });

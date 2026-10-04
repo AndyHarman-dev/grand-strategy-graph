@@ -36,6 +36,8 @@ export interface BetFormData<F extends FileRef = FileRef> {
   /** The sequel bet activated when this one is killed. Optional. */
   nextFile?: F | null;
   assumptionRows: AssumptionRow<F>[];
+  /** `dormant` for a sequel made to wait for its predecessor's kill; `active` (the default) otherwise. */
+  status?: 'active' | 'dormant';
 }
 
 export interface AssumptionFormData<F extends FileRef = FileRef> {

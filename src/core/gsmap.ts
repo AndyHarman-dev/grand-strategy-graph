@@ -87,6 +87,35 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 const isPosition = (value: unknown): value is GsPosition =>
   isObject(value) && Number.isFinite(value.x) && Number.isFinite(value.y);
 
+const isRect = (item: Record<string, unknown>) => ['x', 'y', 'width', 'height'].every((key) => Number.isFinite(item[key]));
+const isEndpoint = (end: unknown) => isObject(end) && (typeof end.card === 'string' || typeof end.note === 'string');
+
+/**
+ * What is wrong with the first card, frame or link that the graph could not draw, or null. The
+ * graph reads these items without checking again, so a file with one that is not what it says is
+ * an error like any other this version can't vouch for, never a crash while drawing.
+ */
+function firstBadItem(raw: Record<string, unknown>): string | null {
+  const items = (key: 'cards' | 'frames' | 'links') => (raw[key] as unknown[] | undefined) ?? [];
+  for (const [i, card] of items('cards').entries()) {
+    const text = isObject(card) ? (card.kind === 'text' ? card.text : card.kind === 'note-ref' ? card.file : card.kind === 'link' ? card.url : undefined) : undefined;
+    if (!isObject(card) || typeof card.id !== 'string' || typeof text !== 'string' || !isRect(card)) {
+      return `card ${i + 1} is not a card (it needs an id, a kind with its text, file or url, and x, y, width and height numbers)`;
+    }
+  }
+  for (const [i, frame] of items('frames').entries()) {
+    if (!isObject(frame) || typeof frame.id !== 'string' || typeof frame.label !== 'string' || !isRect(frame)) {
+      return `frame ${i + 1} is not a frame (it needs an id, a label, and x, y, width and height numbers)`;
+    }
+  }
+  for (const [i, link] of items('links').entries()) {
+    if (!isObject(link) || typeof link.id !== 'string' || !isEndpoint(link.from) || !isEndpoint(link.to)) {
+      return `link ${i + 1} is not a link (it needs an id, and a from and a to that name a card or a note)`;
+    }
+  }
+  return null;
+}
+
 /**
  * Read a `.gsmap`. An empty file is an empty map (a freshly created one). Anything this
  * version can't vouch for is an error, never a guess: the graph view then shows the error
@@ -114,6 +143,8 @@ export function parseGsMap(text: string): GsMapRead {
   for (const key of ['cards', 'frames', 'links'] as const) {
     if (raw[key] !== undefined && !Array.isArray(raw[key])) return { ok: false, error: `\`${key}\` is not a list` };
   }
+  const bad = firstBadItem(raw);
+  if (bad) return { ok: false, error: bad };
   const map: GsMap = {
     version: GSMAP_VERSION,
     positions: positions as Record<string, GsPosition>,

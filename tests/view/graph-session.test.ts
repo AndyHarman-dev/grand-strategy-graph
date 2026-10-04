@@ -73,6 +73,49 @@ describe('GraphSession', () => {
   });
 });
 
+describe('GraphSession.settle', () => {
+  it('resolves once the rebuild it asked for has read the vault, and not before', async () => {
+    const reads: (() => void)[] = [];
+    const { s } = session({ readNotes: async () => (await new Promise<void>((resolve) => reads.push(resolve)), []) });
+    let settled = false;
+    void s.settle().then(() => (settled = true));
+    await vi.advanceTimersByTimeAsync(250); // the quiet period: the read starts
+    expect(reads).toHaveLength(1);
+    expect(settled).toBe(false);
+    reads[0]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(true);
+  });
+
+  it('leaves its caller to the newer rebuild when one overtakes it, and gives up after its timeout', async () => {
+    const reads: (() => void)[] = [];
+    const { s } = session({ readNotes: async () => (await new Promise<void>((resolve) => reads.push(resolve)), []) });
+    let settled = false;
+    void s.settle(5000).then(() => (settled = true));
+    await vi.advanceTimersByTimeAsync(250); // read 1 starts
+    void s.rebuild(); // a newer one starts before read 1 is back
+    reads[0]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(false); // the overtaken one doesn't release it
+    reads[1]();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(true);
+    let timedOut = false;
+    void s.settle(1000).then(() => (timedOut = true));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(timedOut).toBe(true); // the read never answered: it is not waited for forever
+  });
+
+  it('releases a waiter when the session is disposed', async () => {
+    const { s } = session({ readNotes: () => new Promise(() => {}) });
+    let settled = false;
+    void s.settle(60_000).then(() => (settled = true));
+    await s.dispose();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(settled).toBe(true);
+  });
+});
+
 describe('GraphSession: the free part of the map (Phase 7)', () => {
   const gsmap = JSON.stringify({
     version: 1,

@@ -52,6 +52,9 @@ export type Intent =
   /** An assumption that the `dependents` (bets, fixed points, milestones) lean on. */
   | { kind: 'new-assumption'; form: AssumptionFields; dependents: string[] };
 
+/** Whether the intent can change what the graph is derived from (a log line or a falsifier text can't). */
+export const changesGraph = (intent: Intent): boolean => intent.kind !== 'log' && !(intent.kind === 'set-text' && intent.field === 'falsifier');
+
 export interface EditEnv {
   graph: Graph;
   /** For ids and collisions when a note is created. */
@@ -65,6 +68,9 @@ const label = (node: GraphNode) => node.id ?? node.basename;
 const linkTo = (node: GraphNode) => '[[' + node.basename + ']]';
 const refOf = (node: GraphNode): FileRef => ({ path: node.path, basename: node.basename });
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** A refusal when `value` is filled in but is not `YYYY-MM-DD`: a date is written into frontmatter as it is. */
+const badDateIn = (value: string): PlanError | null => (value.trim() && !DATE.test(value.trim()) ? fail(`"${value.trim()}" is not a date (YYYY-MM-DD).`) : null);
 
 /** The plan with the note it creates named (`B-9 Title.md` is `B-9`), and not opened: the graph stays in front. */
 function stayingPut(plan: ActionPlan): ActionPlan {
@@ -111,6 +117,8 @@ export function planIntent(intent: Intent, env: EditEnv): ActionPlan | PlanError
         return done([{ kind: 'set-field', path: n.path, field: 'expected-result', value: intent.value.trim() }], `${label(n)}: expected result saved.`);
       }
       if (n.type !== 'assumption') return fail(`${label(n)} is a ${n.type}: only an assumption has a falsifier.`);
+      // A line like `## x` would start a new section of the note, and the next read would cut the falsifier short.
+      if (/^\s{0,3}#{1,6}(\s|$)/m.test(intent.value)) return fail("A falsifier can't contain a heading line (one starting with #).");
       const text = intent.value.trim() || FALSIFIER_PLACEHOLDER;
       return done([{ kind: 'replace-section', path: n.path, heading: FALSIFIER_HEADING, text }], `${label(n)}: falsifier saved.`);
     }
@@ -210,6 +218,8 @@ export function planIntent(intent: Intent, env: EditEnv): ActionPlan | PlanError
         serves.push(n);
       }
       const title = intent.form.title.trim();
+      const badDate = badDateIn(intent.form.deadline);
+      if (badDate) return badDate;
       const plan = planBet(
         env.vault,
         {
@@ -220,6 +230,8 @@ export function planIntent(intent: Intent, env: EditEnv): ActionPlan | PlanError
           deadline: intent.form.deadline.trim(),
           servesFiles: serves.map(refOf),
           assumptionRows: [],
+          // A sequel waits for its predecessor to be killed (`kill-activate-next` only starts a dormant one).
+          ...(source ? { status: 'dormant' as const } : {}),
         },
         env.today
       );
@@ -246,6 +258,8 @@ export function planIntent(intent: Intent, env: EditEnv): ActionPlan | PlanError
     }
 
     case 'new-assumption': {
+      const badDate = badDateIn(intent.form.verifyBy);
+      if (badDate) return badDate;
       const dependents: GraphNode[] = [];
       for (const key of intent.dependents) {
         const n = need(key);

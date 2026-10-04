@@ -8,7 +8,7 @@
  * under `## Log`, or one named section is replaced (the assumption's falsifier). Nothing else in a
  * body is ever touched.
  */
-import { addLinkToField } from './link-field';
+import { addLinkToField, comparable } from './link-field';
 import { linkpathOf } from './links';
 
 export type RelationField = 'serves' | 'ultimately-serves' | 'requires' | 'next' | 'assumptions';
@@ -94,20 +94,17 @@ export function describeWrite(write: PlannedWrite): string {
 
 // ------------------------------------------------------------------ frontmatter
 
-const comparable = (linkpath: string) => linkpath.trim().replace(/^\/+/, '').replace(/\.md$/i, '').toLowerCase();
-
 /**
  * `value` without the links whose path is in `linkpaths`, as Obsidian hands a relation field over:
  * nothing, one string or a list. Returns the same value when nothing matched, so callers can tell
  * nothing changed. A scalar that matches becomes empty (`null`, the key stays); a list keeps its
- * other entries. A match ignores case, alias, heading and a folder prefix on either side.
+ * other entries. A match is exact once case, alias, heading and a leading `/` or `.md` are set aside:
+ * `linkpaths` are the paths as written in this field (the planner resolved which of them point at the
+ * target), so two notes that share a name in different folders are never mixed up.
  */
 export function removeLinksFromField(value: unknown, linkpaths: readonly string[]): unknown {
   const wanted = linkpaths.map(comparable);
-  const matches = (path: string) => {
-    const p = comparable(linkpathOf(path));
-    return wanted.some((w) => p === w || p.endsWith('/' + w) || w.endsWith('/' + p));
-  };
+  const matches = (path: string) => wanted.includes(comparable(linkpathOf(path)));
   // True when the string is one link to a wanted path. An unquoted `[[x]]` reaches us as a nested list.
   const hit = (item: unknown, nested: boolean): boolean => {
     if (Array.isArray(item)) return item.length > 0 && item.every((i) => hit(i, true));
@@ -136,11 +133,13 @@ export function splitFrontmatter(text: string): { head: string; body: string } {
 }
 
 const HEADING = /^#{1,6}\s/;
-const levelOf = (line: string) => /^#+/.exec(line)![0].length;
 
-/** `[start, end)` lines of the section under `heading` (the heading line excluded), or null. Fenced code is skipped over. */
+/**
+ * `[start, end)` lines of the text directly under `heading` (the heading line excluded), up to the
+ * next heading of any level, or null. Subsections stay out of it: editing the section never
+ * touches what the user put under a `###` below it. Fenced code is skipped over.
+ */
 function findSection(lines: string[], heading: string): { start: number; end: number } | null {
-  const level = levelOf(heading);
   let fence: string | null = null;
   let start = -1;
   for (let i = 0; i < lines.length; i++) {
@@ -152,9 +151,8 @@ function findSection(lines: string[], heading: string): { start: number; end: nu
       continue;
     }
     if (fence !== null || !HEADING.test(line)) continue;
-    if (start >= 0) {
-      if (levelOf(line) <= level) return { start, end: i };
-    } else if (line.trimEnd() === heading) start = i + 1;
+    if (start >= 0) return { start, end: i };
+    if (line.trimEnd() === heading) start = i + 1;
   }
   return start >= 0 ? { start, end: lines.length } : null;
 }
@@ -180,8 +178,8 @@ export function appendLogLine(body: string, line: string): string {
 }
 
 /**
- * The text under `heading` replaced by `text`, with a blank line around it. A missing section is
- * added at the end of the note. Everything outside the section stays byte for byte.
+ * The text under `heading` replaced by `text`, with a blank line before the next heading. A missing
+ * section is added at the end of the note. Everything outside the section stays byte for byte.
  */
 export function replaceSection(body: string, heading: string, text: string): string {
   const eol = body.includes('\r\n') ? '\r\n' : '\n';

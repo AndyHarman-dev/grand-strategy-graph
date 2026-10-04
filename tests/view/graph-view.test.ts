@@ -301,12 +301,33 @@ describe('hovering a node (Phase 5b)', () => {
 describe('editing from the graph (Phase 6)', () => {
   const B3 = 'Strategy/Bets/B-3 Sell pottery at weekend markets.md';
 
+  /** An edit that changes the graph resolves after the rebuild it causes (250 ms): run it with the clock moving. */
+  async function edit(mount: MountRecord, intent: Parameters<NonNullable<MountRecord['host']['edit']>>[0]) {
+    const pending = mount.host.edit!(intent);
+    await vi.advanceTimersByTimeAsync(300);
+    return pending;
+  }
+
+  it('lets the next edit see the last one: a second kill of the same bet is refused, not repeated', async () => {
+    const { mount } = await open();
+    expect((await edit(mount, { kind: 'kill-activate-next', key: 'B-1' })).ok).toBe(true);
+    const again = await edit(mount, { kind: 'kill-activate-next', key: 'B-1' });
+    expect(again).toMatchObject({ ok: false, message: 'B-1 is already killed.' });
+    const log = app.vault.text('Strategy/Bets/B-1 Get a D7 visa.md').match(/Killed\. Activating/g);
+    expect(log).toHaveLength(1);
+  });
+
+  it('answers a log entry at once: it changes nothing the graph shows, so nothing is waited for', async () => {
+    const { mount } = await open();
+    const outcome = await mount.host.edit!({ kind: 'log', key: 'B-3', text: 'x' }); // no timers advanced
+    expect(outcome.ok).toBe(true);
+  });
   it('performs an edit through Obsidian, and the graph picks the change up from the cache', async () => {
     const { mount } = await open();
-    const outcome = await mount.host.edit!({ kind: 'set-status', key: 'B-3', status: 'dormant' });
+    const outcome = await edit(mount, { kind: 'set-status', key: 'B-3', status: 'dormant' });
     expect(outcome).toEqual({ ok: true, message: 'B-3 is now dormant.' });
     expect(app.vault.text(B3)).toContain('status: dormant');
-    await vi.advanceTimersByTimeAsync(400);
+    // The edit resolves once the graph has read the change, so the next one plans from it.
     expect(lastState(mount).graph!.nodes.find((n) => n.key === 'B-3')!.status).toBe('dormant');
   });
 
@@ -322,7 +343,7 @@ describe('editing from the graph (Phase 6)', () => {
 
   it('creates a note in its folder and links it, without opening it', async () => {
     const { mount } = await open();
-    const outcome = await mount.host.edit!({ kind: 'new-assumption', form: { statement: 'Stalls stay cheap', falsifier: '', verifyBy: '' }, dependents: ['B-3'] });
+    const outcome = await edit(mount, { kind: 'new-assumption', form: { statement: 'Stalls stay cheap', falsifier: '', verifyBy: '' }, dependents: ['B-3'] });
     expect(outcome.ok).toBe(true);
     expect(app.vault.text('Strategy/Assumptions/A-8 Stalls stay cheap.md')).toContain('id: A-8');
     expect(app.vault.text(B3)).toContain('[[A-8 Stalls stay cheap]]');
@@ -360,6 +381,14 @@ describe('editing from the graph (Phase 6)', () => {
     expect(rendered[0].markdown.startsWith('---')).toBe(false);
     expect(rendered[0].markdown).toContain('## The Bet');
     cleanup();
+  });
+
+  it('does not render into a note that was let go before it was read', async () => {
+    const { mount } = await open();
+    const cleanup = mount.host.renderNote!({} as HTMLElement, B3);
+    cleanup(); // another note was selected before the file came back
+    await vi.advanceTimersByTimeAsync(0);
+    expect(rendered).toHaveLength(0);
   });
 });
 

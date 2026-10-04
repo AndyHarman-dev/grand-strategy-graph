@@ -179,6 +179,9 @@ export function StrategyGraph(props: StrategyGraphProps) {
   );
 }
 
+/** Deleting more cards, frames and links than this in one go (counting what is selected) asks first. */
+const BULK_DELETE = 3;
+
 const NO_CARDS: readonly GsCard[] = [];
 const NO_FRAMES: readonly GsFrame[] = [];
 const NO_LINKS: readonly GsLink[] = [];
@@ -448,13 +451,18 @@ function Flow({
       if (target.closest('input, textarea, select, [contenteditable="true"]')) return;
       if (event.key === 'Escape') {
         setConfirmingReset(false);
+        setConfirmingDelete((asking) => {
+          asking?.answer(false);
+          return null;
+        });
         store.setState({ nodesSelectionActive: false });
         store.getState().resetSelectedElements();
         // React Flow blurs a focused node that Escape unselects: keep the keys coming to the graph.
         (event.currentTarget as HTMLElement).focus({ preventScroll: true });
       } else if (event.key.toLowerCase() === 'a' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
         event.preventDefault();
-        store.getState().addSelectedNodes(nodesRef.current.filter((n) => !n.hidden).map((n) => n.id));
+        // Not the frames: they are backdrops, and a selected frame is dragged and deleted with the rest.
+        store.getState().addSelectedNodes(nodesRef.current.filter((n) => !n.hidden && !isFrameNode(n)).map((n) => n.id));
       }
     },
     [store]
@@ -533,6 +541,22 @@ function Flow({
     },
     [graph, perform, mapOp]
   );
+
+  // Delete after Cmd/Ctrl+A would erase every card and link at once, with no undo: more than a few at a time asks first.
+  const [confirmingDelete, setConfirmingDelete] = useState<{ count: number; answer: (yes: boolean) => void } | null>(null);
+  const onBeforeDelete = useCallback(
+    ({ nodes: going, edges: leaving }: { nodes: GraphFlowNode[]; edges: Edge[] }) => {
+      // What was picked: the links that go along with a card are not counted, or one card with a few lines would ask.
+      const count = going.length + leaving.filter((edge) => edge.selected).length;
+      if (count <= BULK_DELETE) return Promise.resolve(true);
+      return new Promise<boolean>((resolve) => setConfirmingDelete({ count, answer: resolve }));
+    },
+    []
+  );
+  const answerDelete = (yes: boolean) => {
+    confirmingDelete?.answer(yes);
+    setConfirmingDelete(null);
+  };
 
   const onNodesDelete = useCallback(
     (deleted: GraphFlowNode[]) => {
@@ -809,6 +833,7 @@ function Flow({
         edgesFocusable={false}
         deleteKeyCode={onEdit || canEditMap ? ['Backspace', 'Delete'] : null}
         onNodesDelete={onNodesDelete}
+        onBeforeDelete={onBeforeDelete}
         onDoubleClickCapture={onDoubleClickCapture}
         onConnectEnd={onConnectEnd}
         onEdgesChange={onEdgesChange}
@@ -855,6 +880,17 @@ function Flow({
             <UltimateIcon />
           </ControlButton>
         </Controls>
+        {confirmingDelete && (
+          <Panel position="bottom-center">
+            <div className="gs-confirm" role="dialog" aria-label="Delete">
+              <span>Delete {confirmingDelete.count} selected cards, frames and links from the graph?</span>
+              <button className="mod-warning" onClick={() => answerDelete(true)}>
+                Delete
+              </button>
+              <button onClick={() => answerDelete(false)}>Cancel</button>
+            </div>
+          </Panel>
+        )}
         {confirmingReset && (
           <Panel position="bottom-center">
             <div className="gs-confirm" role="dialog" aria-label="Reset layout">

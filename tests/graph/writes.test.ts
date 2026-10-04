@@ -45,6 +45,11 @@ describe('replaceSection', () => {
   it('adds a missing section at the end', () => {
     expect(replaceSection('## A\nx\n', '## B', 'y')).toBe('## A\nx\n\n## B\ny\n');
   });
+  it('leaves a subsection under the heading alone: only the text directly under it is replaced', () => {
+    const note = '## Falsifier\nold\n\n### Evidence\nkept\n\n## Next\n';
+    expect(replaceSection(note, '## Falsifier', 'new')).toBe('## Falsifier\nnew\n\n### Evidence\nkept\n\n## Next\n');
+    expect(sectionText(note, '## Falsifier')).toBe('old');
+  });
   it('reads a section back', () => {
     expect(sectionText(note, "## How I'd Know It's False")).toBe('*placeholder*');
     expect(sectionText(note, '## Nope')).toBeNull();
@@ -66,8 +71,13 @@ describe('removeLinksFromField', () => {
     expect(removeLinksFromField(['[[B-1 X]]', '[[B-2 Y|alias]]'], ['B-2 Y'])).toEqual(['[[B-1 X]]']);
     expect(removeLinksFromField(['[[B-1 X]]'], ['b-1 x'])).toEqual([]);
   });
-  it('empties a scalar and matches a folder-qualified path', () => {
-    expect(removeLinksFromField('[[Strategy/Bets/B-1 X]]', ['B-1 X'])).toBeNull();
+  it('empties a scalar, and matches the path as written, folder and all', () => {
+    expect(removeLinksFromField('[[Strategy/Bets/B-1 X]]', ['Strategy/Bets/B-1 X'])).toBeNull();
+  });
+  it('never mixes up two notes that share a name in different folders', () => {
+    const both = ['[[B-1 X]]', '[[Archive/B-1 X]]'];
+    expect(removeLinksFromField(both, ['Archive/B-1 X'])).toEqual(['[[B-1 X]]']);
+    expect(removeLinksFromField(both, ['B-1 X'])).toEqual(['[[Archive/B-1 X]]']);
   });
   it('returns the same value when nothing matches', () => {
     const list = ['[[B-1 X]]'];

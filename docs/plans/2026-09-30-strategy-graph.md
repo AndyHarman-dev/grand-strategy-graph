@@ -607,6 +607,18 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Golden diff:** none. Screenshot baselines (`@visual`) rewritten for the toolbar; one added (`migrated-walk`).
   - **Verification:** `npm run typecheck`, `npm test` (382), `npm run build`, `npm run test:e2e` (68, 7 of them `@visual`) pass. **Unverified (user, local, needs Obsidian):** the toolbar and the walk panel in Obsidian's styling, and the walk's arrow keys while the graph tab has focus.
 
+- **2026-10-04**:
+  - **Context:** High-effort code review of Phases 5b–8 (end of the session); its findings were fixed.
+  - **Actions:**
+    - New bet "next" sequel is created `dormant` and inherits the source's `serves` when none is given (`edits.ts`, optional bet `status` in `content.ts`/`plan.ts`/`actions.ts`); a falsifier text with a `#` heading line is refused.
+    - Delete / Cmd+A: Cmd/Ctrl+A no longer selects frames; deleting more than 3 selected cards, frames and links at once asks first (links that merely go with a card are not counted).
+    - `.gsmap` items are validated inside `parseGsMap` (`firstBadItem`), so a hand-edited file with a malformed card, frame or link reads as unreadable instead of crashing the render; `applyOps` failures in the store are caught.
+    - `replaceSection` treats a section as the text directly under the heading up to the next heading of any level; `removeLinksFromField` matches a link exactly (no substring match); `comparable` is shared by `link-field.ts` and `writes.ts`; dates are validated (`badDateIn`).
+    - `GraphSession.settle(timeoutMs)`: the view's `edit` waits for the rebuild that follows a write before returning; `renderNote` ignores results after dispose; the store's overlay is cached per revision.
+  - **Decisions:** one review finding was deliberately **not** changed: `null` fields serialize differently in the dev page's `MemoryVault` (`key:`) and in Obsidian's `processFrontMatter` (`key: null`). Both read back as null; the real form is for the user to look at.
+  - **Golden diff:** none. No screenshot baseline changed.
+  - **Verification:** `npm run typecheck`, `npm test` (401), `npm run build`, `npm run test:e2e` (69, 7 of them `@visual`) pass. **Unverified (user, local, needs Obsidian):** the `null` form `processFrontMatter` writes, and everything listed as unverified in the Phase 5b–8 entries above.
+
 ## Decisions Log
 
 *(For the user's own hand only.)*

@@ -81,6 +81,7 @@ describe('set-date and set-text', () => {
     const strip = (t: string) => t.replace(/## How I'd Know It's False\n[\s\S]*?(?=\n## )/, '');
     expect(strip(after)).toBe(strip(before));
     expect((await run({ kind: 'set-text', key: 'B-1', field: 'falsifier', value: 'x' })).error).toContain('only an assumption');
+    expect((await run({ kind: 'set-text', key: 'A-3', field: 'falsifier', value: 'fine\n## Sneaky' })).error).toContain("can't contain a heading line");
   });
 });
 
@@ -174,6 +175,23 @@ describe('creating from the graph', () => {
     const { graph: g } = await run({ kind: 'new-bet', form: { title: 'Plan B for the visa', x: 'x', y: 'y', z: 'z', deadline: '2027-01-01' }, serves: [], sequelOf: 'B-1' });
     expect(edge(g, 'next:B-1>B-9')).toBe(true);
     expect(edge(g, 'serves:B-9>FP-1')).toBe(true);
+    // A sequel waits: dormant, so that killing B-1 can activate it.
+    expect(node(g, 'B-9').status).toBe('dormant');
+    const killed = await run({ kind: 'kill-activate-next', key: 'B-1' });
+    expect(killed.error).toBeUndefined();
+    expect(node(killed.graph, 'B-9').status).toBe('active');
+  });
+
+  it('a bet that is not a sequel starts active', async () => {
+    const { graph: g } = await run({ kind: 'new-bet', form: { title: 'Plain', x: '', y: '', z: '', deadline: '' }, serves: [] });
+    expect(node(g, 'B-9').status).toBe('active');
+  });
+
+  it('refuses a deadline or verify-by that is not a date, before anything is created', async () => {
+    const files = { ...vault.files };
+    expect((await run({ kind: 'new-bet', form: { title: 'T', x: '', y: '', z: '', deadline: '2027-01-01 # x' }, serves: [] })).error).toContain('is not a date');
+    expect((await run({ kind: 'new-assumption', form: { statement: 'S', falsifier: '', verifyBy: 'a: b' }, dependents: [] })).error).toContain('is not a date');
+    expect(vault.files).toEqual(files);
   });
 
   it('refuses a second sequel and creates nothing', async () => {

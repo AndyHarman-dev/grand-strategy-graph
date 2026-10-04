@@ -1,7 +1,7 @@
 import { linkpathOf } from './links';
 
 /** Link path to compare by: lower case, no `.md`, no leading slash. */
-const comparable = (linkpath: string) => linkpath.trim().replace(/^\/+/, '').replace(/\.md$/i, '').toLowerCase();
+export const comparable = (linkpath: string) => linkpath.trim().replace(/^\/+/, '').replace(/\.md$/i, '').toLowerCase();
 
 /**
  * `link` appended to a frontmatter list value, as Obsidian hands it over: nothing, one string
