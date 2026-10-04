@@ -1,11 +1,12 @@
 /**
  * Graph + positions → what React Flow draws. Pure, so the mapping is unit-tested without a DOM.
- * Styling beyond a class per type, status and edge kind is Phase 5b.
+ * The look itself (shapes, colours, dashes) is `graph.css`; this decides the classes and data it needs.
  */
 import type { Edge, Node } from '@xyflow/react';
 import type { GsPosition } from '../core/gsmap';
 import { canPin, flowOf, HIDDEN_EDGE_KINDS, NODE_SIZES, type Size } from '../core/layout';
 import type { Graph, GraphNode } from '../core/schema';
+import type { Smell } from '../core/smells';
 
 export const NODE_TYPE = 'strategy';
 
@@ -14,6 +15,8 @@ export type StrategyNodeData = {
   title: string;
   /** False when the note has no unique `id`: its position could not be saved, so it can't be dragged. */
   pinnable: boolean;
+  /** What `findSmells` found on this note, for the badge. */
+  smells: readonly Smell[];
 };
 
 export type StrategyFlowNode = Node<StrategyNodeData, typeof NODE_TYPE>;
@@ -32,7 +35,12 @@ export function titleOf(node: Pick<GraphNode, 'id' | 'basename'>): string {
  * One React Flow node per graph node. A node without a position yet (layout still running)
  * is hidden rather than drawn at the origin. Fixed points are locked (plan Phase 5a).
  */
-export function toFlowNodes(graph: Graph, positions: Readonly<Record<string, GsPosition>>): StrategyFlowNode[] {
+export function toFlowNodes(
+  graph: Graph,
+  positions: Readonly<Record<string, GsPosition>>,
+  smells: readonly Smell[] = []
+): StrategyFlowNode[] {
+  const smellsOf = groupSmells(smells);
   return graph.nodes.map((node) => {
     const size = NODE_SIZES[node.type];
     const position = positions[node.key];
@@ -48,9 +56,16 @@ export function toFlowNodes(graph: Graph, positions: Readonly<Record<string, GsP
       width: size.width,
       height: size.height,
       style: { width: size.width, height: size.height },
-      data: { node, title: titleOf(node), pinnable },
+      data: { node, title: titleOf(node), pinnable, smells: smellsOf.get(node.key) ?? [] },
     };
   });
+}
+
+/** Smells by the key of the node they are on. */
+export function groupSmells(smells: readonly Smell[]): Map<string, Smell[]> {
+  const out = new Map<string, Smell[]>();
+  for (const smell of smells) out.set(smell.node, [...(out.get(smell.node) ?? []), smell]);
+  return out;
 }
 
 export type Side = 'top' | 'right' | 'bottom' | 'left';
@@ -79,25 +94,51 @@ const ALIGNED = 20;
 /** Handle ids on every node: one source and one target handle per side. */
 export const handleId = (side: Side, type: 'source' | 'target') => `${side}-${type}`;
 
+/**
+ * Keys of the `serves` edges drawn dashed: the holder (a bet or a milestone) leans on an assumption
+ * that is not `confirmed`, so what it claims to serve is not yet established ("Unverified serve:
+ * dashed", plan Schema section).
+ */
+export function unverifiedServes(graph: Graph): Set<string> {
+  const status = new Map(graph.nodes.map((n) => [n.key, n.status]));
+  const shaky = new Set<string>();
+  for (const edge of graph.edges) {
+    if (edge.kind === 'assumption' && status.get(edge.to) !== 'confirmed') shaky.add(edge.from);
+  }
+  return new Set(graph.edges.filter((e) => e.kind === 'serves' && shaky.has(e.from)).map((e) => e.key));
+}
+
+export interface EdgeView {
+  /** Smells, for the bets with no `serves` chain: their `ultimately-serves` shows (plan Schema section). */
+  smells?: readonly Smell[];
+  /** The toggle: show every `ultimately-serves` edge, not only a chainless bet's. */
+  showUltimate?: boolean;
+}
+
 /** One React Flow edge per graph edge, attached to the sides that face each other at `positions`. */
-export function toFlowEdges(graph: Graph, positions: Readonly<Record<string, GsPosition>>): Edge[] {
+export function toFlowEdges(graph: Graph, positions: Readonly<Record<string, GsPosition>>, view: EdgeView = {}): Edge[] {
   const typeOf = new Map(graph.nodes.map((n) => [n.key, n.type]));
+  const unverified = unverifiedServes(graph);
+  const chainless = new Set((view.smells ?? []).filter((s) => s.code === 'orphan-bet').map((s) => s.node));
   return graph.edges.map((edge) => {
     const { source, target } = flowOf(edge);
     const [from, to] = [positions[source], positions[target]];
     const alongTime = edge.kind === 'serves' || edge.kind === 'requires';
     const sides =
       from && to ? sidesOf({ ...from, ...NODE_SIZES[typeOf.get(source)!] }, { ...to, ...NODE_SIZES[typeOf.get(target)!] }, alongTime) : null;
+    const hiddenKind = HIDDEN_EDGE_KINDS.includes(edge.kind);
+    const shown = !hiddenKind || view.showUltimate === true || chainless.has(edge.from);
     return {
       id: edge.key,
       source,
       target,
       ...(sides ? { sourceHandle: handleId(sides.source, 'source'), targetHandle: handleId(sides.target, 'target') } : {}),
-      className: `gs-edge gs-edge-${edge.kind}`,
-      hidden: HIDDEN_EDGE_KINDS.includes(edge.kind),
+      className: `gs-edge gs-edge-${edge.kind}${unverified.has(edge.key) ? ' gs-edge-unverified' : ''}`,
+      hidden: !shown,
       deletable: false,
       selectable: false,
       ...(edge.kind === 'next' ? { label: 'on kill' } : {}),
+      ...(edge.kind === 'ultimately-serves' ? { label: 'ultimately' } : {}),
       ...(edge.kind === 'assumption' ? {} : { markerEnd: { type: 'arrowclosed' as const } }),
       data: { kind: edge.kind },
     } satisfies Edge;
@@ -140,4 +181,11 @@ export function unsavedPositions(
     out[id] = { x: node.position.x, y: node.position.y };
   }
   return out;
+}
+
+/** Today's local date as `YYYY-MM-DD`. */
+export function localToday(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }

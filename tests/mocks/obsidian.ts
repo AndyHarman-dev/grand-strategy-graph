@@ -205,6 +205,12 @@ export class Plugin {
     this.extensions.push({ extensions, viewType });
   }
 
+  hoverLinkSources: { id: string; info: { display: string; defaultMod: boolean } }[] = [];
+
+  registerHoverLinkSource(id: string, info: { display: string; defaultMod: boolean }): void {
+    this.hoverLinkSources.push({ id, info });
+  }
+
   constructor(app: unknown) {
     this.app = app;
   }

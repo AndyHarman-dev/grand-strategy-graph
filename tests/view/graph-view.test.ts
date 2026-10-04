@@ -282,3 +282,18 @@ describe('opening a note from the graph', () => {
     ]);
   });
 });
+
+describe('hovering a node (Phase 5b)', () => {
+  it('asks Obsidian for the page preview of the note, as a hover-link from the graph view', async () => {
+    const { view, mount } = await open();
+    const event = { type: 'mouseover' } as MouseEvent;
+    const targetEl = {} as HTMLElement;
+    mount.host.hoverNote!(event, targetEl, B1);
+    expect(app.triggered).toEqual([{ name: 'hover-link', args: [{ event, source: 'strategy-graph', hoverParent: view, targetEl, linktext: B1 }] }]);
+  });
+
+  it('gives the graph the local date for the overdue smell', async () => {
+    const { mount } = await open();
+    expect(mount.host.today!()).toBe('2026-10-01'); // the obsidian mock's clock
+  });
+});

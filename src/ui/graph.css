@@ -1,6 +1,9 @@
 /*
- * Strategy graph view (Phase 5a). Colours come from Obsidian's CSS variables, so the graph
- * follows the theme. Per-type shapes and status colours are Phase 5b.
+ * Strategy graph view (Phases 5a, 5b). Colours come from Obsidian's CSS variables, so the graph
+ * follows the theme: each status sets --gs-c (its colour), and the border, the pill and the tint
+ * of a node are mixed from it. Types differ by shape: bets and assumptions are boxes (assumptions
+ * dashed), a milestone is a checkpoint with a thick left edge, a fixed point is a stadium, the
+ * current position a pill.
  */
 
 .workspace-leaf-content[data-type='strategy-graph'] .view-content {
@@ -39,6 +42,16 @@
   color: var(--text-normal);
 }
 
+/* Colour roles. Obsidian's accent colours with fallbacks for the dev page. */
+.gs-graph {
+  --gs-accent: var(--interactive-accent);
+  --gs-ok: var(--color-green, #08b94e);
+  --gs-wait: var(--color-yellow, #e0ac00);
+  --gs-bad: var(--color-red, #e93147);
+  --gs-info: var(--color-blue, #086ddd);
+  --gs-quiet: var(--text-faint);
+}
+
 /* Nodes. The box size comes from NODE_SIZES (src/core/layout.ts). */
 .gs-graph .react-flow__node-strategy {
   padding: 0;
@@ -47,17 +60,18 @@
 }
 
 .gs-node {
+  --gs-c: var(--background-modifier-border);
+  position: relative;
   box-sizing: border-box;
   width: 100%;
   height: 100%;
   padding: 6px 10px;
-  border: 1px solid var(--background-modifier-border);
+  border: 1px solid var(--gs-c);
   border-radius: 8px;
-  background: var(--background-secondary);
+  background: color-mix(in srgb, var(--gs-c) 8%, var(--background-secondary));
   color: var(--text-normal);
   font-size: var(--font-ui-small, 13px);
   line-height: 1.3;
-  overflow: hidden;
 }
 
 .gs-node.is-selected {
@@ -65,16 +79,76 @@
   box-shadow: 0 0 0 1px var(--interactive-accent);
 }
 
-.gs-node--fixed-point {
+/* Bets */
+.gs-node--bet {
+  --gs-c: var(--gs-quiet);
+}
+.gs-node--bet.gs-status--active {
+  --gs-c: var(--gs-accent);
   border-width: 2px;
+}
+.gs-node--bet.gs-status--dormant {
+  opacity: 0.65;
+}
+.gs-node--bet.gs-status--won {
+  --gs-c: var(--gs-ok);
+}
+.gs-node--bet.gs-status--killed {
+  --gs-c: var(--gs-bad);
+  opacity: 0.75;
+}
+.gs-node--bet.gs-status--killed .gs-node-title {
+  text-decoration: line-through;
+}
+.gs-node--bet.gs-status--extended {
+  --gs-c: var(--gs-info);
+}
+
+/* Assumptions: dashed, coloured by what is known about them. */
+.gs-node--assumption {
+  --gs-c: var(--gs-quiet);
+  border-style: dashed;
+}
+.gs-node--assumption.gs-status--unverified {
+  --gs-c: var(--gs-wait);
+}
+.gs-node--assumption.gs-status--confirmed {
+  --gs-c: var(--gs-ok);
+}
+.gs-node--assumption.gs-status--falsified {
+  --gs-c: var(--gs-bad);
+}
+.gs-node--assumption.gs-status--undeterminable {
+  --gs-c: var(--gs-quiet);
+}
+
+/* Milestones: a checkpoint, hollow while open, filled once reached. */
+.gs-node--milestone {
+  --gs-c: var(--gs-info);
+  border-left-width: 6px;
+  border-radius: 4px 12px 12px 4px;
+  background: var(--background-secondary);
+}
+.gs-node--milestone.gs-status--reached {
+  --gs-c: var(--gs-ok);
+  background: color-mix(in srgb, var(--gs-c) 18%, var(--background-secondary));
+}
+
+/* Fixed points: locked anchors at the far end. */
+.gs-node--fixed-point {
+  --gs-c: var(--gs-accent);
+  border-width: 2px;
+  border-radius: 999px;
+  padding-inline: 18px;
+  background: color-mix(in srgb, var(--gs-c) 14%, var(--background-secondary));
   font-weight: 600;
 }
 
-.gs-node--assumption {
-  border-style: dashed;
-}
-
+/* The current position: where the strategy starts, neutral. */
 .gs-node--current-position {
+  --gs-c: var(--text-muted);
+  border-radius: 999px;
+  padding-inline: 18px;
   background: var(--background-primary-alt, var(--background-secondary));
 }
 
@@ -85,6 +159,7 @@
 .gs-node-head {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 6px;
   color: var(--text-muted);
   font-size: var(--font-ui-smaller, 12px);
@@ -94,6 +169,19 @@
   font-family: var(--font-monospace);
 }
 
+.gs-node-glyph {
+  color: var(--gs-c);
+}
+
+.gs-node-status {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--gs-c) 22%, transparent);
+  color: var(--text-normal);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
 .gs-node-title {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -101,29 +189,70 @@
   overflow: hidden;
 }
 
+.gs-node--fixed-point .gs-node-title,
+.gs-node--current-position .gs-node-title {
+  -webkit-line-clamp: 1;
+}
+
 .gs-node-date {
   color: var(--text-faint);
   font-size: var(--font-ui-smaller, 12px);
+}
+
+/* Smell badge: how many things review would flag on this note; the title lists them. */
+.gs-node-smell {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  border-radius: 9px;
+  background: var(--text-warning, #ec7500);
+  color: var(--background-primary);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
 }
 
 .gs-node .react-flow__handle {
   visibility: hidden;
 }
 
-/* Edges (plan, Schema section). */
-.gs-edge-next .react-flow__edge-path {
-  stroke-dasharray: 6 4;
-}
-
-.gs-edge-requires .react-flow__edge-path {
+/* Edges (plan, Schema section): serves solid; unverified serve dashed; next dashed in the kill colour
+   with its label; requires dotted; assumption leader thin dashed; ultimately-serves faint, long dashes. */
+.gs-graph .gs-edge-requires .react-flow__edge-path {
+  stroke: var(--gs-info);
   stroke-dasharray: 2 4;
   stroke-linecap: round;
 }
 
-.gs-edge-assumption .react-flow__edge-path {
+.gs-graph .gs-edge-unverified .react-flow__edge-path {
+  stroke-dasharray: 9 5;
+}
+
+.gs-graph .gs-edge-next .react-flow__edge-path {
+  stroke: var(--text-warning, #ec7500);
+  stroke-dasharray: 6 4;
+}
+
+.gs-graph .gs-edge-assumption .react-flow__edge-path {
   stroke-dasharray: 3 3;
   stroke-width: 1;
   opacity: 0.7;
+}
+
+.gs-graph .gs-edge-ultimately-serves .react-flow__edge-path {
+  stroke: var(--text-faint);
+  stroke-dasharray: 14 6;
+  stroke-width: 1;
+}
+
+.gs-graph .react-flow__controls-button.gs-toggle-ultimate[aria-pressed='true'] {
+  background: var(--background-modifier-hover);
+  color: var(--interactive-accent);
 }
 
 /* Problems found while building the graph. */

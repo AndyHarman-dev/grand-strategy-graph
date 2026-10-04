@@ -9,6 +9,7 @@ import './obsidian-theme.css';
 import { GraphSession, type GraphState } from '../src/core/graph-session';
 import { GSMAP_PATH, parseGsMap, serializeGsMap } from '../src/core/gsmap';
 import { MemoryAdapter } from '../src/core/memory-adapter';
+import { localToday } from '../src/ui/model';
 import { mountGraph } from '../src/ui/mount';
 
 const params = new URLSearchParams(location.search);
@@ -21,6 +22,7 @@ let writes = 0;
 let state: GraphState | null = null;
 let reveal: { key: string; nonce: number } | null = null;
 const opened: string[] = [];
+const hovered: string[] = [];
 
 const status = document.getElementById('status')!;
 const mounted = mountGraph(document.getElementById('content')!, {
@@ -30,6 +32,9 @@ const mounted = mountGraph(document.getElementById('content')!, {
     opened.push(path);
     status.textContent = `open ${path}`;
   },
+  hoverNote: (_event, _el, path) => hovered.push(path),
+  // ?today=YYYY-MM-DD pins the clock, so the overdue smell (and the screenshots) don't depend on the day.
+  today: () => params.get('today') ?? localToday(),
 }, params.get('elk') === 'fail' ? { autoLayout: () => Promise.reject(new Error('simulated ELK failure')) } : {});
 
 const session = new GraphSession({
@@ -98,6 +103,7 @@ const api = {
   },
   notices: () => state?.notices ?? [],
   opened: () => opened,
+  hovered: () => hovered,
   flush: () => session.flush(),
 };
 window.gsDev = api;

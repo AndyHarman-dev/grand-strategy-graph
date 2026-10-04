@@ -11,6 +11,10 @@ export interface GraphHost {
   /** Forget every saved position, so the whole graph is laid out automatically again. Returns false when that can't be saved. */
   resetPositions(): boolean;
   openNote?(path: string, newTab: boolean): void;
+  /** The pointer entered a note's node: show its preview (Obsidian's page preview). */
+  hoverNote?(event: MouseEvent, el: HTMLElement, path: string): void;
+  /** Today as `YYYY-MM-DD` (the overdue smell). Defaults to the browser's local date. */
+  today?(): string;
 }
 
 export interface MountedGraph {
@@ -29,6 +33,7 @@ export function mountGraph(el: HTMLElement, host: GraphHost, options: MountOptio
   const onMove = (updates: Record<string, GsPosition>) => void host.move(updates);
   const onResetPositions = () => void host.resetPositions();
   const onOpenNote = host.openNote?.bind(host);
+  const onHoverNote = host.hoverNote?.bind(host);
   return {
     render(state, reveal = null) {
       if (!state.graph) {
@@ -44,6 +49,8 @@ export function mountGraph(el: HTMLElement, host: GraphHost, options: MountOptio
             onMove={state.map ? onMove : null}
             onResetPositions={state.map ? onResetPositions : null}
             onOpenNote={onOpenNote}
+            onHoverNote={onHoverNote}
+            today={host.today?.()}
             reveal={reveal}
             notices={state.notices}
             autoLayout={options.autoLayout}

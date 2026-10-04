@@ -2,6 +2,7 @@ import { FileView, Notice, TFile, type WorkspaceLeaf } from 'obsidian';
 import { GraphSession, type GraphState } from '../core/graph-session';
 import { mountGraph, type GraphHost, type MountedGraph } from '../ui/mount';
 import { ObsidianAdapter } from './adapter';
+import { today } from './today';
 
 export const VIEW_TYPE = 'strategy-graph';
 export const GSMAP_EXTENSION = 'gsmap';
@@ -87,6 +88,9 @@ export class StrategyGraphView extends FileView {
         return saved;
       },
       openNote: (path, newTab) => this.openNote(path, newTab),
+      hoverNote: (event, targetEl, path) =>
+        this.app.workspace.trigger('hover-link', { event, source: VIEW_TYPE, hoverParent: this, targetEl, linktext: path }),
+      today,
     });
     session.loadMap(await this.app.vault.read(file));
     await session.rebuild();

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { followersOf, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions } from '../../src/ui/model';
+import { findSmells } from '../../src/core/smells';
+import { followersOf, groupSmells, localToday, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions, unverifiedServes } from '../../src/ui/model';
 import { graphOf, md } from '../support/v2';
 
 const files = {
@@ -107,5 +108,66 @@ describe('unsavedPositions', () => {
       'FP-1': { x: 7, y: 8 },
       'A-1': { x: 7, y: 8 },
     });
+  });
+});
+
+describe('smell badges (Phase 5b)', () => {
+  it('puts each node\'s smells in its data', async () => {
+    const graph = await graphOf(files);
+    const smells = findSmells(graph, { today: '2026-10-01' });
+    const by = Object.fromEntries(toFlowNodes(graph, {}, smells).map((n) => [n.id, n.data.smells.map((s) => s.code)]));
+    expect(by['B-2']).toEqual(['orphan-bet']);
+    expect(by['B-10']).toEqual(['gating-violation']);
+    expect(by['FP-1']).toEqual([]);
+    expect(toFlowNodes(graph, {}).every((n) => n.data.smells.length === 0)).toBe(true); // no smells given, no badges
+  });
+
+  it('groups smells by node', () => {
+    const smell = (node: string, code: 'orphan-bet' | 'overdue-bet') => ({ code, node, message: '', related: [] });
+    const grouped = groupSmells([smell('B-1', 'orphan-bet'), smell('B-2', 'orphan-bet'), smell('B-1', 'overdue-bet')]);
+    expect(grouped.get('B-1')?.map((s) => s.code)).toEqual(['orphan-bet', 'overdue-bet']);
+    expect(grouped.get('B-2')).toHaveLength(1);
+  });
+});
+
+describe('edge styles (Phase 5b)', () => {
+  const vault = {
+    'Strategy/FP-1 Live.md': md({ id: 'FP-1', type: 'fixed-point' }),
+    'Strategy/A-1 Rent.md': md({ id: 'A-1', type: 'assumption', status: 'unverified' }),
+    'Strategy/A-2 Sure.md': md({ id: 'A-2', type: 'assumption', status: 'confirmed' }),
+    'Strategy/B-1 Shaky.md': md({ id: 'B-1', type: 'bet', status: 'active', serves: ['[[FP-1 Live]]'], assumptions: ['[[A-1 Rent]]', '[[A-2 Sure]]'] }),
+    'Strategy/B-2 Solid.md': md({ id: 'B-2', type: 'bet', status: 'active', serves: ['[[FP-1 Live]]'], assumptions: ['[[A-2 Sure]]'] }),
+    'Strategy/B-3 Bare.md': md({ id: 'B-3', type: 'bet', status: 'active', serves: ['[[FP-1 Live]]'] }),
+    'Strategy/B-4 Chainless.md': md({ id: 'B-4', type: 'bet', status: 'active', 'ultimately-serves': ['[[FP-1 Live]]'] }),
+    'Strategy/B-5 Chained.md': md({ id: 'B-5', type: 'bet', status: 'active', serves: ['[[B-3 Bare]]'], 'ultimately-serves': ['[[FP-1 Live]]'] }),
+  };
+
+  it('dashes a serve whose holder leans on an assumption that is not confirmed', async () => {
+    const graph = await graphOf(vault);
+    expect(Array.from(unverifiedServes(graph))).toEqual(['serves:B-1>FP-1']);
+    const classes = Object.fromEntries(toFlowEdges(graph, {}).map((e) => [e.id, e.className]));
+    expect(classes['serves:B-1>FP-1']).toBe('gs-edge gs-edge-serves gs-edge-unverified');
+    expect(classes['serves:B-2>FP-1']).toBe('gs-edge gs-edge-serves');
+    expect(classes['serves:B-3>FP-1']).toBe('gs-edge gs-edge-serves');
+  });
+
+  it('shows ultimately-serves on the toggle, or for a bet with no serves chain', async () => {
+    const graph = await graphOf(vault);
+    const hidden = (view = {}) => Object.fromEntries(toFlowEdges(graph, {}, view).filter((e) => e.data?.kind === 'ultimately-serves').map((e) => [e.source, e.hidden]));
+    expect(hidden()).toEqual({ 'B-4': true, 'B-5': true });
+    expect(hidden({ showUltimate: true })).toEqual({ 'B-4': false, 'B-5': false });
+    const smells = findSmells(graph, { today: '2026-10-01' });
+    expect(hidden({ smells })).toEqual({ 'B-4': false, 'B-5': true }); // B-5's chain reaches FP-1 already
+  });
+
+  it('labels the ultimately-serves edge', async () => {
+    const edges = toFlowEdges(await graphOf(vault), {}, { showUltimate: true });
+    expect(edges.find((e) => e.data?.kind === 'ultimately-serves')?.label).toBe('ultimately');
+  });
+});
+
+describe('localToday', () => {
+  it('is the local date as YYYY-MM-DD', () => {
+    expect(localToday()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });

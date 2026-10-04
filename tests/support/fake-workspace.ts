@@ -185,6 +185,8 @@ export class FakeWorkspaceApp {
   readonly mounts: MountRecord[] = [];
   readonly opened: { path: string; how: unknown }[] = [];
   readonly revealed: FakeLeaf[] = [];
+  /** Every `workspace.trigger` call: the hover-link events the graph raises for page preview. */
+  readonly triggered: { name: string; args: unknown[] }[] = [];
   activeFile: FakeFile | null = null;
   readonly workspace = {
     getLeavesOfType: (type: string) => this.leaves.filter((l) => l.view?.getViewType() === type),
@@ -210,6 +212,7 @@ export class FakeWorkspaceApp {
       this.revealed.push(leaf);
     },
     getActiveFile: () => this.activeFile,
+    trigger: (name: string, ...args: unknown[]) => void this.triggered.push({ name, args }),
   };
 
   constructor(files: Record<string, string>) {

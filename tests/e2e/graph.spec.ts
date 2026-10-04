@@ -414,21 +414,108 @@ test('the legacy vault lists its problems and still lays out every node', async 
   expect(await offset(page, b1, 'Strategy/Bets/B-2 Apply for a digital nomad visa.md')).toEqual(before);
 });
 
+test.describe('node and edge styling (Phase 5b)', () => {
+  const colorOf = (page: Page, key: string) => node(page, key).locator('.gs-node').evaluate((el) => getComputedStyle(el).borderTopColor);
+  const dash = (page: Page, selector: string) =>
+    page.locator(`${selector} .react-flow__edge-path`).first().evaluate((el) => getComputedStyle(el).strokeDasharray);
+
+  test('each type has its own shape and each status its own colour', async ({ page }) => {
+    const radius = (key: string) => node(page, key).locator('.gs-node').evaluate((el) => getComputedStyle(el).borderTopLeftRadius);
+    expect(await radius('FP-1')).toBe('999px'); // fixed point: stadium
+    expect(await radius('CP')).toBe('999px'); // current position: pill
+    expect(await radius('B-1')).toBe('8px'); // bet: box
+    // Bets by status: active, won and killed differ; assumptions by what is known of them.
+    const bets = [await colorOf(page, 'B-1'), await colorOf(page, 'B-5'), await colorOf(page, 'B-6')]; // active, won, killed
+    expect(new Set(bets).size).toBe(3);
+    const assumptions = await Promise.all(['A-1', 'A-5', 'A-6'].map((k) => page.locator(`.react-flow__node[data-id="${k}"] .gs-node-status`).textContent()));
+    expect(new Set(assumptions).size).toBeGreaterThan(1);
+    await expect(node(page, 'A-1').locator('.gs-node')).toHaveCSS('border-top-style', 'dashed');
+    await expect(node(page, 'B-6').locator('.gs-node-title')).toHaveCSS('text-decoration-line', 'line-through');
+  });
+
+  test('a milestone is a checkpoint, hollow while open and filled once reached', async ({ page }) => {
+    const milestone = (status: string) => `---\nid: M-1\ntype: milestone\nstatus: ${status}\n---\n`;
+    await page.evaluate((text) => window.gsDev.setFile('Strategy/M-1 Visa in hand.md', text), milestone('open'));
+    const m = node(page, 'M-1').locator('.gs-node');
+    await expect(m).toBeVisible();
+    await expect(m).toHaveCSS('border-left-width', '6px');
+    const open = await m.evaluate((el) => getComputedStyle(el).backgroundColor);
+    await page.evaluate((text) => window.gsDev.setFile('Strategy/M-1 Visa in hand.md', text), milestone('reached'));
+    await expect(node(page, 'M-1')).toContainText('reached');
+    expect(await m.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(open);
+  });
+
+  test('edges follow the plan: requires dotted, unverified serve dashed, next labelled', async ({ page }) => {
+    expect(await dash(page, '.gs-edge-requires')).toBe('2px, 4px');
+    expect(await dash(page, '.gs-edge-unverified')).toBe('9px, 5px');
+    expect(await dash(page, '.gs-edge-assumption')).toBe('3px, 3px');
+    await expect(page.locator('.gs-edge-serves:not(.gs-edge-unverified) .react-flow__edge-path').first()).toHaveCSS('stroke-dasharray', 'none');
+    await expect(page.locator('.gs-edge-next .react-flow__edge-labelwrapper, .gs-edge-next .react-flow__edge-text').first()).toBeVisible();
+  });
+
+  test('a note with smells wears a badge listing them; a clean one does not', async ({ page }) => {
+    await page.goto('/?today=2026-10-20'); // B-3's deadline (2026-10-15) has passed
+    await expect(node(page, 'B-3')).toBeVisible();
+    const badge = node(page, 'B-3').locator('.gs-node-smell');
+    await expect(badge).toBeVisible();
+    await expect(badge).toHaveAttribute('title', /passed its deadline/);
+    await expect(node(page, 'B-5').locator('.gs-node-smell')).toHaveCount(0);
+    await page.goto('/?today=2026-09-01');
+    await expect(node(page, 'B-3').locator('.gs-node-smell')).not.toHaveAttribute('title', /passed its deadline/); // other smells may remain
+  });
+
+  test('ultimately-serves is hidden until toggled, or shown at once for a bet with no serves chain', async ({ page }) => {
+    const bet = (id: string, extra: string) => `---\nid: ${id}\ntype: bet\nstatus: active\n${extra}---\n`;
+    await page.evaluate((text) => window.gsDev.setFile('Strategy/B-20 Far.md', text), bet('B-20', 'serves: ["[[B-5 Learn Portuguese to B1]]"]\nultimately-serves: ["[[FP-1 Live in Portugal]]"]\n'));
+    await expect(node(page, 'B-20')).toBeVisible();
+    const ultimate = page.locator('.gs-edge-ultimately-serves'); // React Flow draws no hidden edge at all
+    await expect(ultimate).toHaveCount(0);
+    await page.getByRole('button', { name: 'Show ultimately-serves links' }).click();
+    await expect(ultimate).toHaveCount(1);
+    await page.getByRole('button', { name: 'Show ultimately-serves links' }).click();
+    await expect(ultimate).toHaveCount(0);
+    // B-21 serves nothing, so no serves chain reaches a fixed point: its hint shows without the toggle.
+    await page.evaluate((text) => window.gsDev.setFile('Strategy/B-21 Lost.md', text), bet('B-21', 'ultimately-serves: ["[[FP-1 Live in Portugal]]"]\n'));
+    await expect(node(page, 'B-21')).toBeVisible();
+    await expect(ultimate).toHaveCount(1);
+  });
+
+  test('the pointer over a node asks the host for the note preview', async ({ page }) => {
+    await node(page, 'B-1').hover();
+    await expect.poll(() => page.evaluate(() => window.gsDev.hovered())).toContain('Strategy/Bets/B-1 Get a D7 visa.md');
+  });
+});
+
 test.describe('screenshots @visual', () => {
+  // ?today pins the clock: the overdue smell, and so the badges, would otherwise change with the date.
   test('migrated test vault, light', async ({ page }) => {
+    await page.goto('/?today=2026-10-01');
+    await expect(node(page, 'B-1')).toBeVisible();
     await page.waitForTimeout(300);
     await expect(page).toHaveScreenshot('migrated-light.png');
   });
 
   test('migrated test vault, automatic layout', async ({ page }) => {
-    await page.goto('/?layout=auto');
+    await page.goto('/?layout=auto&today=2026-10-01');
     await expect(page.locator('.react-flow__node')).toHaveCount(18);
     await page.waitForTimeout(300);
     await expect(page).toHaveScreenshot('migrated-auto.png');
   });
 
+  // The two above are zoomed out to fit, so the styling is a few pixels; this one is zoomed in on it.
+  for (const theme of ['light', 'dark']) {
+    test(`migrated test vault, zoomed in, ${theme}`, async ({ page }) => {
+      await page.goto(`/?today=2026-10-01${theme === 'dark' ? '&theme=dark' : ''}`);
+      await expect(node(page, 'B-1')).toBeVisible();
+      const zoomIn = page.getByRole('button', { name: 'Zoom In' });
+      for (let i = 0; i < 5; i++) await zoomIn.click();
+      await page.waitForTimeout(600);
+      await expect(page).toHaveScreenshot(`migrated-zoomed-${theme}.png`);
+    });
+  }
+
   test('legacy test vault, dark', async ({ page }) => {
-    await page.goto('/?vault=legacy&theme=dark');
+    await page.goto('/?vault=legacy&theme=dark&today=2026-10-01');
     await expect(page.locator('.react-flow__node')).toHaveCount(17);
     await page.waitForTimeout(300);
     await expect(page).toHaveScreenshot('legacy-dark.png');

@@ -557,6 +557,17 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Decisions:** none.
   - **Verification:** `npm run typecheck`, `npm test` (290), `npm run build`, `npm run test:e2e` (24, `@visual` baselines unchanged). **Unverified (user, local):** the feel on a real trackpad in Obsidian, momentum scrolling included.
 
+- **2026-10-04**:
+  - **Context:** Phase 5b (node and edge styling), run as a Claude Code on the web session. `canvas_rules.md` is not in the repo, so the colour roles below are chosen from the plan's table and Obsidian's palette.
+  - **Actions:**
+    - `src/ui/StrategyNode.tsx` + `graph.css`: a shape per type (bet: box; assumption: dashed box; milestone: checkpoint with a thick left edge and a diamond glyph, hollow while `open`, filled green when `reached`; fixed point: stadium; current position: neutral pill) and a colour per status through one custom property (`--gs-c`), from Obsidian's accent colours with fallbacks: bets active (accent), dormant (faded), won (green), killed (red, struck through), extended (blue); assumptions unverified (amber), confirmed (green), falsified (red), undeterminable (gray). The status pill, border and tint all derive from `--gs-c`, so both themes follow Obsidian.
+    - Smell badge on a node (count, the messages in its tooltip) from `findSmells`; `today` comes from the host (`GraphHost.today`, Obsidian's `today()`; the dev page takes `?today=`).
+    - Edges: `serves` solid, an unverified `serves` dashed, `next` dashed in the warning colour with its "on kill" label, `requires` dotted blue, assumption leaders thin dashed, `ultimately-serves` faint with long dashes, labelled "ultimately". `ultimately-serves` is hidden until the new control button toggles it, and shown at once for a bet with no `serves` chain to a fixed point (the `orphan-bet` smell).
+    - Hover: the node asks the host (`hoverNote`); the Obsidian view raises `hover-link` and the plugin registers the view as a hover-link source (page preview, Ctrl/Cmd by default).
+  - **Decisions:** "Unverified serve" (undefined in the plan) is read as: the holder of the `serves` link leans on at least one assumption that is not `confirmed`. A holder with no assumptions is solid. Arrowheads stay neutral: React Flow markers can't take theme variables. Not changed: the dashed `next` and the dashed unverified `serves` differ by colour and by the "on kill" label, not by dash pattern alone.
+  - **Golden diff (deliberate):** `modals/plugin-registrations.json` gains `hoverLinkSources` (the view registered as a hover-link source). Screenshot baselines (`@visual`) rewritten for the new look, and two new zoomed-in baselines added, because the fit-to-view ones are too small to show the styling (their 1% tolerance let the old ones match unchanged); all `@visual` runs pin `?today=2026-10-01`.
+  - **Verification:** `npm run typecheck`, `npm test` (298), `npm run build`, `npm run test:e2e` (32, 5 of them `@visual`) pass. **Unverified (user, local, needs Obsidian):** the colours against real themes, the page preview on hover, the badge tooltip.
+
 ## Decisions Log
 
 *(For the user's own hand only.)*

@@ -149,6 +149,7 @@ describe('modals and plugin wiring (schema v2)', () => {
       ),
       views: plugin.views.map((v: any) => v.type),
       extensions: plugin.extensions,
+      hoverLinkSources: plugin.hoverLinkSources,
       notices: notices.length,
     };
     await expect(json(registrations)).toMatchFileSnapshot('__golden__/modals/plugin-registrations.json');

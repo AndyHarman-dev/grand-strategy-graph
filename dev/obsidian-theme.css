@@ -11,6 +11,10 @@ body {
   --text-error: #e93147;
   --text-warning: #ec7500;
   --interactive-accent: #8a5cf5;
+  --color-green: #08b94e;
+  --color-yellow: #e0ac00;
+  --color-red: #e93147;
+  --color-blue: #086ddd;
   --font-ui-small: 13px;
   --font-ui-smaller: 12px;
   --font-monospace: ui-monospace, Menlo, Consolas, monospace;
@@ -32,6 +36,10 @@ body.theme-dark {
   --text-error: #fb464c;
   --text-warning: #e9973f;
   --interactive-accent: #8a5cf5;
+  --color-green: #44cf6e;
+  --color-yellow: #e0de71;
+  --color-red: #fb464c;
+  --color-blue: #086ddd;
 }
 
 .dev-bar {

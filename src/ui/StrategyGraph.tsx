@@ -27,7 +27,9 @@ import type { GraphNotice } from '../core/graph-session';
 import type { GsMap, GsPosition } from '../core/gsmap';
 import { elkPositions, layoutKey, needsElk as needsElkFor, NODE_SIZES, pinnedPositions, placeNodes, structureOf } from '../core/layout';
 import type { Graph } from '../core/schema';
-import { followersOf, movedPositions, NODE_TYPE, toFlowEdges, toFlowNodes, unsavedPositions, type StrategyFlowNode } from './model';
+import { findSmells } from '../core/smells';
+import { NodeActionsContext, type NodeActions } from './actions-context';
+import { followersOf, localToday, movedPositions, NODE_TYPE, toFlowEdges, toFlowNodes, unsavedPositions, type StrategyFlowNode } from './model';
 import { StrategyNode } from './StrategyNode';
 
 export interface StrategyGraphProps {
@@ -42,6 +44,10 @@ export interface StrategyGraphProps {
   onResetPositions?: (() => void) | null;
   /** Double-click on a node. `newTab` when Ctrl/Cmd was held. */
   onOpenNote?: (path: string, newTab: boolean) => void;
+  /** The pointer enters a note's node: show the note's preview. */
+  onHoverNote?: NodeActions['hover'];
+  /** Today as `YYYY-MM-DD`, for the overdue smell. Defaults to the local date. */
+  today?: string;
   /** Center on and select this node; a new `nonce` repeats the request. */
   reveal?: { key: string; nonce: number } | null;
   /** Problems to list on the graph (graph issues, changed ids, an unreadable `.gsmap`). */
@@ -139,15 +145,20 @@ function Flow({
   onMove,
   onResetPositions,
   onOpenNote,
+  onHoverNote,
+  today,
   reveal,
   notices,
 }: StrategyGraphProps & { placed: Record<string, GsPosition>; complete: boolean }) {
   const flow = useReactFlow<StrategyFlowNode>();
   const store = useStoreApi<StrategyFlowNode>();
   const editable = onMove !== null;
+  const smells = useMemo(() => findSmells(graph, { today: today ?? localToday() }), [graph, today]);
+  const [showUltimate, setShowUltimate] = useState(false);
+  const actions = useMemo<NodeActions>(() => ({ hover: onHoverNote }), [onHoverNote]);
   const build = useCallback(
-    () => toFlowNodes(graph, placed).map((n) => (editable ? n : { ...n, draggable: false })),
-    [graph, placed, editable]
+    () => toFlowNodes(graph, placed, smells).map((n) => (editable ? n : { ...n, draggable: false })),
+    [graph, placed, editable, smells]
   );
   const [nodes, setNodes] = useState<StrategyFlowNode[]>(build);
   /** `nodes` as last rendered, for handlers React Flow calls synchronously. */
@@ -157,7 +168,7 @@ function Flow({
   const arrowKey = useRef(false);
   // Edges follow the nodes as drawn, mid-drag included, so they always leave by the facing side.
   const drawn = useMemo(() => Object.fromEntries(nodes.filter((n) => !n.hidden).map((n) => [n.id, n.position])), [nodes]);
-  const edges = useMemo(() => toFlowEdges(graph, drawn), [graph, drawn]);
+  const edges = useMemo(() => toFlowEdges(graph, drawn, { smells, showUltimate }), [graph, drawn, smells, showUltimate]);
   const satellites = useMemo(() => structureOf(graph).satellites, [graph]);
   /** Assumptions moving with the current drag: where each started, and its host's start (D19). */
   const following = useRef<Map<string, { start: { x: number; y: number }; host: string; hostStart: { x: number; y: number } }>>(new Map());
@@ -341,67 +352,78 @@ function Flow({
   }, [complete, positions, hasSaved, flow]);
 
   return (
-    <ReactFlow<StrategyFlowNode>
-      nodes={nodes}
-      edges={edges}
-      nodeTypes={nodeTypes}
-      onNodesChange={onNodesChange}
-      onNodeDragStart={onNodeDragStart}
-      onNodeDrag={onNodeDrag}
-      onNodeDragStop={onNodeDragStop}
-      onNodeDoubleClick={onNodeDoubleClick}
-      onInit={onInit}
-      defaultViewport={viewport ?? { x: 0, y: 0, zoom: 1 }}
-      minZoom={0.1}
-      maxZoom={2}
-      nodesConnectable={false}
-      edgesFocusable={false}
-      deleteKeyCode={null}
-      zoomOnDoubleClick={false}
-      // As on an Obsidian canvas: drag on empty space to select; a two-finger swipe (scroll),
-      // Space+drag or middle-drag pans; a pinch or Cmd/Ctrl+scroll zooms. Dragging any selected node
-      // moves the whole selection. The swipe moves the graph with the fingers, 1:1 (React Flow's
-      // default is half speed).
-      selectionOnDrag
-      selectionMode={SelectionMode.Partial}
-      panOnDrag={PAN_BUTTONS}
-      panOnScroll
-      panOnScrollSpeed={1}
-      multiSelectionKeyCode={MULTI_SELECT_KEYS}
-      tabIndex={-1}
-      onKeyDown={onKeyDown}
-      onKeyDownCapture={onKeyDownCapture}
-      onPointerDownCapture={onPointerDownCapture}
-    >
-      <Background gap={20} />
-      <Controls showInteractive={false}>
-        <ControlButton
-          className="gs-reset-layout"
-          onClick={() => setConfirmingReset(!confirmingReset)}
-          disabled={!onResetPositions || !hasSaved}
-          title="Reset layout: forget every saved position"
-          aria-label="Reset layout"
-        >
-          <ResetIcon />
-        </ControlButton>
-      </Controls>
-      {confirmingReset && (
-        <Panel position="bottom-center">
-          <div className="gs-confirm" role="dialog" aria-label="Reset layout">
-            <span>Forget every saved position and lay the whole graph out automatically?</span>
-            <button className="mod-warning" onClick={resetPositions}>
-              Reset
-            </button>
-            <button onClick={() => setConfirmingReset(false)}>Cancel</button>
-          </div>
-        </Panel>
-      )}
-      {notices && notices.length > 0 && (
-        <Panel position="top-left">
-          <Notices notices={notices} onOpenNote={onOpenNote} />
-        </Panel>
-      )}
-    </ReactFlow>
+    <NodeActionsContext.Provider value={actions}>
+      <ReactFlow<StrategyFlowNode>
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        onNodesChange={onNodesChange}
+        onNodeDragStart={onNodeDragStart}
+        onNodeDrag={onNodeDrag}
+        onNodeDragStop={onNodeDragStop}
+        onNodeDoubleClick={onNodeDoubleClick}
+        onInit={onInit}
+        defaultViewport={viewport ?? { x: 0, y: 0, zoom: 1 }}
+        minZoom={0.1}
+        maxZoom={2}
+        nodesConnectable={false}
+        edgesFocusable={false}
+        deleteKeyCode={null}
+        zoomOnDoubleClick={false}
+        // As on an Obsidian canvas: drag on empty space to select; a two-finger swipe (scroll),
+        // Space+drag or middle-drag pans; a pinch or Cmd/Ctrl+scroll zooms. Dragging any selected node
+        // moves the whole selection. The swipe moves the graph with the fingers, 1:1 (React Flow's
+        // default is half speed).
+        selectionOnDrag
+        selectionMode={SelectionMode.Partial}
+        panOnDrag={PAN_BUTTONS}
+        panOnScroll
+        panOnScrollSpeed={1}
+        multiSelectionKeyCode={MULTI_SELECT_KEYS}
+        tabIndex={-1}
+        onKeyDown={onKeyDown}
+        onKeyDownCapture={onKeyDownCapture}
+        onPointerDownCapture={onPointerDownCapture}
+      >
+        <Background gap={20} />
+        <Controls showInteractive={false}>
+          <ControlButton
+            className="gs-reset-layout"
+            onClick={() => setConfirmingReset(!confirmingReset)}
+            disabled={!onResetPositions || !hasSaved}
+            title="Reset layout: forget every saved position"
+            aria-label="Reset layout"
+          >
+            <ResetIcon />
+          </ControlButton>
+          <ControlButton
+            className="gs-toggle-ultimate"
+            onClick={() => setShowUltimate(!showUltimate)}
+            title={showUltimate ? 'Hide ultimately-serves links' : 'Show ultimately-serves links'}
+            aria-label="Show ultimately-serves links"
+            aria-pressed={showUltimate}
+          >
+            <UltimateIcon />
+          </ControlButton>
+        </Controls>
+        {confirmingReset && (
+          <Panel position="bottom-center">
+            <div className="gs-confirm" role="dialog" aria-label="Reset layout">
+              <span>Forget every saved position and lay the whole graph out automatically?</span>
+              <button className="mod-warning" onClick={resetPositions}>
+                Reset
+              </button>
+              <button onClick={() => setConfirmingReset(false)}>Cancel</button>
+            </div>
+          </Panel>
+        )}
+        {notices && notices.length > 0 && (
+          <Panel position="top-left">
+            <Notices notices={notices} onOpenNote={onOpenNote} />
+          </Panel>
+        )}
+      </ReactFlow>
+    </NodeActionsContext.Provider>
   );
 }
 
@@ -411,6 +433,16 @@ function ResetIcon() {
     <svg viewBox="0 0 24 24" style={{ fill: 'none' }} stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
       <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+
+/** A long arrow reaching past a node: the far anchor `ultimately-serves` points at. */
+function UltimateIcon() {
+  return (
+    <svg viewBox="0 0 24 24" style={{ fill: 'none' }} stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12h4M10 12h3M16 12h5" strokeDasharray="1 0" />
+      <path d="M17 8l4 4-4 4" />
     </svg>
   );
 }
