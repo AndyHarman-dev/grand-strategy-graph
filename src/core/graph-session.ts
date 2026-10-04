@@ -6,7 +6,7 @@
  */
 import type { VaultAdapter } from './adapter';
 import { buildGraph } from './graph';
-import type { GsMap, GsOp, GsPosition } from './gsmap';
+import { renameTouches, type GsMap, type GsOp, type GsPosition } from './gsmap';
 import { GsMapStore, type GsMapWriter } from './gsmap-store';
 import { describeIdChange, IdTracker } from './id-changes';
 import type { Graph } from './schema';
@@ -104,9 +104,14 @@ export class GraphSession {
     }, this.rebuildDelayMs);
   }
 
-  /** A note was renamed or moved. Positions follow ids, so only the id tracking needs to know. */
+  /**
+   * A vault file or folder was renamed or moved. Positions follow ids, so for a strategy note only the
+   * id tracking needs to know; note cards name their file by path, so the ones on it follow (as on a canvas).
+   */
   rename(oldPath: string, newPath: string): void {
     this.ids.rename(oldPath, newPath);
+    const map = this.store.map;
+    if (map && renameTouches(map, oldPath)) this.store.edit({ op: 'rename-file', from: oldPath, to: newPath });
     const notice = this.idNotices.get(oldPath);
     if (notice) {
       this.idNotices.delete(oldPath);

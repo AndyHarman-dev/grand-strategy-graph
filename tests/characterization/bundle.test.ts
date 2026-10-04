@@ -131,6 +131,8 @@ describe('plugin end to end via commands', () => {
     expect(plugin.views.map((v: any) => v.type)).toEqual(['strategy-graph']);
     expect(plugin.extensions).toEqual([{ extensions: ['gsmap'], viewType: 'strategy-graph' }]);
     expect(plugin.hoverLinkSources.map((h: any) => h.id)).toEqual(['strategy-graph']);
+    // Note cards follow renamed files in maps no graph tab has open.
+    expect(plugin.events.map((e: any) => [e.events, e.name])).toEqual([[plugin.app.vault, 'rename']]);
     const view = plugin.views[0].creator({ app: plugin.app });
     expect(view.getViewType()).toBe('strategy-graph');
     expect(view.canAcceptExtension('gsmap')).toBe(true);

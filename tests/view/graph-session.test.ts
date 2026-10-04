@@ -60,6 +60,31 @@ describe('GraphSession', () => {
     expect(idChanges).toEqual(['B-7 changed id from "B-1" to "B-7".']);
   });
 
+  it('a renamed file takes its note cards along, written as an edit; a rename no card is on writes nothing', async () => {
+    const card = { id: 'n', kind: 'note-ref', file: 'Notes/Old.md', x: 0, y: 0, width: 250, height: 60 };
+    let disk = JSON.stringify({ version: 1, positions: {}, cards: [card], frames: [], links: [] });
+    const writes: string[] = [];
+    const s = new GraphSession({
+      adapter: new MemoryAdapter({ 'Strategy/B-1.md': note('B-1') }),
+      write: async (edit) => {
+        disk = edit(disk);
+        writes.push(disk);
+        return disk;
+      },
+      onUpdate: () => {},
+      saveDelayMs: 10,
+    });
+    s.loadMap(disk);
+    s.rename('Strategy/B-1.md', 'Strategy/B-9.md');
+    await s.flush();
+    expect(writes).toEqual([]);
+    s.rename('Notes/Old.md', 'Notes/New.md');
+    expect(s.state.map!.cards[0]).toMatchObject({ file: 'Notes/New.md' }); // shown at once
+    await s.flush();
+    expect(writes).toHaveLength(1);
+    expect(JSON.parse(disk).cards[0].file).toBe('Notes/New.md');
+  });
+
   it('a failed vault read keeps the last graph', async () => {
     let fail = false;
     const inner = new MemoryAdapter({ 'Strategy/B-1.md': note('B-1') });

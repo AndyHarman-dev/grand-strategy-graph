@@ -351,10 +351,15 @@ export function frameContents(frames: ReadonlyMap<string, GsPosition & Size>, it
   for (const [frame, f] of frames) {
     for (const [id, r] of items) {
       if (id === frame || out.has(id) || frames.has(id)) continue;
-      if (r.x >= f.x && r.y >= f.y && r.x + r.width <= f.x + f.width && r.y + r.height <= f.y + f.height) out.set(id, frame);
+      if (holds(f, r)) out.set(id, frame);
     }
   }
   return out;
+}
+
+/** Whether `inner` lies wholly inside `outer`. */
+export function holds(outer: GsPosition & Size, inner: GsPosition & Size): boolean {
+  return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
 }
 
 /** Positions to save after a drag: by note id, only for nodes that can be pinned. */

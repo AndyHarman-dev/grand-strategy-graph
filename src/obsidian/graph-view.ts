@@ -56,9 +56,8 @@ export class StrategyGraphView extends FileView {
     // Fired once link resolution has caught up, e.g. after a rename or at startup.
     this.registerEvent(metadataCache.on('resolved', () => this.session?.requestRebuild()));
     this.registerEvent(
-      vault.on('rename', (file, oldPath) => {
-        if (file instanceof TFile && file.extension === 'md') this.session?.rename(oldPath, file.path);
-      })
+      // Any file or folder: a note card can be on any file (`followRenameInMaps` covers the maps no tab has open).
+      vault.on('rename', (file, oldPath) => this.session?.rename(oldPath, file.path))
     );
     this.registerEvent(
       vault.on('modify', (file) => {

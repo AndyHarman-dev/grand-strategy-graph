@@ -47,6 +47,7 @@ import {
   FRAME_TYPE,
   dragCompanions,
   frameContents,
+  holds,
   isCardNode,
   isFrameNode,
   isJunctionNode,
@@ -453,8 +454,52 @@ function Flow({
     [onMove, positions, mapOp]
   );
 
+  // A selection box selects a frame only when it holds the whole frame, as on an Obsidian canvas: a box
+  // drawn on empty space inside a frame is not a wish to select (and then move) the frame. React Flow's
+  // own box picks every frame it touches, so while a box is drawn the frames follow this rule instead.
+  const boxSelecting = useRef(false);
+  /** The frames the selection box holds now (none when no box is drawn). */
+  const framesInBox = useCallback((): Set<string> => {
+    const { userSelectionRect: r, transform: [tx, ty, zoom] } = store.getState();
+    if (!r) return new Set();
+    const box = { x: (r.x - tx) / zoom, y: (r.y - ty) / zoom, width: r.width / zoom, height: r.height / zoom };
+    return new Set(
+      nodesRef.current.filter((n) => isFrameNode(n) && !n.hidden && n.width && n.height && holds(box, { ...n.position, width: n.width, height: n.height })).map((n) => n.id)
+    );
+  }, [store]);
+  // The box grows over a frame without touching anything new, so React Flow reports no change: follow the box itself.
+  useEffect(
+    () =>
+      store.subscribe((state, previous) => {
+        if (!boxSelecting.current || !state.userSelectionRect || state.userSelectionRect === previous.userSelectionRect) return;
+        const held = framesInBox();
+        setNodes((current) => {
+          if (!current.some((n) => isFrameNode(n) && !!n.selected !== held.has(n.id))) return current;
+          return current.map((n) => (isFrameNode(n) && !!n.selected !== held.has(n.id) ? { ...n, selected: held.has(n.id) } : n));
+        });
+      }),
+    [store, framesInBox]
+  );
+  const onSelectionStart = useCallback(() => {
+    boxSelecting.current = true;
+  }, []);
+  const onSelectionEnd = useCallback(() => {
+    boxSelecting.current = false;
+  }, []);
+
   const onNodesChange = useCallback(
     (changes: NodeChange<GraphFlowNode>[]) => {
+      if (boxSelecting.current) {
+        const isFrame = new Set(nodesRef.current.filter(isFrameNode).map((n) => n.id));
+        const frames = new Set(changes.flatMap((c) => (c.type === 'select' && isFrame.has(c.id) ? [c.id] : [])));
+        if (frames.size) {
+          // React Flow has already marked them in its own copy: a new object for each makes it take ours.
+          const held = framesInBox();
+          const rest = changes.filter((c) => !(c.type === 'select' && frames.has(c.id)));
+          setNodes((current) => applyNodeChanges(rest, current).map((n) => (frames.has(n.id) ? { ...n, selected: held.has(n.id) } : n)));
+          return;
+        }
+      }
       const nudged = arrowKey.current ? changes.filter((c): c is NodePositionChange => c.type === 'position' && !!c.position) : [];
       if (!nudged.length) {
         setNodes((current) => applyNodeChanges(changes, current));
@@ -469,13 +514,6 @@ function Flow({
     },
     [companions, save]
   );
-
-  // A selection box over empty space inside a frame is not a wish to select (and then move) the frame: frames
-  // are selected by their label, never by the box.
-  const onSelectionEnd = useCallback(() => {
-    const frames = nodesRef.current.filter((n) => isFrameNode(n) && n.selected);
-    if (frames.length) store.getState().unselectNodesAndEdges({ nodes: frames, edges: [] });
-  }, [store]);
 
   const onKeyDownCapture = useCallback((event: ReactKeyboardEvent) => {
     if (!ARROW_KEYS.has(event.key)) return;
@@ -949,6 +987,7 @@ function Flow({
         onDragOver={onDragOver}
         onDrop={onDrop}
         onSelectionChange={onSelectionChange}
+        onSelectionStart={onSelectionStart}
         onSelectionEnd={onSelectionEnd}
         zoomOnDoubleClick={false}
         // As on an Obsidian canvas: drag on empty space to select; a two-finger swipe (scroll),

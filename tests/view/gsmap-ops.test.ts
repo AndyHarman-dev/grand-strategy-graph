@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyOps, emptyGsMap, parseGsMap, serializeGsMap, writeOps, type GsCard, type GsLink, type GsMap, type GsOp } from '../../src/core/gsmap';
+import { applyOps, emptyGsMap, parseGsMap, renamedPath, renameTouches, serializeGsMap, writeOps, type GsCard, type GsLink, type GsMap, type GsOp } from '../../src/core/gsmap';
 
 const card = (id: string, extra: Partial<GsCard> = {}): GsCard => ({ id, kind: 'text', text: id, x: 10, y: 20, width: 200, height: 60, ...extra }) as GsCard;
 const link = (id: string, from: GsLink['from'], to: GsLink['to']): GsLink => ({ id, from, to });
@@ -61,6 +61,19 @@ describe('writeOps', () => {
     expect(run([{ op: 'promote-card', card: 'a', note: 'B-9' }], withPosition).positions['B-9']).toEqual({ x: 7, y: 8 });
     const once = run([{ op: 'promote-card', card: 'a', note: 'B-9' }]);
     expect(run([{ op: 'promote-card', card: 'a', note: 'B-9' }], once)).toEqual(once);
+  });
+
+  it('a renamed file or folder takes the note cards on it along, and nothing else', () => {
+    const ref = (id: string, file: string) => card(id, { kind: 'note-ref', file } as Partial<GsCard>);
+    const map = { ...base(), cards: [ref('n1', 'Notes/Old.md'), ref('n2', 'Notes/Sub/Other.md'), ref('n3', 'Notes Old.md'), card('Notes/Old.md')] };
+    const file = run([{ op: 'rename-file', from: 'Notes/Old.md', to: 'Notes/New.md' }], map);
+    expect(file.cards.map((c) => (c.kind === 'note-ref' ? c.file : c.kind === 'text' ? c.text : c.url))).toEqual(['Notes/New.md', 'Notes/Sub/Other.md', 'Notes Old.md', 'Notes/Old.md']);
+    const folder = run([{ op: 'rename-file', from: 'Notes', to: 'Archive/Notes' }], map);
+    expect(folder.cards.map((c) => (c.kind === 'note-ref' ? c.file : c.kind === 'text' ? c.text : c.url))).toEqual(['Archive/Notes/Old.md', 'Archive/Notes/Sub/Other.md', 'Notes Old.md', 'Notes/Old.md']);
+    expect(renameTouches(map, 'Notes/Sub')).toBe(true);
+    expect(renameTouches(map, 'Notes/Old')).toBe(false); // a prefix that is not the folder
+    expect(renameTouches(base(), 'a')).toBe(false); // text cards name no file
+    expect(renamedPath('a/b.md', 'a/b.md', 'c.md')).toBe('c.md');
   });
 
   it('keeps everything it does not touch, unknown keys and their order included', () => {

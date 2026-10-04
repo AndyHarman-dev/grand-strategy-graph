@@ -98,12 +98,15 @@ Release.
 - Free cards, frames and `.gsmap` links (Phase 7) are drawn from the map and edited through `GsOp`s (`gsmap.ts`: `put-card`,
   `delete-card`, …, `promote-card`), which the store shows at once and writes with the position moves in one `vault.process`.
   `writeOps` changes only the touched items; unknown keys survive. Their React Flow ids are `card:<id>` / `frame:<id>` /
-  `link:<id>`, so they can never clash with a note key. Frames are backdrops (`pointer-events: none` except the label) and a
-  selection box never selects them. Dragging a frame (by its label) carries every node wholly inside it at the start, as an
+  `link:<id>`, so they can never clash with a note key. Frames are backdrops (`pointer-events: none` except the label): a click
+  on the label selects one, and a selection box selects one only when it holds the whole frame, as on an Obsidian canvas
+  (`framesInBox`; Cmd/Ctrl+A still leaves them out). Dragging a frame (by its label) carries every node wholly inside it at the start, as an
   Obsidian canvas group does (`frameContents`); frames stay visual only, nothing is written to notes. A card on either end of
   a dragged link makes a free link; two notes make a relation. Promoting a card creates the note first (an edit intent), then
   runs `promote-card` (links and place move to the note). Any vault note can be put on the graph as a note card: drop it from
-  the file explorer (`GraphHost.droppedNotes`, reading Obsidian's `dragManager`) or right-click → "Add note card…" (`pickNote`).
+  the file explorer (`GraphHost.droppedNotes`, reading Obsidian's `dragManager`) or right-click → "Add note card…" (`pickNote`). A note card names its file by path, so it follows a rename or move (of
+  the file or a folder above it, `rename-file` op): through the session when a graph tab has the map open, else
+  `followRenameInMaps` (plugin-wide) writes the `.gsmap` itself.
 - Rebuilt React Flow nodes must keep `measured`: without it React Flow drops the node's measured handles and draws none of
   its edges until it re-measures (the "all edges vanish while dragging" bug).
 - Layout rule (plan D19): left → right is time; assumptions are never on the time axis but above their host (below if

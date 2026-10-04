@@ -1,8 +1,8 @@
 import { Notice, TFile, type App } from 'obsidian';
-import { emptyGsMap, GSMAP_PATH, serializeGsMap } from '../core/gsmap';
+import { emptyGsMap, GSMAP_PATH, parseGsMap, renameTouches, serializeGsMap, writeOps, type GsOp } from '../core/gsmap';
 import { STRATEGY_ROOT } from '../core/memory-adapter';
 import { isNodeType } from '../core/schema';
-import { StrategyGraphView, VIEW_TYPE } from './graph-view';
+import { GSMAP_EXTENSION, StrategyGraphView, VIEW_TYPE } from './graph-view';
 
 /**
  * "Open strategy graph": focus the tab already showing `Strategy/Strategy.gsmap`, or open it in
@@ -42,6 +42,27 @@ export function isGraphNote(app: App, file: TFile | null): file is TFile {
 export async function revealInStrategyGraph(app: App, file: TFile): Promise<void> {
   const view = await openStrategyGraph(app);
   view?.revealPath(file.path);
+}
+
+/**
+ * A vault file or folder was renamed: note cards on it follow, in every `.gsmap` that no graph tab has
+ * open (an open one follows through its own session, after the edits it still holds). As Obsidian
+ * keeps a canvas's file cards, so a rename made while the graph is closed doesn't leave a card behind.
+ */
+export async function followRenameInMaps(app: App, oldPath: string, newPath: string): Promise<void> {
+  const open = new Set(
+    app.workspace.getLeavesOfType(VIEW_TYPE).flatMap((leaf) => (leaf.view instanceof StrategyGraphView && leaf.view.file ? [leaf.view.file.path] : []))
+  );
+  const op: GsOp = { op: 'rename-file', from: oldPath, to: newPath };
+  const touched = (text: string) => {
+    const read = parseGsMap(text);
+    return read.ok && renameTouches(read.map, oldPath);
+  };
+  for (const file of app.vault.getFiles()) {
+    if (file.extension !== GSMAP_EXTENSION || open.has(file.path) || !touched(await app.vault.read(file))) continue;
+    // Checked again on the text as it is at write time; a map that can't be read is never written.
+    await app.vault.process(file, (text) => (touched(text) ? writeOps(text, [op]) : text));
+  }
 }
 
 /** Commands run from a callback that Obsidian doesn't await: errors end in a notice, not an unhandled rejection. */

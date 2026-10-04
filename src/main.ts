@@ -1,6 +1,6 @@
 import { Notice, Plugin } from 'obsidian';
 import { createAssumptionFromForm, createBetFromForm, createMilestoneFromForm } from './obsidian/create';
-import { isGraphNote, openStrategyGraph, reportErrors, revealInStrategyGraph } from './obsidian/graph-commands';
+import { followRenameInMaps, isGraphNote, openStrategyGraph, reportErrors, revealInStrategyGraph } from './obsidian/graph-commands';
 import { GSMAP_EXTENSION, StrategyGraphView, VIEW_TYPE } from './obsidian/graph-view';
 import { AssumptionModal, BetModal, MilestoneModal } from './obsidian/modals';
 
@@ -45,6 +45,8 @@ export default class StrategyBetCreator extends Plugin {
     // The strategy graph (plan Phase 5a): `.gsmap` files open as a graph tab.
     this.registerView(VIEW_TYPE, (leaf) => new StrategyGraphView(leaf));
     this.registerExtensions([GSMAP_EXTENSION], VIEW_TYPE);
+    // Note cards follow a renamed file in the maps no graph tab has open (an open tab follows by itself).
+    this.registerEvent(this.app.vault.on('rename', (file, oldPath) => reportErrors('updating note cards after a rename', () => followRenameInMaps(this.app, oldPath, file.path))));
     // Lets Obsidian's page preview show a note when the pointer is over its node (hold Ctrl/Cmd, the default).
     this.registerHoverLinkSource(VIEW_TYPE, { display: 'Strategy graph', defaultMod: true });
 

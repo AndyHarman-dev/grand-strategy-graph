@@ -222,6 +222,13 @@ export class Plugin {
     this.hoverLinkSources.push({ id, info });
   }
 
+  /** Events the plugin listens to for as long as it is loaded. */
+  events: EventRef[] = [];
+
+  registerEvent(ref: EventRef): void {
+    this.events.push(ref);
+  }
+
   constructor(app: unknown) {
     this.app = app;
   }

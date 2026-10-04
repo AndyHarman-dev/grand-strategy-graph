@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GSMAP_PATH, parseGsMap, serializeGsMap, emptyGsMap } from '../../src/core/gsmap';
-import { isGraphNote, openStrategyGraph, revealInStrategyGraph } from '../../src/obsidian/graph-commands';
+import { followRenameInMaps, isGraphNote, openStrategyGraph, revealInStrategyGraph } from '../../src/obsidian/graph-commands';
 import { StrategyGraphView } from '../../src/obsidian/graph-view';
 import { plannedTestVault } from '../../tools/test-vault';
 import { notices, openedModals, rendered, resetObsidianMock } from '../mocks/obsidian';
@@ -304,6 +304,37 @@ describe('putting notes on the graph as note cards (bug 2)', () => {
     expect(mount.host.droppedNotes!(drop())).toEqual([LISBON]);
     (app as unknown as { dragManager: unknown }).dragManager = { draggable: { type: 'files', files: [file, app.vault.getAbstractFileByPath(B1)] } };
     expect(mount.host.droppedNotes!(drop())).toEqual([LISBON, B1]);
+  });
+
+  const noteCards = () => {
+    const read = parseGsMap(app.vault.text(GSMAP_PATH));
+    if (!read.ok) throw new Error(read.error);
+    return read.map.cards.flatMap((c) => (c.kind === 'note-ref' ? [c.file] : []));
+  };
+
+  it('a note card follows its note when it is renamed or moved, with the graph open (as on a canvas)', async () => {
+    const { mount, view } = await open();
+    expect(noteCards()).toEqual([LISBON]);
+    app.vault.rename(LISBON, 'Research/Lisbon neighbourhoods.md', app.metadataCache);
+    const shown = lastState(mount).map!.cards.find((c) => c.kind === 'note-ref');
+    expect(shown).toMatchObject({ file: 'Research/Lisbon neighbourhoods.md' }); // at once
+    // The plugin-wide follower leaves an open map to its tab, so nothing is written twice.
+    await followRenameInMaps(app as never, LISBON, 'Research/Lisbon neighbourhoods.md');
+    expect(app.vault.processed).toEqual([]);
+    await view.onUnloadFile(view.file!); // closing writes what is pending
+    expect(noteCards()).toEqual(['Research/Lisbon neighbourhoods.md']);
+    expect(app.vault.processed).toHaveLength(1);
+  });
+
+  it('a note card follows its note when it is renamed with the graph closed, and a map no card names is left alone', async () => {
+    app.vault.rename(LISBON, 'Research/Lisbon.md');
+    await followRenameInMaps(app as never, LISBON, 'Research/Lisbon.md');
+    expect(noteCards()).toEqual(['Research/Lisbon.md']);
+    expect(app.vault.processed.map((p) => p.path)).toEqual([GSMAP_PATH]);
+    const before = app.vault.text(GSMAP_PATH);
+    await followRenameInMaps(app as never, B1, 'Strategy/Bets/B-1 renamed.md');
+    expect(app.vault.processed).toHaveLength(1);
+    expect(app.vault.text(GSMAP_PATH)).toBe(before);
   });
 
   it('falls back to an obsidian:// URL or a link in the dropped text, and finds nothing in other text', async () => {

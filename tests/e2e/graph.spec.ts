@@ -1107,6 +1107,62 @@ test.describe('free cards, frames and links (Phase 7)', () => {
     }
   });
 
+  test('a note card follows its note when the note is renamed or moved', async ({ page }) => {
+    await expect(card(page, 'note')).toContainText('lisbon-neighbourhoods-research');
+    await page.evaluate(() => window.gsDev.rename('lisbon-neighbourhoods-research.md', 'Research/Lisbon neighbourhoods.md'));
+    await expect(card(page, 'note')).toContainText('Lisbon neighbourhoods');
+    await expect(card(page, 'note')).not.toContainText('lisbon-neighbourhoods-research');
+    await settle(page);
+    expect((await map(page)).cards.find((c) => c.id === 'note')).toMatchObject({ kind: 'note-ref', file: 'Research/Lisbon neighbourhoods.md' });
+  });
+
+  test('a selection box selects a frame it holds whole, as on a canvas, but not one it only touches', async ({ page }) => {
+    const pane = (await page.locator('.react-flow__pane').boundingBox())!;
+    await page.mouse.click(pane.x + 80, pane.y + 420, { button: 'right' });
+    await page.getByRole('menuitem', { name: 'New frame here' }).click();
+    await page.getByRole('textbox', { name: 'Frame label' }).fill('Ideas');
+    await page.getByRole('textbox', { name: 'Frame label' }).press('Enter');
+    const made = page.locator('.react-flow__node-frame', { hasText: 'Ideas' });
+    await page.keyboard.press('Escape');
+    await expect(made).not.toHaveClass(/selected/);
+    const f = (await made.boundingBox())!;
+    const onPane = (x: number, y: number) => page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.classList.contains('react-flow__pane'), [x, y]);
+    const sweep = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
+      expect(await onPane(from.x, from.y)).toBe(true);
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(to.x, to.y, { steps: 10 });
+      await page.mouse.up();
+    };
+
+    // A box drawn inside the frame, or over part of it, leaves it be.
+    await sweep({ x: f.x + 40, y: f.y + 60 }, { x: f.x + f.width + 30, y: f.y + f.height - 40 });
+    await expect(made).not.toHaveClass(/selected/);
+    // A box that holds all of it selects it, while the box is still being drawn too.
+    const start = { x: f.x - 10, y: f.y - 10 };
+    expect(await onPane(start.x, start.y)).toBe(true);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(f.x + f.width / 2, f.y + f.height / 2, { steps: 6 });
+    await expect(made).not.toHaveClass(/selected/);
+    await page.mouse.move(f.x + f.width + 10, f.y + f.height + 10, { steps: 6 });
+    await expect(made).toHaveClass(/selected/);
+    await page.mouse.up();
+    await expect(made).toHaveClass(/selected/);
+    // Selected that way, it is dragged with the rest of the selection, and saved.
+    await settle(page);
+    const before = (await map(page)).frames.find((x) => x.label === 'Ideas')!;
+    const label = (await made.locator('.gs-frame-label').boundingBox())!;
+    await page.mouse.move(label.x + label.width / 2, label.y + label.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(label.x + label.width / 2 + 50, label.y + label.height / 2 + 30, { steps: 6 });
+    await page.mouse.up();
+    await settle(page);
+    const after = (await map(page)).frames.find((x) => x.label === 'Ideas')!;
+    expect(after.x).toBeGreaterThan(before.x);
+    expect(after.width).toBe(before.width);
+  });
+
   test('a note-reference card opens its note', async ({ page }) => {
     await card(page, 'note').dblclick();
     expect(await page.evaluate(() => window.gsDev.opened())).toEqual(['lisbon-neighbourhoods-research.md']);

@@ -635,6 +635,14 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Playwright baselines (deliberate):** the six migrated-vault `@visual` screenshots re-taken: the canvas's "AND" card is gone and B-4's junction is drawn instead (the change was under the 1% tolerance, so they passed unchanged; re-taken so they show the graph as it is). `legacy-dark` unchanged.
   - **Verification:** cloud session: typecheck clean, 415 unit tests, build, 73 Playwright tests (66 + 7 `@visual`), new ones for the prerequisite push, the AND junction (follows B-4 only, says what it joins, no menu, never saved), note cards by drop and by menu, and whole card handles (fails with the old clipping). **Unverified (user, local, needs Obsidian):** dropping a note from the file explorer (the drag manager is not public API, and Obsidian may handle the drop first), the note picker, frame drags, the AND junction and the icon pickers in Obsidian's styling.
 
+- **2026-10-04** (second round):
+  - **Context:** the user confirmed the first round works in Obsidian and sent two more fixes before the cutover: a frame should be selectable by a selection box, as on an Obsidian canvas; a note card kept the old name after its note was renamed.
+  - **Actions:**
+    - Frames and the selection box: a box selects a frame only when it holds the whole frame (`framesInBox` in `StrategyGraph.tsx`, `holds` in `model.ts`), live while the box is drawn; a box inside a frame, or over part of it, still leaves it be. Selected that way, it drags (carrying what is inside) and deletes with the rest. A click on the label still selects it; Cmd/Ctrl+A still leaves frames out.
+    - Note cards follow renames: a `rename-file` `GsOp` (`gsmap.ts`) moves every note card on a renamed file, or on a file under a renamed folder. With the graph open, the view passes every vault rename to `GraphSession.rename`, which writes the op only when a card is on the file. With it closed, `followRenameInMaps` (registered by the plugin) writes it into each `.gsmap` no graph tab has open, checking again on the text at write time and leaving a map it can't read alone.
+  - **Golden diff:** none. No screenshot baseline changed.
+  - **Verification:** cloud session: typecheck clean, 419 unit tests, build, 75 Playwright tests (68 + 7 `@visual`); the new frame-selection test fails on the previous code. **Unverified (user, local, needs Obsidian):** renaming or moving a note (and a folder) in the file explorer with the graph open and with it closed, and box-selecting a frame in Obsidian.
+
 ## Decisions Log
 
 *(For the user's own hand only.)*
