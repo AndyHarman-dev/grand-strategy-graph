@@ -13,7 +13,7 @@ import { emptyGsMap, GSMAP_PATH, serializeGsMap, type GsEndpoint, type GsLink, t
 import { parseIds } from '../../src/core/ids';
 import { linkpathOf, resolveLinkpath } from '../../src/core/links';
 import { STRATEGY_ROOT } from '../../src/core/memory-adapter';
-import { isIgnoredType, isNodeType, relationFor, RELATIONS, statusesFor, targetsOf, type NodeType } from '../../src/core/schema';
+import { isIgnoredType, isNodeType, relationFor, RELATIONS, requiresImpliesServes, statusesFor, targetsOf, type NodeType } from '../../src/core/schema';
 import { eolOf, joinNote, sameHeading, sections, splitNote, type SplitNote } from './markdown';
 import type {
   Ambiguity,
@@ -170,6 +170,7 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
   const edges: ClassifiedEdge[] = [];
   const ambiguities = new Map<string, Ambiguity>();
   const derived: { field: RelField; holder: string; target: string; why: string }[] = [];
+  const junctions: MigrationPlan['junctions'] = [];
 
   // ---------------------------------------------------------------- notes
   const notes = new Map<string, Note>();
@@ -612,6 +613,19 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
     findings.push({ severity: 'info', message: `No canvas at ${canvasPath}; the .gsmap starts empty.` });
   }
 
+  // ---------------------------------------------------------------- serves implied by requires
+  // A prerequisite serves what requires it, wherever the relation table lets it (a milestone can't serve a bet).
+  for (const holder of strategy.slice().sort((a, b) => sortPaths(a.path, b.path))) {
+    const plan = fieldPlans.get(holder.path)?.get('requires');
+    if (!plan) continue;
+    for (const target of targets(plan)) {
+      const type = typeOf(target);
+      if (!type || !requiresImpliesServes(holder.type!, type) || has(target, 'serves', holder.path)) continue;
+      addRelation(target, 'serves', linkTo(holder.path), holder.path);
+      derived.push({ field: 'serves', holder: target, target: holder.path, why: `implied by ${holder.basename} requires ${basenameOf(target)}` });
+    }
+  }
+
   function planCanvas(text: string) {
     let canvas: { nodes?: unknown; edges?: unknown };
     try {
@@ -786,7 +800,9 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
       }
     }
 
-    // "AND" junction cards: incoming bets are prerequisites of the outgoing bets (D7).
+    // "AND" junction cards: incoming bets are prerequisites of the outgoing bets (D7). Once the notes
+    // state those `requires`, the graph draws the AND itself, so the card and its lines go.
+    const drawnJunctions = new Set<string>();
     for (const card of gsmap.cards) {
       if (card.kind !== 'text' || card.text.trim().toUpperCase() !== 'AND') continue;
       const ends = (dir: 'in' | 'out') =>
@@ -801,8 +817,13 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
       if (!pairs.length) continue;
       const missing = pairs.filter(([o, i]) => !has(o.path, 'requires', i.path));
       const what = pairs.map(([o, i]) => `${o.basename} requires ${i.basename}`).join('; ');
+      const drawn = () => {
+        drawnJunctions.add(card.id);
+        junctions.push({ card: card.id, requires: pairs.map(([o, i]) => ({ holder: o.path, target: i.path })) });
+      };
       if (!missing.length) {
-        findings.push({ severity: 'info', path: canvasPath, message: `"AND" card ${card.id} matches \`requires\`: ${what}.` });
+        findings.push({ severity: 'info', path: canvasPath, message: `"AND" card ${card.id} matches \`requires\`: ${what}. The graph draws it, so the card is not kept.` });
+        drawn();
         continue;
       }
       const a = ask(`junction: ${card.id}`, 'junction', canvasPath, `"AND" card ${card.id} joins bets: ${what}. Write these as \`requires\`?`, ['requires', 'none']);
@@ -813,8 +834,23 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
           derived.push({ field: 'requires', holder: o.path, target: i.path, why: `"AND" card ${card.id} (resolution)` });
         }
         accept(a);
+        drawn();
       } else if (word === 'none') accept(a);
       else if (a.answer !== undefined) reject(a, 'expected requires or none');
+    }
+    if (drawnJunctions.size) {
+      const touches = (end: GsEndpoint) => 'card' in end && drawnJunctions.has(end.card);
+      const gone = new Set(gsmap.links.filter((l) => touches(l.from) || touches(l.to)).map((l) => l.id));
+      gsmap.cards = gsmap.cards.filter((c) => !drawnJunctions.has(c.id));
+      gsmap.links = gsmap.links.filter((l) => !gone.has(l.id));
+      for (const classified of edges) {
+        if (classified.fate.kind === 'gsmap-link' && gone.has(classified.fate.link)) {
+          classified.fate = { kind: 'dropped', reason: 'line of an "AND" card; the graph draws the AND from `requires`' };
+        }
+      }
+      for (const placed of canvasNodes) {
+        if (placed.placed?.startsWith('card:') && drawnJunctions.has(placed.placed.slice('card:'.length))) placed.placed = `junction:${placed.node}`;
+      }
     }
 
     // Every other note↔note edge: already a relation, or a candidate for the user.
@@ -987,6 +1023,7 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
     oracle: edges.map((e) => e.edge),
     edges,
     derived,
+    junctions,
     ambiguities: [...ambiguities.values()],
     staleResolutions,
     changes,

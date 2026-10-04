@@ -124,7 +124,7 @@ export function renderReport(plan: MigrationPlan, gate: GateResult, meta: Report
   push('## Every legacy edge and its fate', '', ...edgeRows(plan.edges), '');
 
   if (plan.derived.length) {
-    push('## Relations from resolutions with no single legacy edge', '');
+    push('## Relations no single legacy edge states ("AND" resolutions, `serves` implied by `requires`)', '');
     for (const d of plan.derived) push(`- \`${d.field}\` ${short(d.holder)} → ${short(d.target)} (${d.why})`);
     push('');
   }

@@ -43,6 +43,10 @@ export class FakeWorkspaceVault extends Events {
     for (const [path, text] of Object.entries(initial)) this.files.set(path, { file: makeFile(path), text });
   }
 
+  getFiles(): FakeFile[] {
+    return Array.from(this.files.values(), (f) => f.file);
+  }
+
   getMarkdownFiles(): FakeFile[] {
     return Array.from(this.files.values(), (f) => f.file).filter((f) => f.extension === 'md');
   }

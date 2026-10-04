@@ -58,6 +58,16 @@ const mounted = mountGraph(document.getElementById('content')!, {
     if (!(path in files)) throw new Error('Not a note: ' + path);
     return files[path];
   },
+  // Obsidian's note picker, as a prompt for a path.
+  pickNote: (onPick) => {
+    const path = window.prompt('Path of the note to put on the graph');
+    if (path && path in files) onPick(path);
+  },
+  // A drop carrying a vault path as text, as a test can make one.
+  droppedNotes: (event) => {
+    const path = event.dataTransfer?.getData('text/plain').trim() ?? '';
+    return path in files ? [path] : [];
+  },
 }, params.get('elk') === 'fail' ? { autoLayout: () => Promise.reject(new Error('simulated ELK failure')) } : {});
 
 const session = new GraphSession({

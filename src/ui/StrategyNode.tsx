@@ -2,7 +2,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { memo, useRef, useState, type KeyboardEvent } from 'react';
 import { statusesFor } from '../core/schema';
 import { useNodeActions } from './actions-context';
-import { handleId, type Side, type StrategyFlowNode } from './model';
+import { handleId, type JunctionFlowNode, type Side, type StrategyFlowNode } from './model';
 
 const SIDES: [Side, Position][] = [
   ['top', Position.Top],
@@ -136,3 +136,23 @@ function NodeDate({ date, label, editable, onChange, name }: { date: string | nu
 }
 
 export const StrategyNode = memo(StrategyNodeView);
+
+/**
+ * The "AND" in front of a note that requires two or more others: all of them must be done before
+ * it. Drawn from the links, so it can't be added, moved or deleted by hand; it follows its note.
+ */
+function JunctionNodeView({ data }: NodeProps<JunctionFlowNode>) {
+  return (
+    <div className="gs-junction" data-junction-for={data.holder} title={`Requires all of: ${data.prerequisites.join(', ')}`}>
+      <span>AND</span>
+      {SIDES.map(([side, position]) => (
+        <Handle key={`${side}-t`} id={handleId(side, 'target')} type="target" position={position} isConnectable={false} />
+      ))}
+      {SIDES.map(([side, position]) => (
+        <Handle key={`${side}-s`} id={handleId(side, 'source')} type="source" position={position} isConnectable={false} />
+      ))}
+    </div>
+  );
+}
+
+export const JunctionNode = memo(JunctionNodeView);

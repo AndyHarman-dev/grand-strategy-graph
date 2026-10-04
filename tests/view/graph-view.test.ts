@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GSMAP_PATH, parseGsMap, serializeGsMap, emptyGsMap } from '../../src/core/gsmap';
-import { isGraphNote, openStrategyGraph, revealInStrategyGraph } from '../../src/obsidian/graph-commands';
+import { followRenameInMaps, isGraphNote, openStrategyGraph, revealInStrategyGraph } from '../../src/obsidian/graph-commands';
 import { StrategyGraphView } from '../../src/obsidian/graph-view';
 import { plannedTestVault } from '../../tools/test-vault';
-import { notices, rendered, resetObsidianMock } from '../mocks/obsidian';
+import { notices, openedModals, rendered, resetObsidianMock } from '../mocks/obsidian';
 import { FakeWorkspaceApp, type MountRecord } from '../support/fake-workspace';
 import { md } from '../support/v2';
 
@@ -280,6 +280,69 @@ describe('opening a note from the graph', () => {
       { path: B1, how: 'tab' },
       { path: B1, how: 'split' },
     ]);
+  });
+});
+
+describe('putting notes on the graph as note cards (bug 2)', () => {
+  const LISBON = 'lisbon-neighbourhoods-research.md';
+  const drop = (text = '') => ({ dataTransfer: { getData: (type: string) => (type === 'text/plain' ? text : '') } }) as unknown as DragEvent;
+
+  it('"Add note card…" opens the note picker over every note and calls back with the path picked', async () => {
+    const { mount } = await open();
+    const picked: string[] = [];
+    mount.host.pickNote!((path) => picked.push(path));
+    const modal = openedModals[openedModals.length - 1] as unknown as { getItems(): { path: string }[]; onChooseItem(file: unknown): void };
+    expect(modal.getItems().map((f) => f.path)).toContain(LISBON);
+    modal.onChooseItem(app.vault.getAbstractFileByPath(LISBON));
+    expect(picked).toEqual([LISBON]);
+  });
+
+  it('reads the dragged files off the file explorer\'s drag manager', async () => {
+    const { mount } = await open();
+    const file = app.vault.getAbstractFileByPath(LISBON);
+    (app as unknown as { dragManager: unknown }).dragManager = { draggable: { type: 'file', file } };
+    expect(mount.host.droppedNotes!(drop())).toEqual([LISBON]);
+    (app as unknown as { dragManager: unknown }).dragManager = { draggable: { type: 'files', files: [file, app.vault.getAbstractFileByPath(B1)] } };
+    expect(mount.host.droppedNotes!(drop())).toEqual([LISBON, B1]);
+  });
+
+  const noteCards = () => {
+    const read = parseGsMap(app.vault.text(GSMAP_PATH));
+    if (!read.ok) throw new Error(read.error);
+    return read.map.cards.flatMap((c) => (c.kind === 'note-ref' ? [c.file] : []));
+  };
+
+  it('a note card follows its note when it is renamed or moved, with the graph open (as on a canvas)', async () => {
+    const { mount, view } = await open();
+    expect(noteCards()).toEqual([LISBON]);
+    app.vault.rename(LISBON, 'Research/Lisbon neighbourhoods.md', app.metadataCache);
+    const shown = lastState(mount).map!.cards.find((c) => c.kind === 'note-ref');
+    expect(shown).toMatchObject({ file: 'Research/Lisbon neighbourhoods.md' }); // at once
+    // The plugin-wide follower leaves an open map to its tab, so nothing is written twice.
+    await followRenameInMaps(app as never, LISBON, 'Research/Lisbon neighbourhoods.md');
+    expect(app.vault.processed).toEqual([]);
+    await view.onUnloadFile(view.file!); // closing writes what is pending
+    expect(noteCards()).toEqual(['Research/Lisbon neighbourhoods.md']);
+    expect(app.vault.processed).toHaveLength(1);
+  });
+
+  it('a note card follows its note when it is renamed with the graph closed, and a map no card names is left alone', async () => {
+    app.vault.rename(LISBON, 'Research/Lisbon.md');
+    await followRenameInMaps(app as never, LISBON, 'Research/Lisbon.md');
+    expect(noteCards()).toEqual(['Research/Lisbon.md']);
+    expect(app.vault.processed.map((p) => p.path)).toEqual([GSMAP_PATH]);
+    const before = app.vault.text(GSMAP_PATH);
+    await followRenameInMaps(app as never, B1, 'Strategy/Bets/B-1 renamed.md');
+    expect(app.vault.processed).toHaveLength(1);
+    expect(app.vault.text(GSMAP_PATH)).toBe(before);
+  });
+
+  it('falls back to an obsidian:// URL or a link in the dropped text, and finds nothing in other text', async () => {
+    const { mount } = await open();
+    expect(mount.host.droppedNotes!(drop('obsidian://open?vault=test&file=lisbon-neighbourhoods-research'))).toEqual([LISBON]);
+    expect(mount.host.droppedNotes!(drop('[[B-1 Get a D7 visa]]'))).toEqual([B1]);
+    expect(mount.host.droppedNotes!(drop('just some words'))).toEqual([]);
+    expect(mount.host.droppedNotes!(drop('obsidian://open?vault=test&file=No%20such%20note'))).toEqual([]);
   });
 });
 

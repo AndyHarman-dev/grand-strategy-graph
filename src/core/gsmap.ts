@@ -205,7 +205,9 @@ export type GsOp =
    * The card became the note with this `id`: the card goes, its links end on the note instead, and
    * the note takes the card's place (unless it already has one).
    */
-  | { op: 'promote-card'; card: string; note: string };
+  | { op: 'promote-card'; card: string; note: string }
+  /** A vault file or folder was renamed or moved: the note cards on it, or on a file inside it, follow. */
+  | { op: 'rename-file'; from: string; to: string };
 
 type RawList = Record<string, unknown>[];
 
@@ -277,9 +279,26 @@ export function writeOps(text: string, ops: readonly GsOp[]): string {
         remove(cards, op.card);
         break;
       }
+      case 'rename-file':
+        for (const card of listOf(raw, 'cards')) {
+          const moved = card.kind === 'note-ref' && typeof card.file === 'string' ? renamedPath(card.file, op.from, op.to) : null;
+          if (moved !== null) card.file = moved;
+        }
+        break;
     }
   }
   return JSON.stringify(raw, null, '\t') + '\n';
+}
+
+/** Where `path` is once `from` (a file or a folder) is renamed to `to`; null when the rename doesn't touch it. */
+export function renamedPath(path: string, from: string, to: string): string | null {
+  if (path === from) return to;
+  return path.startsWith(from + '/') ? to + path.slice(from.length) : null;
+}
+
+/** Whether a rename of `from` changes any note card in `map`, so the `.gsmap` needs a write. */
+export function renameTouches(map: GsMap, from: string): boolean {
+  return map.cards.some((card) => card.kind === 'note-ref' && renamedPath(card.file, from, from) !== null);
 }
 
 /** `map` with the ops applied, for what is shown before they are written. Same result as writing them and reading the file back. */

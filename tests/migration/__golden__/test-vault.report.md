@@ -10,7 +10,7 @@
 ## Summary
 
 - Legacy edges (oracle): 54 — `fm:serves` 9, `fm:next sequel` 1, `body:serves` 8, `body:assumptions` 10, `body:depended-on-by` 7, `canvas` 19
-- Fates: written 34, open 7, kept 2, dropped 5, gsmap-link 6
+- Fates: written 34, open 7, kept 2, dropped 8, gsmap-link 3
 - Strategy notes: 18; files to change: 21
 - Questions: 7 (7 open)
 
@@ -63,6 +63,9 @@
 | `body:serves:18` | B-3 Sell pottery at weekend markets | `[[FP-2 Own a profitable ceramics studio]]` |  | dropped | body-only link; `## Serves` is dropped without merging (D12) |
 | `body:serves:17` | B-7  Part-time barista job | `[[FP-]]` |  | dropped | body-only link, malformed (id prefix with no number); `## Serves` is dropped without merging (D12) |
 | `body:serves:18` | B-8 Teach pottery workshops | `[[FP-2 Own a profitable ceramics studio]]` |  | dropped | body-only link; `## Serves` is dropped without merging (D12) |
+| `canvas e5` | B-3 Sell pottery at weekend markets | `card:t-and` |  | dropped | line of an "AND" card; the graph draws the AND from `requires` |
+| `canvas e6` | B-5 Learn Portuguese to B1 | `card:t-and` |  | dropped | line of an "AND" card; the graph draws the AND from `requires` |
+| `canvas e7` | card:t-and | `B-4 Save 20000 for kiln and lease` |  | dropped | line of an "AND" card; the graph draws the AND from `requires` |
 | `canvas e18` | B-6 Online ceramics course | `group:g-studio` | On Kill | dropped | touches a group; groups become frames, which carry no links (D14) |
 | `canvas e19` | group:g-studio | `B-4 Save 20000 for kiln and lease` |  | dropped | touches a group; groups become frames, which carry no links (D14) |
 
@@ -112,9 +115,9 @@
 | `body:depended-on-by:18` | A-5 I can study one hour a day | `[[B-5 Learn Portuguese to B1]]` |  | → `assumptions` | B-5 Learn Portuguese to B1 → A-5 I can study one hour a day; reverse list |
 | `body:depended-on-by:18` | A-6 Portugal stays open to non-EU residents | `[[FP-1 Live in Portugal]]` |  | → `assumptions` | FP-1 Live in Portugal → A-6 Portugal stays open to non-EU residents; reverse list; a fixed-point carries `assumptions` (D7) |
 | `body:depended-on-by:18` | A-7 Workshops can fill eight seats | `[[B-8 Teach pottery workshops]]` |  | → `assumptions` | B-8 Teach pottery workshops → A-7 Workshops can fill eight seats; reverse list |
-| `canvas e5` | B-3 Sell pottery at weekend markets | `card:t-and` |  | .gsmap link | e5: touches a card: free card link (D8) |
-| `canvas e6` | B-5 Learn Portuguese to B1 | `card:t-and` |  | .gsmap link | e6: touches a card: free card link (D8) |
-| `canvas e7` | card:t-and | `B-4 Save 20000 for kiln and lease` |  | .gsmap link | e7: touches a card: free card link (D8) |
+| `canvas e5` | B-3 Sell pottery at weekend markets | `card:t-and` |  | dropped | line of an "AND" card; the graph draws the AND from `requires` |
+| `canvas e6` | B-5 Learn Portuguese to B1 | `card:t-and` |  | dropped | line of an "AND" card; the graph draws the AND from `requires` |
+| `canvas e7` | card:t-and | `B-4 Save 20000 for kiln and lease` |  | dropped | line of an "AND" card; the graph draws the AND from `requires` |
 | `canvas e10` | card:t-ghost | `B-2 Apply for a digital nomad visa` | Only A-6 | .gsmap link | e10: touches a card: free card link (D8) |
 | `canvas e11` | lisbon-neighbourhoods-research | `B-1 Get a D7 visa` | Non significant relationship | .gsmap link | e11: touches a card: free card link (D8) |
 | `canvas e17` | card:t-routec | `FP-1 Live in Portugal` |  | .gsmap link | e17: touches a card: free card link (D8) |
@@ -132,23 +135,23 @@
 | `canvas e15` | B-2 Apply for a digital nomad visa | `FP-1 Live in Portugal` |  | → `serves` | B-2 Apply for a digital nomad visa → FP-1 Live in Portugal; canvas edge matches `serves` |
 | `canvas e16` | Current Position | `B-1 Get a D7 visa` |  | **open** | see `canvas-edge: e16` |
 
+## Relations no single legacy edge states ("AND" resolutions, `serves` implied by `requires`)
+
+- `serves` B-5 Learn Portuguese to B1 → B-4 Save 20000 for kiln and lease (implied by B-4 Save 20000 for kiln and lease requires B-5 Learn Portuguese to B1)
+
 ## Canvas → Strategy.gsmap
 
 - Positions: 18 (CP, B-1, B-2, B-3, B-4, B-5, B-6, B-7, B-8, A-1, A-2, A-3, A-4, A-5, A-6, A-7, FP-1, FP-2)
-- Cards: 6
+- Cards: 5
   - note (note-ref): lisbon-neighbourhoods-research.md
   - t-route (text): "Visa Route"
   - t-ghost (text): "Golden visa path?" `{"textAlign":"center"}`
   - t-routec (text): "Route C - Freelance visa (suspended)" `{"border":"dashed"}`
-  - t-and (text): "AND" `{"shape":"diamond","textAlign":"center"}`
   - t-elab (text): "Needs elaboration"
 - Frames: 2
   - g-visa: "Visa route"
   - g-studio: "Studio route"
-- Links: 6
-  - e5: B-3 → card t-and
-  - e6: B-5 → card t-and
-  - e7: card t-and → B-4
+- Links: 3
   - e10: card t-ghost → B-2 "Only A-6"
   - e11: card note → B-1 "Non significant relationship"
   - e17: card t-routec → FP-1
@@ -208,6 +211,7 @@
 - `Strategy/Bets/B-5 Learn Portuguese to B1.md`
   - id: B-5
   - serves: − [[B-5 Learn Portuguese to B1]]
+  - serves: + [[B-4 Save 20000 for kiln and lease]]
   - `next sequel` → `next`
   - assumptions: + [[A-5 I can study one hour a day]]
   - `## Serves` removed
@@ -251,7 +255,7 @@
   - `## Serves` removed
   - `## Assumptions This Bet Depends On` removed
 - `Strategy/Strategy.gsmap` (new)
-  - 18 positions, 6 cards, 2 frames, 6 links
+  - 18 positions, 5 cards, 2 frames, 3 links
 
 ## Planned graph issues (Phase 1 `buildGraph` over the planned vault)
 
@@ -260,4 +264,4 @@
 ## Other findings
 
 - info: `Strategy/Strategic Inbox.md`: Type "strategic-inbox" is not a graph node (D15): left untouched.
-- info: `Strategy/The Map.canvas`: "AND" card t-and matches `requires`: B-4 Save 20000 for kiln and lease requires B-3 Sell pottery at weekend markets; B-4 Save 20000 for kiln and lease requires B-5 Learn Portuguese to B1.
+- info: `Strategy/The Map.canvas`: "AND" card t-and matches `requires`: B-4 Save 20000 for kiln and lease requires B-3 Sell pottery at weekend markets; B-4 Save 20000 for kiln and lease requires B-5 Learn Portuguese to B1. The graph draws it, so the card is not kept.

@@ -6,6 +6,7 @@ import { splitFrontmatter } from '../core/writes';
 import { mountGraph, type GraphHost, type MountedGraph } from '../ui/mount';
 import { ObsidianAdapter } from './adapter';
 import { ObsidianIO } from './io';
+import { FilePickerModal } from './modals';
 import { today } from './today';
 
 export const VIEW_TYPE = 'strategy-graph';
@@ -55,9 +56,8 @@ export class StrategyGraphView extends FileView {
     // Fired once link resolution has caught up, e.g. after a rename or at startup.
     this.registerEvent(metadataCache.on('resolved', () => this.session?.requestRebuild()));
     this.registerEvent(
-      vault.on('rename', (file, oldPath) => {
-        if (file instanceof TFile && file.extension === 'md') this.session?.rename(oldPath, file.path);
-      })
+      // Any file or folder: a note card can be on any file (`followRenameInMaps` covers the maps no tab has open).
+      vault.on('rename', (file, oldPath) => this.session?.rename(oldPath, file.path))
     );
     this.registerEvent(
       vault.on('modify', (file) => {
@@ -113,6 +113,8 @@ export class StrategyGraphView extends FileView {
         return note instanceof TFile ? this.app.vault.read(note) : Promise.reject(new Error('Not a note: ' + path));
       },
       renderNote: (el, path) => this.renderNote(el, path),
+      pickNote: (onPick) => new FilePickerModal(this.app, this.app.vault.getMarkdownFiles(), (note) => onPick(note.path)).open(),
+      droppedNotes: (event) => this.droppedNotes(event),
     });
     session.loadMap(await this.app.vault.read(file));
     await session.rebuild();
@@ -170,6 +172,28 @@ export class StrategyGraphView extends FileView {
       disposed = true;
       component.unload();
     };
+  }
+
+  /**
+   * The notes a drop carries. Obsidian's file explorer puts the dragged file(s) on its drag manager
+   * (not public API, so read with care); a link or an `obsidian://open?file=…` URL in the text works too.
+   */
+  private droppedNotes(event: DragEvent): string[] {
+    const dragged = (this.app as unknown as { dragManager?: { draggable?: { type?: string; file?: unknown; files?: unknown[] } | null } }).dragManager?.draggable;
+    const files = dragged?.type === 'file' ? [dragged.file] : dragged?.type === 'files' ? dragged.files ?? [] : [];
+    const paths = files.filter((f): f is TFile => f instanceof TFile).map((f) => f.path);
+    if (paths.length) return paths;
+    const text = event.dataTransfer?.getData('text/plain').trim() ?? '';
+    const linkpath = /[?&]file=([^&\s]+)/.exec(text)?.[1] ?? /^\[\[([^\]|#]+)/.exec(text)?.[1];
+    if (!linkpath) return [];
+    let name = linkpath;
+    try {
+      name = decodeURIComponent(linkpath);
+    } catch {
+      // Not URL-encoded: take it as it is.
+    }
+    const file = this.app.vault.getAbstractFileByPath(name) ?? this.app.metadataCache.getFirstLinkpathDest(name, '');
+    return file instanceof TFile ? [file.path] : [];
   }
 
   private async reloadMap(file: TFile): Promise<void> {

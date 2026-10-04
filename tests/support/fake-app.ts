@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { parse, stringify } from 'yaml';
-import { TFile } from '../mocks/obsidian';
+import { Events, TFile } from '../mocks/obsidian';
 
 /** Minimal TFile look-alike: the fields the plugin reads. */
 export interface FakeFile {
@@ -38,7 +38,7 @@ function makeFile(path: string): FakeFile {
  * Every mutating call is appended to `ops`, so two implementations can be
  * compared on the exact sequence of writes, not only on the end state.
  */
-export class FakeVault {
+export class FakeVault extends Events {
   readonly contents = new Map<string, string>();
   readonly folders = new Set<string>();
   readonly ops: VaultOp[] = [];
@@ -48,6 +48,7 @@ export class FakeVault {
   failCreateOn: string | null = null;
 
   constructor(initial: Record<string, string> = {}, folders: string[] = []) {
+    super();
     for (const [path, content] of Object.entries(initial)) this.addFile(path, content);
     for (const folder of folders) this.addFolder(folder);
   }

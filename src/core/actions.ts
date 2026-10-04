@@ -204,6 +204,11 @@ export function planBet<F extends FileRef>(vault: VaultLike<F>, data: BetFormDat
   );
   if (collision) return collision;
 
+  // A bet the new one requires serves it (a required milestone can't serve a bet).
+  for (const prerequisite of requires) {
+    if (prerequisite.path.startsWith(BETS_FOLDER + '/')) writes.push({ kind: 'add-link', path: prerequisite.path, field: 'serves', link: '[[' + betBasename + ']]' });
+  }
+
   return {
     writes,
     open: betPath,

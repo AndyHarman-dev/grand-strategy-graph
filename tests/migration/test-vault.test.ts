@@ -70,7 +70,8 @@ describe('every anomaly in test-vault/ANOMALIES.md gets its expected outcome', (
     expect(fates(bare, 'fm:serves', B[7])).toEqual(['[[...]] open']);
     expect(fates(bare, 'fm:serves', B[5])).toEqual(['[[FP-1 Live in Portugal]] written', '[[B-5 Learn Portuguese to B1]] open']);
     expect(fm(bare, B[7]).serves).toBeNull();
-    expect(fm(bare, B[5]).serves).toEqual(['[[FP-1 Live in Portugal]]']);
+    // B-4 requires B-5, so B-5 also serves B-4.
+    expect(fm(bare, B[5]).serves).toEqual(['[[FP-1 Live in Portugal]]', '[[B-4 Save 20000 for kiln and lease]]']);
     expect(fates(resolved, 'fm:serves', B[5])[1]).toBe('[[B-5 Learn Portuguese to B1]] dropped');
   });
 
@@ -184,14 +185,17 @@ describe('canvas → .gsmap', () => {
 
   it('turns groups into frames and text cards into free cards with their style', () => {
     expect(map.frames.map((f) => [f.id, f.label])).toEqual([['g-visa', 'Visa route'], ['g-studio', 'Studio route']]);
-    expect(map.cards.find((c) => c.id === 't-and')).toMatchObject({ kind: 'text', text: 'AND', color: '5', style: { shape: 'diamond', textAlign: 'center' } });
+    expect(map.cards.find((c) => c.id === 't-ghost')).toMatchObject({ kind: 'text', text: 'Golden visa path?', color: '2', style: { textAlign: 'center' } });
     expect(map.cards.find((c) => c.id === 't-routec')).toMatchObject({ style: { border: 'dashed' } });
   });
 
-  it('keeps the "AND" diamond as a card whose links match B-4 `requires` B-3, B-5', () => {
-    expect(['e5', 'e6', 'e7'].map((id) => canvasFate(bare, id).kind)).toEqual(['gsmap-link', 'gsmap-link', 'gsmap-link']);
+  it('drops the "AND" diamond whose lines match B-4 `requires` B-3, B-5: the graph draws it', () => {
+    expect(['e5', 'e6', 'e7'].map((id) => canvasFate(bare, id).kind)).toEqual(['dropped', 'dropped', 'dropped']);
     expect(bare.ambiguities.map((a) => a.kind)).not.toContain('junction');
     expect(bare.findings.some((f) => f.message.includes('"AND" card t-and matches `requires`'))).toBe(true);
+    expect(map.cards.map((c) => c.id)).not.toContain('t-and');
+    expect(bare.canvasNodes.find((n) => n.node === 't-and')?.placed).toBe('junction:t-and');
+    expect(bare.junctions).toEqual([{ card: 't-and', requires: [{ holder: B[4], target: B[3] }, { holder: B[4], target: B[5] }] }]);
   });
 
   it('matches "On kill" to `next`, and other note↔note edges to existing relations', () => {
@@ -252,7 +256,8 @@ describe('parity gate', () => {
     const failing = async (plan: MigrationPlan) => (await parityGate(files, plan)).checks.filter((c) => !c.passed).map((c) => c.name);
 
     it('a dropped relation', async () => {
-      expect(await failing(tamper(B[4], (t) => t.replace('  - "[[B-5 Learn Portuguese to B1]]"\n', '')))).toEqual(['relations-present']);
+      // The "AND" card that stood for it is missing its requires too.
+      expect(await failing(tamper(B[4], (t) => t.replace('  - "[[B-5 Learn Portuguese to B1]]"\n', '')))).toEqual(['relations-present', 'canvas-placed']);
     });
 
     it('an invented relation', async () => {

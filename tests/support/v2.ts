@@ -44,7 +44,7 @@ export function migratedTestVault(): Record<string, string> {
       requires: [link(b(3, 'Sell pottery at weekend markets')), link(b(5, 'Learn Portuguese to B1'))],
       assumptions: [link(a(2, 'Rent in Lisbon stays under 1200'))],
     }),
-    bet(5, 'Learn Portuguese to B1', { status: 'won', deadline: '2026-09-10', serves: [link(fp1)], assumptions: [link(a(5, 'I can study one hour a day'))] }),
+    bet(5, 'Learn Portuguese to B1', { status: 'won', deadline: '2026-09-10', serves: [link(fp1), link(b(4, 'Save 20000 for kiln and lease'))], assumptions: [link(a(5, 'I can study one hour a day'))] }),
     bet(6, 'Online ceramics course', { status: 'killed', deadline: '2026-08-01', serves: [link(fp2)] }),
     bet(7, 'Part-time barista job', { status: 'active', deadline: null }),
     bet(8, 'Teach pottery workshops', { status: 'dormant', deadline: null, serves: [link(b(4, 'Save 20000 for kiln and lease'))], assumptions: [link(a(7, 'Workshops can fill eight seats'))] }),

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { findSmells } from '../../src/core/smells';
 import type { GsCard, GsFrame, GsLink } from '../../src/core/gsmap';
 import { groupSmellsForPanel, SMELL_GROUPS } from '../../src/ui/model';
-import { cardNodeId, cssColor, endpointNodeId, followersOf, frameNodeId, isCardNode, isFrameNode, isStrategyNode, toFlowCards, toFlowFrames, toFlowLinks, groupSmells, localToday, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions, unverifiedServes } from '../../src/ui/model';
+import { FRAME_PADDING, frameAround, frameContents, holds, junctionRect, junctionsOf, toFlowJunctions } from '../../src/ui/model';
+import { cardNodeId, cssColor, endpointNodeId, dragCompanions, frameNodeId, isCardNode, isFrameNode, isStrategyNode, toFlowCards, toFlowFrames, toFlowLinks, groupSmells, localToday, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions, unverifiedServes } from '../../src/ui/model';
 import { graphOf, md } from '../support/v2';
 
 const files = {
@@ -64,6 +65,54 @@ describe('toFlowEdges', () => {
   });
 });
 
+describe('"AND" junctions (bug 7)', () => {
+  const vault = {
+    'Strategy/FP-1.md': md({ id: 'FP-1', type: 'fixed-point', requires: ['[[B-3]]', '[[B-5]]'] }),
+    'Strategy/B-3.md': md({ id: 'B-3', type: 'bet', status: 'active', serves: ['[[B-4]]', '[[FP-1]]'] }),
+    'Strategy/B-4.md': md({ id: 'B-4', type: 'bet', status: 'active', requires: ['[[B-3]]', '[[B-5]]', '[[B-1]]'] }),
+    'Strategy/B-5.md': md({ id: 'B-5', type: 'bet', status: 'active', serves: ['[[B-4]]'] }),
+    'Strategy/B-1.md': md({ id: 'B-1', type: 'bet', status: 'active' }),
+    'Strategy/B-6.md': md({ id: 'B-6', type: 'bet', status: 'active', requires: ['[[B-1]]'] }),
+  };
+  const at = { 'B-1': { x: 0, y: 300 }, 'B-3': { x: 0, y: 0 }, 'B-5': { x: 0, y: 150 }, 'B-4': { x: 400, y: 100 }, 'B-6': { x: 400, y: 400 }, 'FP-1': { x: 800, y: 0 } };
+
+  it('puts one in front of every note with two or more requires, a fixed point too, and none for one', async () => {
+    const graph = await graphOf(vault);
+    const junctions = junctionsOf(graph);
+    expect([...junctions.keys()].sort()).toEqual(['B-4', 'FP-1']);
+    expect(junctions.get('B-4')!.prerequisites.sort()).toEqual(['B-1', 'B-3', 'B-5']);
+  });
+
+  it('places it just left of its holder, level with its middle, and moves it with the holder only', async () => {
+    const graph = await graphOf(vault);
+    const [and] = toFlowJunctions(graph, junctionsOf(graph), at).filter((n) => n.id === 'and:B-4');
+    const rect = junctionRect({ ...at['B-4'], width: 240, height: 84 });
+    expect(and).toMatchObject({ type: 'junction', position: { x: rect.x, y: rect.y }, draggable: false, selectable: false, deletable: false });
+    expect(rect.x + rect.width).toBeLessThan(400);
+    expect(rect.y + rect.height / 2).toBe(100 + 42);
+    // A prerequisite moving changes nothing; the holder moving takes it along.
+    const moved = toFlowJunctions(graph, junctionsOf(graph), { ...at, 'B-3': { x: -500, y: -500 }, 'B-4': { x: 600, y: 100 } }).find((n) => n.id === 'and:B-4')!;
+    expect(moved.position).toEqual({ x: rect.x + 200, y: rect.y });
+    // Its holder not shown yet: no junction.
+    expect(toFlowJunctions(graph, junctionsOf(graph), { 'B-3': at['B-3'] })).toEqual([]);
+  });
+
+  it('runs the requires into the junction and one link from it to the holder, and draws a serves twin of a requires once', async () => {
+    const graph = await graphOf(vault);
+    const edges = toFlowEdges(graph, at, { junctions: junctionsOf(graph) });
+    const by = Object.fromEntries(edges.map((e) => [e.id, e]));
+    expect(by['requires:B-4>B-3']).toMatchObject({ source: 'B-3', target: 'and:B-4', hidden: false });
+    expect(by['requires:B-4>B-3'].markerEnd).toBeUndefined();
+    expect(by['and:B-4>']).toMatchObject({ source: 'and:B-4', target: 'B-4', sourceHandle: 'right-source', targetHandle: 'left-target', selectable: false, deletable: false, markerEnd: { type: 'arrowclosed' } });
+    expect(by['requires:FP-1>B-5']).toMatchObject({ target: 'and:FP-1' });
+    // B-3 serves B-4 and B-4 requires B-3: one line, not two.
+    expect(by['serves:B-3>B-4'].hidden).toBe(true);
+    expect(by['serves:B-3>FP-1'].hidden).toBe(true);
+    // One requires: straight into the holder, with its arrow.
+    expect(by['requires:B-6>B-1']).toMatchObject({ source: 'B-1', target: 'B-6', markerEnd: { type: 'arrowclosed' } });
+  });
+});
+
 describe('sidesOf', () => {
   const box = (x: number, y: number) => ({ x, y, width: 200, height: 80 });
   it('goes across when the boxes are further apart across, up and down otherwise', () => {
@@ -75,11 +124,74 @@ describe('sidesOf', () => {
   });
 });
 
-describe('followersOf', () => {
-  it('moves the assumptions hosted by a dragged node, unless they are dragged themselves', () => {
-    const satellites = new Map([['B-1', ['A-1', 'A-2']], ['B-2', ['A-3']]]);
-    expect(Object.fromEntries(followersOf(satellites, ['B-1', 'A-2']))).toEqual({ 'A-1': 'B-1' });
-    expect(Object.fromEntries(followersOf(satellites, ['A-3']))).toEqual({});
+describe('dragCompanions', () => {
+  const box = (x: number, y: number) => ({ x, y, width: 200, height: 80 });
+  // B-1 → B-2 → B-4 (B-4 requires B-2, B-2 requires B-1), A-1 sits on B-2; B-3 is required by B-4 but was right of it.
+  const start = new Map([
+    ['B-1', box(0, 0)], ['B-2', box(300, 0)], ['B-4', box(600, 0)], ['A-1', box(300, -120)], ['B-3', box(900, 200)], ['FP-1', box(-400, 0)],
+  ]);
+  const input = {
+    satellites: new Map([['B-2', ['A-1']]]),
+    requires: new Map([['B-4', ['B-2', 'B-3']], ['B-2', ['B-1', 'FP-1']]]),
+    start,
+    movable: new Set(['B-1', 'B-2', 'B-4', 'A-1', 'B-3']),
+  };
+  const run = (moved: Record<string, { x: number; y: number }>) => Object.fromEntries(dragCompanions({ ...input, moved: new Map(Object.entries(moved)) }));
+
+  it('leaves prerequisites alone while the dragged note keeps its distance, and never moves them up or down', () => {
+    expect(run({ 'B-4': { x: 900, y: 400 } })).toEqual({});
+    expect(run({ 'B-4': { x: 600, y: -300 } })).toEqual({});
+  });
+
+  it('pushes the requires chain left, horizontally only, keeping the gap each had (a column at most)', () => {
+    // B-4 to x 450: B-2 must end 100 before it (its gap was 100), B-1 100 before B-2, and A-1 goes with B-2.
+    expect(run({ 'B-4': { x: 450, y: 50 } })).toEqual({ 'B-2': { x: 150, y: 0 }, 'B-1': { x: -150, y: 0 }, 'A-1': { x: 150, y: -120 } });
+  });
+
+  it('does not push what was not left of its note, what is fixed, or what is being dragged too', () => {
+    const pushed = run({ 'B-4': { x: 0, y: 0 } });
+    expect(pushed['B-3']).toBeUndefined();
+    expect(pushed['FP-1']).toBeUndefined();
+    expect(run({ 'B-4': { x: 450, y: 0 }, 'B-2': { x: 300, y: 0 } })).toEqual({ 'A-1': { x: 300, y: -120 } });
+  });
+
+  it('moves the assumptions a dragged note hosts by the same amount', () => {
+    expect(run({ 'B-2': { x: 320, y: 40 } })).toEqual({ 'A-1': { x: 320, y: -80 } });
+  });
+});
+
+describe('frameAround (a frame from a selection)', () => {
+  it('holds every selected node with room around it, more at the top for the label, in whole pixels', () => {
+    const rects = [
+      { x: 100.4, y: 50, width: 200, height: 60 },
+      { x: 400, y: 300.6, width: 250, height: 80.2 },
+    ];
+    const frame = frameAround(rects)!;
+    expect(frame).toEqual({ x: 80, y: 50 - FRAME_PADDING.top, width: 650 + FRAME_PADDING.side - 80, height: Math.ceil(380.8 + FRAME_PADDING.side) - (50 - FRAME_PADDING.top) });
+    for (const r of rects) expect(holds(frame, r)).toBe(true);
+    // So dragging it carries them all.
+    expect(Array.from(frameContents(new Map([['f', frame]]), new Map(rects.map((r, i) => [`n${i}`, r]))).keys())).toEqual(['n0', 'n1']);
+    expect(frameAround([])).toBeNull();
+  });
+
+  it('draws a bigger frame behind a smaller one, whatever their order in the map', () => {
+    const small: GsFrame = { id: 's', label: '', x: 10, y: 10, width: 100, height: 100 };
+    const big: GsFrame = { id: 'b', label: '', x: 0, y: 0, width: 500, height: 500 };
+    expect(toFlowFrames([small, big], true).map((n) => n.id)).toEqual([frameNodeId('b'), frameNodeId('s')]);
+  });
+});
+
+describe('frameContents (bug 1)', () => {
+  it('carries what lies wholly inside a dragged frame, nested frames included, and nothing that only overlaps it', () => {
+    const frames = new Map([['frame:a', { x: 0, y: 0, width: 1000, height: 600 }]]);
+    const items = new Map([
+      ['B-1', { x: 10, y: 10, width: 240, height: 84 }],
+      ['card:c', { x: 900, y: 500, width: 100, height: 100 }],
+      ['frame:b', { x: 500, y: 300, width: 200, height: 200 }],
+      ['B-2', { x: 900, y: 500, width: 240, height: 84 }],
+      ['B-3', { x: 2000, y: 0, width: 240, height: 84 }],
+    ]);
+    expect(Object.fromEntries(frameContents(frames, items))).toEqual({ 'B-1': 'frame:a', 'card:c': 'frame:a', 'frame:b': 'frame:a' });
   });
 });
 

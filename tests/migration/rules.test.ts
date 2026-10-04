@@ -204,7 +204,7 @@ describe('canvas rules', () => {
     expect(wrong.ambiguities.find((a) => a.key === 'canvas-edge: x')?.error).toContain("can't have `requires`");
   });
 
-  it('asks about an "AND" junction that the notes don\'t already state, and writes `requires` when told', async () => {
+  it('asks about an "AND" junction that the notes don\'t already state, writes `requires` when told, and leaves the drawing of the AND to the graph', async () => {
     const and = { id: 'and', type: 'text', text: 'AND', x: 0, y: 0, width: 80, height: 80 };
     const files = vault({
       ...base,
@@ -213,10 +213,37 @@ describe('canvas rules', () => {
     expect(planMigration(files).ambiguities.map((a) => a.key)).toEqual(['junction: and']);
     const plan = planMigration(files, { resolutions: { 'junction: and': 'requires' } });
     expect(fm(files, plan, B3).requires).toEqual(['[[B-1 First]]', '[[B-2 Second]]']);
-    expect(plan.derived).toHaveLength(2);
+    // The two requires, and the serves each implies.
+    expect(plan.derived.map((d) => `${d.field} ${d.why}`)).toEqual([
+      'requires "AND" card and (resolution)',
+      'requires "AND" card and (resolution)',
+      'serves implied by B-3 Third requires B-1 First',
+      'serves implied by B-3 Third requires B-2 Second',
+    ]);
+    expect(fm(files, plan, B1).serves).toEqual(['[[B-3 Third]]']);
+    // The card and its lines are not kept: the graph draws an AND for any note with two requires.
+    expect(plan.gsmap.cards.map((c) => c.id)).not.toContain('and');
+    expect(plan.gsmap.links).toEqual([]);
+    expect(plan.edges.filter((e) => e.edge.source === 'canvas').map((e) => e.fate.kind)).toEqual(['dropped', 'dropped', 'dropped']);
+    expect(plan.canvasNodes.find((n) => n.node === 'and')?.placed).toBe('junction:and');
     expect((await parityGate(files, plan)).passed).toBe(true);
     const none = planMigration(files, { resolutions: { 'junction: and': 'none' } });
     expect(fm(files, none, B3).requires).toBeUndefined();
+    expect(none.gsmap.cards.map((c) => c.id)).toContain('and');
+  });
+
+  it('writes the serves a requires implies, where a serves may go (a milestone can\'t serve a bet)', async () => {
+    const files = vault({
+      [B1]: bet(''),
+      [B3]: bet('requires:\n  - "[[B-1 First]]"\n  - "[[M-1 Halfway]]"\n'),
+      'Strategy/Milestones/M-1 Halfway.md': '---\ntype: milestone\nstatus: open\n---\n',
+    });
+    const plan = planMigration(files);
+    expect(fm(files, plan, B1).serves).toEqual(['[[B-3 Third]]']);
+    expect(plan.derived.map((d) => d.why)).toEqual(['implied by B-3 Third requires B-1 First']);
+    expect((await parityGate(files, plan)).passed).toBe(true);
+    // Once written, nothing more is implied.
+    expect(planMigration(applyPlan(files, plan)).changes).toEqual([]);
   });
 
   it('drops edges touching a group, in either direction and labelled "On kill" too (D14)', async () => {

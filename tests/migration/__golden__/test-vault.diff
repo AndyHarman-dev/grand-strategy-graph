@@ -357,19 +357,20 @@ diff --migrate a/Strategy/Bets/B-5 Learn Portuguese to B1.md b/Strategy/Bets/B-5
  type: bet
  status: won
  started: 2026-07-10
-@@ -6,8 +7,9 @@
+@@ -6,8 +7,10 @@
  expected-result: Passed a B1 exam
  serves:
    - "[[FP-1 Live in Portugal]]"
 -  - "[[B-5 Learn Portuguese to B1]]"
 -next sequel:
++  - "[[B-4 Save 20000 for kiln and lease]]"
 +next:
 +assumptions:
 +  - "[[A-5 I can study one hour a day]]"
  ---
  ## The Bet
  I believe continuing **studying Portuguese daily:** `[action/effort]`
-@@ -14,10 +16,6 @@
+@@ -14,10 +17,6 @@
  will produce **a B1 certificate:** `[concrete, observable result]`
  within **two months:** `[timeframe — must match the deadline above]`
  
@@ -380,7 +381,7 @@ diff --migrate a/Strategy/Bets/B-5 Learn Portuguese to B1.md b/Strategy/Bets/B-5
  ## Kill Condition (decided NOW, before the deadline)
  When the deadline arrives and Y has not materialized, this bet is:
  - [ ] **Killed** — X stops entirely
-@@ -26,9 +24,6 @@
+@@ -26,9 +25,6 @@
  
  > Extension justification (fill only if extending; one extension maximum):
  
@@ -612,7 +613,7 @@ diff --migrate a/Templates/Bet Template.md b/Templates/Bet Template.md
 diff --migrate a/Strategy/Strategy.gsmap b/Strategy/Strategy.gsmap
 --- /dev/null
 +++ b/Strategy/Strategy.gsmap
-@@ -0,0 +1,268 @@
+@@ -0,0 +1,221 @@
 +{
 +	"version": 1,
 +	"positions": {
@@ -735,20 +736,6 @@ diff --migrate a/Strategy/Strategy.gsmap b/Strategy/Strategy.gsmap
 +			}
 +		},
 +		{
-+			"id": "t-and",
-+			"kind": "text",
-+			"text": "AND",
-+			"x": 700,
-+			"y": 1350,
-+			"width": 80,
-+			"height": 80,
-+			"color": "5",
-+			"style": {
-+				"shape": "diamond",
-+				"textAlign": "center"
-+			}
-+		},
-+		{
 +			"id": "t-elab",
 +			"kind": "text",
 +			"text": "Needs elaboration",
@@ -778,39 +765,6 @@ diff --migrate a/Strategy/Strategy.gsmap b/Strategy/Strategy.gsmap
 +		}
 +	],
 +	"links": [
-+		{
-+			"id": "e5",
-+			"from": {
-+				"note": "B-3"
-+			},
-+			"to": {
-+				"card": "t-and"
-+			},
-+			"fromSide": "right",
-+			"toSide": "left"
-+		},
-+		{
-+			"id": "e6",
-+			"from": {
-+				"note": "B-5"
-+			},
-+			"to": {
-+				"card": "t-and"
-+			},
-+			"fromSide": "right",
-+			"toSide": "left"
-+		},
-+		{
-+			"id": "e7",
-+			"from": {
-+				"card": "t-and"
-+			},
-+			"to": {
-+				"note": "B-4"
-+			},
-+			"fromSide": "right",
-+			"toSide": "left"
-+		},
 +		{
 +			"id": "e10",
 +			"from": {
