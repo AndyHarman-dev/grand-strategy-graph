@@ -133,6 +133,14 @@ export async function parityGate(files: Readonly<Record<string, string>>, plan: 
       const [kind, id] = [placed.slice(0, placed.indexOf(':')), placed.slice(placed.indexOf(':') + 1)];
       if (kind === 'position') return id in gsmap.positions && nodeKeys.has(id) ? [] : [`canvas node ${node}: position ${id} is not a node of the planned graph`];
       if (kind === 'card') return cardIds.has(id) ? [] : [`canvas node ${node}: card ${id} missing`];
+      if (kind === 'junction') {
+        // An "AND" card the graph draws itself: every `requires` it stands for must be in the planned graph.
+        const junction = plan.junctions.find((j) => j.card === id);
+        if (!junction) return [`canvas node ${node}: no "AND" junction ${id} in the plan`];
+        return junction.requires
+          .filter((r) => !graphEdges.has(`requires|${keyOf.get(r.holder)}|${keyOf.get(r.target)}`))
+          .map((r) => `canvas node ${node}: "AND" ${name(r.holder)} requires ${name(r.target)} is not in the planned graph`);
+      }
       return frameIds.has(id) ? [] : [`canvas node ${node}: frame ${id} missing`];
     })
   );

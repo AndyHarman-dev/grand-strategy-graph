@@ -116,6 +116,37 @@ describe('relations', () => {
     expect((await run({ kind: 'add-relation', holder: 'B-1', field: 'requires', target: 'B-1' })).error).toContain("can't requires itself");
     expect((await run({ kind: 'remove-relation', holder: 'B-7', field: 'serves', target: 'FP-1' })).error).toContain('no serves link');
   });
+
+  it('writes the serves a requires implies: the prerequisite serves what requires it', async () => {
+    const { plan, graph: g } = await run({ kind: 'add-relation', holder: 'B-8', field: 'requires', target: 'B-7' });
+    expect(edge(g, 'requires:B-8>B-7')).toBe(true);
+    expect(edge(g, 'serves:B-7>B-8')).toBe(true);
+    expect(plan!.notice).toBe('B-8 requires B-7, so B-7 serves B-8.');
+    // Removing the requires leaves the serves: it may have been there on its own.
+    const removed = await run({ kind: 'remove-relation', holder: 'B-8', field: 'requires', target: 'B-7' });
+    expect(edge(removed.graph, 'requires:B-8>B-7')).toBe(false);
+    expect(edge(removed.graph, 'serves:B-7>B-8')).toBe(true);
+  });
+
+  it('does not write a serves that is already there', async () => {
+    await run({ kind: 'add-relation', holder: 'B-7', field: 'serves', target: 'B-8' });
+    const { plan } = await run({ kind: 'add-relation', holder: 'B-8', field: 'requires', target: 'B-7' });
+    expect(plan!.writes).toHaveLength(1);
+    expect(plan!.notice).toBe('B-8 requires B-7.');
+  });
+
+  it('lets milestones and fixed points require, and writes serves only where a serves may go', async () => {
+    let { graph: g } = await run({ kind: 'new-milestone', form: { title: 'Kiln paid off', description: '' }, serves: ['FP-2'] });
+    ({ graph: g } = await run({ kind: 'add-relation', holder: 'FP-1', field: 'requires', target: 'B-7' }));
+    expect(edge(g, 'requires:FP-1>B-7') && edge(g, 'serves:B-7>FP-1')).toBe(true);
+    ({ graph: g } = await run({ kind: 'add-relation', holder: 'M-1', field: 'requires', target: 'B-8' }));
+    expect(edge(g, 'requires:M-1>B-8') && edge(g, 'serves:B-8>M-1')).toBe(true);
+    // A milestone can't serve a bet: requiring one writes the requires alone.
+    const { plan, graph: after } = await run({ kind: 'add-relation', holder: 'B-7', field: 'requires', target: 'M-1' });
+    expect(plan!.writes).toHaveLength(1);
+    expect(edge(after, 'requires:B-7>M-1')).toBe(true);
+    expect(after.issues.filter((i) => i.severity === 'error').map((i) => i.message)).toEqual(g.issues.filter((i) => i.severity === 'error').map((i) => i.message));
+  });
 });
 
 describe('log', () => {
@@ -236,11 +267,11 @@ describe('creating a milestone, and what a creation reports (Phase 7)', () => {
 });
 
 describe('relationCandidates', () => {
-  it('infers one relation from the types: bet to fixed point is serves', async () => {
+  it('offers what the types allow: a bet to a fixed point serves it, or the fixed point requires it', async () => {
     const g = await graph();
     const options = relationCandidates(g, 'B-7', 'FP-1');
-    expect(options.map((o) => o.label)).toEqual(['B-7 serves FP-1', 'B-7 ultimately serves FP-1']);
-    // `ultimately-serves` is a far anchor: still offered, so the menu asks.
+    expect(options.map((o) => o.label)).toEqual(['B-7 serves FP-1', 'B-7 ultimately serves FP-1', 'FP-1 requires B-7']);
+    // `ultimately-serves` is a far anchor, and a fixed point may require a bet: still offered, so the menu asks.
   });
 
   it('asks when bet to bet is ambiguous: serves, requires, next', async () => {

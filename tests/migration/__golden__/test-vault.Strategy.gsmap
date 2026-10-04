@@ -120,20 +120,6 @@
 			}
 		},
 		{
-			"id": "t-and",
-			"kind": "text",
-			"text": "AND",
-			"x": 700,
-			"y": 1350,
-			"width": 80,
-			"height": 80,
-			"color": "5",
-			"style": {
-				"shape": "diamond",
-				"textAlign": "center"
-			}
-		},
-		{
 			"id": "t-elab",
 			"kind": "text",
 			"text": "Needs elaboration",
@@ -163,39 +149,6 @@
 		}
 	],
 	"links": [
-		{
-			"id": "e5",
-			"from": {
-				"note": "B-3"
-			},
-			"to": {
-				"card": "t-and"
-			},
-			"fromSide": "right",
-			"toSide": "left"
-		},
-		{
-			"id": "e6",
-			"from": {
-				"note": "B-5"
-			},
-			"to": {
-				"card": "t-and"
-			},
-			"fromSide": "right",
-			"toSide": "left"
-		},
-		{
-			"id": "e7",
-			"from": {
-				"card": "t-and"
-			},
-			"to": {
-				"note": "B-4"
-			},
-			"fromSide": "right",
-			"toSide": "left"
-		},
 		{
 			"id": "e10",
 			"from": {

@@ -37,8 +37,9 @@ export const RELATIONS: readonly RelationRule[] = [
   // A bet serves a bet, a milestone or a fixed point; a milestone serves the checkpoint or fixed point beyond it (D17).
   { field: 'serves', kind: 'serves', to: { bet: ['bet', 'milestone', 'fixed-point'], milestone: ['milestone', 'fixed-point'] } },
   { field: 'ultimately-serves', kind: 'ultimately-serves', to: { bet: ['fixed-point'] } },
-  // Prerequisites: bets, or milestones that must be reached first (D17).
-  { field: 'requires', kind: 'requires', to: { bet: ['bet', 'milestone'] } },
+  // Prerequisites: bets, or milestones that must be reached first (D17). A milestone or a fixed point
+  // can require them too: all of them must be done before it is (the graph draws an "AND" for two or more).
+  { field: 'requires', kind: 'requires', to: { bet: ['bet', 'milestone'], milestone: ['bet', 'milestone'], 'fixed-point': ['bet', 'milestone'] } },
   { field: 'next', kind: 'next', to: { bet: ['bet'] } },
   { field: 'assumptions', kind: 'assumption', to: { bet: ['assumption'], 'fixed-point': ['assumption'], milestone: ['assumption'] } },
 ];
@@ -53,6 +54,16 @@ export function relationFor(field: string): RelationRule {
 /** The types `holder` may link to through `rule`, or null when a `holder` cannot carry the field. */
 export function targetsOf(rule: RelationRule, holder: NodeType): readonly NodeType[] | null {
   return rule.to[holder] ?? null;
+}
+
+/**
+ * Whether "`holder` requires `prerequisite`" also means "`prerequisite` serves `holder`": a
+ * prerequisite is done for what requires it. True when the relation table lets the prerequisite's
+ * type serve the holder's (a bet serving a bet, milestone or fixed point; a milestone serving a
+ * milestone or fixed point), false otherwise (a milestone can't serve a bet).
+ */
+export function requiresImpliesServes(holder: NodeType, prerequisite: NodeType): boolean {
+  return targetsOf(relationFor('serves'), prerequisite)?.includes(holder) ?? false;
 }
 
 /**

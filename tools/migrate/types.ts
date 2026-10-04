@@ -96,10 +96,12 @@ export interface MigrationPlan {
   /** Resolutions given for keys this run never asked about. */
   staleResolutions: string[];
   changes: FileChange[];
-  /** Relations written by a resolution that no single legacy edge states (the "AND" junction). */
+  /** Relations no single legacy edge states: the "AND" junction's `requires` (resolution), and the `serves` each `requires` implies. */
   derived: { field: RelField; holder: string; target: string; why: string }[];
+  /** "AND" cards not kept as cards, because the graph draws them from these `requires` (holder and target paths). */
+  junctions: { card: string; requires: { holder: string; target: string }[] }[];
   gsmap: GsMap;
-  /** Every canvas node id and where it went (`position:<id>`, `card:<id>`, `frame:<id>`). */
+  /** Every canvas node id and where it went (`position:<id>`, `card:<id>`, `frame:<id>`, `junction:<id>` for an "AND" card the graph draws). */
   canvasNodes: { node: string; placed: string | null }[];
   notes: PlannedNote[];
   findings: Finding[];

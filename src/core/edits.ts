@@ -12,7 +12,7 @@ import { BETS_FOLDER } from './constants';
 import { FALSIFIER_HEADING, FALSIFIER_PLACEHOLDER } from './content';
 import { readLinkField, resolveLinkpath } from './links';
 import { isPlanError, type FileRef, type PlanError, type VaultLike } from './plan';
-import { relationFor, RELATIONS, statusesFor, targetsOf, type Graph, type GraphNode } from './schema';
+import { relationFor, RELATIONS, requiresImpliesServes, statusesFor, targetsOf, type Graph, type GraphNode } from './schema';
 import { logLine, type PlannedWrite, type RelationField } from './writes';
 import type { ActionPlan } from './actions';
 
@@ -134,7 +134,16 @@ export function planIntent(intent: Intent, env: EditEnv): ActionPlan | PlanError
         intent.field === 'next'
           ? { kind: 'set-field', path: holder.path, field: 'next', value: linkTo(target) }
           : { kind: 'add-link', path: holder.path, field: intent.field, link: linkTo(target) };
-      return done([write], `${describeRelation(holder, intent.field, target)}.`);
+      // A prerequisite serves what requires it: write that side too, unless it is there already.
+      const implied =
+        intent.field === 'requires' &&
+        requiresImpliesServes(holder.type, target.type) &&
+        !env.graph.edges.some((e) => e.kind === 'serves' && e.from === target.key && e.to === holder.key);
+      if (!implied) return done([write], `${describeRelation(holder, intent.field, target)}.`);
+      return done(
+        [write, { kind: 'add-link', path: target.path, field: 'serves', link: linkTo(holder) }],
+        `${describeRelation(holder, intent.field, target)}, so ${describeRelation(target, 'serves', holder)}.`
+      );
     }
 
     case 'remove-relation': {

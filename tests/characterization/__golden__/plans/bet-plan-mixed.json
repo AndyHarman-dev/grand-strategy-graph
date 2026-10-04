@@ -19,6 +19,12 @@
       "kind": "create",
       "path": "Strategy/Bets/B-9 Open a pop-up shop.md",
       "content": "---\nid: B-9\ntype: bet\nstatus: active\nstarted: 2026-10-01\ndeadline: 2027-04-01\nexpected-result: \"a pop-up shop that breaks even\"\nserves:\n  - \"[[FP-2 Own a profitable ceramics studio]]\"\n  - \"[[B-7  Part-time barista job]]\"\nultimately-serves:\n  - \"[[FP-1 Live in Portugal]]\"\nrequires:\n  - \"[[B-3 Sell pottery at weekend markets]]\"\nnext: \"[[B-4 Save 20000 for kiln and lease]]\"\nassumptions:\n  - \"[[A-8 Footfall on weekends is high enough]]\"\n  - \"[[A-9 A rather long statement that goes well beyond the sixty]]\"\n  - \"[[A-10 Assumption 10]]\"\n  - \"[[A-4 Tourists buy handmade ceramics]]\"\n  - \"[[A-1 D7 accepts freelance income]]\"\n---\n## The Bet\nI believe continuing **renting a market corner on weekends:** `[action/effort]`\nwill produce **a pop-up shop that breaks even:** `[concrete, observable result]`\nwithin **six months:** `[timeframe — must match the deadline above]`\n\n## Kill Condition (decided NOW, before the deadline)\nWhen the deadline arrives and Y has not materialized, this bet is:\n- [ ] **Killed** — X stops entirely\n- [ ] **Modified** — X changes to: \n- [ ] **Extended once** — new deadline: `____` — written justification required below\n\n> Extension justification (fill only if extending; one extension maximum):\n\n## Log\n*Weekly check-ins go here. Date + one line: on track / off track / signal observed.*\n\n- 2026-10-01: created\n\n## Resolution\n*Fill when the bet closes.*\n- **Outcome:** \n- **What I learned:** \n- **Status updated in frontmatter?** (active → won / killed / extended)\n"
+    },
+    {
+      "kind": "add-link",
+      "path": "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+      "field": "serves",
+      "link": "[[B-9 Open a pop-up shop]]"
     }
   ],
   "open": "Strategy/Bets/B-9 Open a pop-up shop.md",

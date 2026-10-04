@@ -41,7 +41,7 @@ update it whenever a note changes.
 | File node positions (incl. Current Position) | `positions[id]` in `.gsmap` |
 | Groups "Visa route", "Studio route" | frames |
 | Text cards: "Visa Route" label, "Golden visa path?" ghost, dashed "Route C …", "Needs elaboration" | free cards (style kept) |
-| "AND" diamond with B-3, B-5 → AND → B-4 | free card; matches B-4 `requires` B-3, B-5 |
+| "AND" diamond with B-3, B-5 → AND → B-4 | matches B-4 `requires` B-3, B-5; the card and its three lines are dropped, because the graph draws the AND itself. B-5 gains `serves` B-4, which that `requires` implies |
 | Edge B-1 → B-2 labelled "On kill" | matches `next` |
 | Edge B-7 → B-4 "Serves" (exists only on canvas) | reported as candidate relation |
 | Edge B-8 → B-4 "indirectly serves", B-6 → FP-2 "Killed" | reported (labelled edges) |

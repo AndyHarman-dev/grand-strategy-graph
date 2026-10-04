@@ -155,7 +155,9 @@ describe('write plans over the test vault (schema v2)', () => {
     }
     expect(pickFolders('requires', 'bet')).toEqual(['Strategy/Bets', 'Strategy/Milestones']);
     expect(pickFolders('serves', 'milestone')).toEqual(['Strategy/Milestones', 'Strategy/Fixed Points']);
-    expect(pickFolders('requires', 'milestone')).toEqual([]);
+    expect(pickFolders('requires', 'milestone')).toEqual(['Strategy/Bets', 'Strategy/Milestones']);
+    expect(pickFolders('requires', 'fixed-point')).toEqual(['Strategy/Bets', 'Strategy/Milestones']);
+    expect(pickFolders('requires', 'assumption')).toEqual([]);
   });
 });
 
