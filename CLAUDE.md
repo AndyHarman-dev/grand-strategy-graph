@@ -44,7 +44,7 @@ renders the strategy as a data-driven graph. The full plan, decisions (D1–D19)
 | `src/ui/` | React components: `<StrategyGraph>` (React Flow), `mount.tsx` (shared by the plugin and the dev page) |
 | `dev/` | Vite dev page (`npm run dev:web`): the graph over the test vault, no Obsidian; `window.gsDev` drives it from Playwright |
 | `src/main.ts` | Plugin entry |
-| `tools/` | Node-only code: `fs-adapter.ts` (reads a vault folder), `migrate.ts` + `migrate/` (Phase 2 planner, parity gate, report; Phase 3 `apply.ts`) |
+| `tools/` | Node-only code: `fs-adapter.ts` (reads a vault folder), `migrate.ts` + `migrate/` (Phase 2 planner, parity gate, report; Phase 3 `apply.ts`), `readme-screenshots.ts` (the README pictures in `docs/images/`) |
 | `tests/` | Vitest (`*.test.ts`). `mocks/obsidian.ts` replaces the `obsidian` module; `support/` has the in-memory vault and a fake workspace for the graph view (`fake-workspace.ts`). `e2e/*.spec.ts` is Playwright against the dev page |
 | `test-vault/` | Synthetic legacy-format vault; `ANOMALIES.md` maps each note to the anomaly it covers |
 
@@ -58,6 +58,7 @@ npm run build       # esbuild -> dist/main.js (minified) + manifest.json + style
 npm run dev         # esbuild watch (unminified, inline source map)
 npm run dev:web     # Vite dev page at http://localhost:5173 (?vault=legacy, ?theme=dark)
 npm run test:e2e    # Playwright against the dev page (starts it); --grep-invert @visual skips screenshots
+npm run screenshots # regenerate docs/images/*.png for the README (needs dev:web running)
 npm run migrate -- --vault <path> [--resolutions <file>] [--out <dir>]   # migration dry run (outputs outside the vault)
 npm run migrate -- --vault <path> --resolutions <file> --apply            # user-run, at the cutover only (backs up to ~/strategy-backups)
 ```
