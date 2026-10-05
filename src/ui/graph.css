@@ -303,6 +303,15 @@
   outline-offset: 1px;
 }
 
+/* A notice's one-click fix ("Remove link"). */
+.gs-graph .gs-notice-action {
+  margin-left: 6px;
+  padding: 0 6px;
+  height: auto;
+  font-size: inherit;
+  cursor: pointer;
+}
+
 /* Reset layout: the circular arrow in the controls, and its confirmation. */
 .gs-graph .react-flow__controls-button.gs-reset-layout:disabled {
   opacity: 0.4;

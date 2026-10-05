@@ -148,6 +148,54 @@ describe('saved positions', () => {
   });
 });
 
+describe('fixed points share one column (bug report, 2026-10-05)', () => {
+  const fixed = (id: string) => md({ id, type: 'fixed-point' });
+  const files = {
+    'Strategy/FP-1.md': fixed('FP-1'),
+    'Strategy/FP-2.md': fixed('FP-2'),
+    'Strategy/FP-3.md': fixed('FP-3'),
+    'Strategy/B-1.md': md({ id: 'B-1', type: 'bet', status: 'active', serves: ['[[FP-3]]'] }),
+  };
+
+  it("puts saved fixed points at the rightmost one's x, each keeping its saved y", async () => {
+    const graph = await graphOf(files);
+    const positions = await layoutGraph(graph, {
+      'FP-1': { x: 900, y: 0 },
+      'FP-2': { x: 1200, y: 300 },
+      'FP-3': { x: 1000, y: 600 },
+      'B-1': { x: 0, y: 0 },
+    });
+    expect(positions['FP-1']).toEqual({ x: 1200, y: 0 });
+    expect(positions['FP-2']).toEqual({ x: 1200, y: 300 });
+    expect(positions['FP-3']).toEqual({ x: 1200, y: 600 });
+    expect(positions['B-1']).toEqual({ x: 0, y: 0 });
+  });
+
+  it('stacks saved fixed points the column puts on top of each other, in order of their saved y', async () => {
+    const graph = await graphOf(files);
+    const positions = await layoutGraph(graph, { 'FP-1': { x: 900, y: 10 }, 'FP-2': { x: 1200, y: 0 }, 'FP-3': { x: 1000, y: 500 }, 'B-1': { x: 0, y: 0 } });
+    expect(positions['FP-2']).toEqual({ x: 1200, y: 0 });
+    expect(positions['FP-1'].x).toBe(1200);
+    expect(positions['FP-1'].y).toBeGreaterThanOrEqual(NODE_SIZES['fixed-point'].height);
+    expect(positions['FP-3']).toEqual({ x: 1200, y: 500 });
+    expect(overlapping(graph, positions)).toEqual([]);
+  });
+
+  it('puts a new fixed point in the saved column, clear of the others', async () => {
+    const graph = await graphOf(files);
+    const positions = await layoutGraph(graph, { 'FP-1': { x: 900, y: 0 }, 'FP-2': { x: 1200, y: 300 }, 'B-1': { x: 0, y: 0 } });
+    expect(positions['FP-3'].x).toBe(1200);
+    expect(overlapping(graph, positions)).toEqual([]);
+  });
+
+  it('lines up unsaved fixed points next to saved bets too', async () => {
+    const graph = await graphOf(files);
+    const positions = await layoutGraph(graph, { 'B-1': { x: 0, y: 0 } });
+    expect(new Set(['FP-1', 'FP-2', 'FP-3'].map((k) => positions[k].x)).size).toBe(1);
+    expect(overlapping(graph, positions)).toEqual([]);
+  });
+});
+
 describe('layoutKey', () => {
   it('changes with nodes and visible edges only', async () => {
     const base = await graphOf(migratedTestVault());

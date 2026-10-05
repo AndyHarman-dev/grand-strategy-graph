@@ -3,7 +3,7 @@ import { findSmells } from '../../src/core/smells';
 import type { GsCard, GsFrame, GsLink } from '../../src/core/gsmap';
 import { groupSmellsForPanel, SMELL_GROUPS } from '../../src/ui/model';
 import { FRAME_PADDING, frameAround, frameContents, holds, junctionRect, junctionsOf, toFlowJunctions } from '../../src/ui/model';
-import { cardNodeId, cssColor, endpointNodeId, dragCompanions, frameNodeId, isCardNode, isFrameNode, isStrategyNode, toFlowCards, toFlowFrames, toFlowLinks, groupSmells, localToday, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions, unverifiedServes } from '../../src/ui/model';
+import { cardNodeId, cssColor, endpointNodeId, dragCompanions, frameNodeId, isCardNode, isFrameNode, isStrategyNode, toFlowCards, toFlowFrames, toFlowLinks, groupSmells, keepColumn, localToday, movedPositions, sidesOf, titleOf, toFlowEdges, toFlowNodes, unsavedPositions, unverifiedServes } from '../../src/ui/model';
 import { graphOf, md } from '../support/v2';
 
 const files = {
@@ -19,11 +19,11 @@ const files = {
 };
 
 describe('toFlowNodes', () => {
-  it('locks fixed points and notes without a usable id, and hides nodes with no position yet', async () => {
+  it('locks notes without a usable id (fixed points drag, up and down only), and hides nodes with no position yet', async () => {
     const graph = await graphOf(files);
     const nodes = toFlowNodes(graph, { 'FP-1': { x: 1, y: 2 }, 'B-10': { x: 3, y: 4 }, 'Strategy/No id.md': { x: 5, y: 6 } });
     const by = Object.fromEntries(nodes.map((n) => [n.id, n]));
-    expect(by['FP-1']).toMatchObject({ draggable: false, hidden: false, position: { x: 1, y: 2 } });
+    expect(by['FP-1']).toMatchObject({ draggable: true, hidden: false, position: { x: 1, y: 2 } });
     expect(by['B-10']).toMatchObject({ draggable: true, hidden: false, position: { x: 3, y: 4 }, width: 240 });
     expect(by['Strategy/No id.md']).toMatchObject({ draggable: false, hidden: false, data: { pinnable: false } });
     expect(by['CP']).toMatchObject({ hidden: true });
@@ -205,10 +205,29 @@ describe('titleOf', () => {
 });
 
 describe('movedPositions', () => {
-  it('saves by note id, and never a fixed point or a node without a usable id', async () => {
+  it('saves by note id, fixed points included, and never a node without a usable id', async () => {
     const graph = await graphOf(files);
     const nodes = toFlowNodes(graph, Object.fromEntries(graph.nodes.map((n) => [n.key, { x: 7, y: 8 }])));
-    expect(movedPositions(nodes)).toEqual({ CP: { x: 7, y: 8 }, 'A-1': { x: 7, y: 8 }, 'B-10': { x: 7, y: 8 }, 'B-2': { x: 7, y: 8 } });
+    expect(movedPositions(nodes)).toEqual({ CP: { x: 7, y: 8 }, 'FP-1': { x: 7, y: 8 }, 'A-1': { x: 7, y: 8 }, 'B-10': { x: 7, y: 8 }, 'B-2': { x: 7, y: 8 } });
+  });
+});
+
+describe('keepColumn', () => {
+  it('moves a fixed point up and down only, and leaves every other change alone', async () => {
+    const graph = await graphOf(files);
+    const nodes = toFlowNodes(graph, { 'FP-1': { x: 900, y: 0 }, 'B-10': { x: 0, y: 0 } });
+    const changes = [
+      { type: 'position' as const, id: 'FP-1', position: { x: 750, y: 120 }, dragging: true },
+      { type: 'position' as const, id: 'B-10', position: { x: 50, y: 60 } },
+      { type: 'select' as const, id: 'FP-1', selected: true },
+      { type: 'position' as const, id: 'FP-1', dragging: false },
+    ];
+    expect(keepColumn(changes, nodes)).toEqual([
+      { type: 'position', id: 'FP-1', position: { x: 900, y: 120 }, dragging: true },
+      changes[1],
+      changes[2],
+      changes[3],
+    ]);
   });
 });
 

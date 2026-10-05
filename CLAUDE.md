@@ -89,8 +89,11 @@ Release.
 - Positions are written only after a drag ends (400 ms quiet, flushed on tab close), through `vault.process`, and only
   the moved ids change (`writePositions`). A `.gsmap` that doesn't parse, or has a newer `version`, is never written.
 - Auto-placed (ELK) positions are not saved on their own, but every drag (or arrow-key nudge) also saves every shown node
-  that has no saved position yet (`unsavedPositions`), so nothing but the moved nodes ever moves. Fixed points and notes
-  without a unique `id` can't be dragged (fixed points are still pinned that way).
+  that has no saved position yet (`unsavedPositions`), so nothing but the moved nodes ever moves. Notes without a unique
+  `id` can't be dragged. Fixed points always share one column (D20: the rightmost saved one's x, `placeNodes`) and drag
+  up and down only (`keepColumn`); only their y counts, and frames don't carry them.
+- A `.gsmap` link that ends on a note no longer on the graph isn't drawn; its notice has a "Remove link" button
+  (`GraphNotice.action`, a `delete-link` op), the only way to delete it from the graph.
 - Selection works as on an Obsidian canvas: drag on empty space draws a selection box (partial overlap selects),
   Shift/Cmd/Ctrl-click toggles, Cmd/Ctrl+A selects all, Escape clears; a two-finger trackpad swipe (scroll) pans 1:1
   (`panOnScrollSpeed={1}`), as do Space+drag and middle-drag; pinch or Cmd/Ctrl+scroll zooms. Dragging any selected node moves the selection; arrow keys nudge it and are saved.

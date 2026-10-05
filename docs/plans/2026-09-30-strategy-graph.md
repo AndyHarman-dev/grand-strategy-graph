@@ -39,6 +39,7 @@ plugin (plain JS, 883 lines, no build step), and a read-only survey of the real 
 | D17 | **Milestones are checkpoints** on the way to a fixed point: the place to begin from when paving further bets. A milestone `serves` a fixed point or another milestone. Bets that work toward it `serve` it. Bets that start from it list it in `requires`, which may now point at a bet or a milestone. So the chain reads: bets → milestone → further bets → fixed point. A milestone has `status: open | reached`; flipping it to `reached` is the moment those bets can start, and an active bet that requires a milestone still `open` is a smell. (User, 2026-10-03; the attached meta-framework has no milestone concept, so this is the user's own definition.) |
 | D18 | **The real vault is migrated once, at the very end** (Phase 9, cutover), after the graph is built and tested. Until then the real vault keeps changing and stays in the legacy format, so the dry runs on it so far are rehearsals: the cutover starts with a fresh dry run on a fresh copy. For the same reason **no tagged release goes to the real vault before the cutover**: the plugin has written schema v2 since Phase 4, and v2 notes must not land in an unmigrated vault. Phases 5a–8 are built and tested on `test-vault/` and its migrated form. (User, 2026-10-03.) |
 | D19 | **Graph layout follows the canvas convention.** Left → right is time: the current position, then bets and milestones along their `serves`/`requires` chains, then the fixed points. Bets that follow the same bet share a column (they run in parallel). **Assumptions are never on the time axis**: each sits above the note that hosts it, or below when there is no room above. A shared assumption is hosted by its holder that comes first in time. A `next` sequel sits directly below the bet it follows; that pushes the assumptions that would go below the bet aside, to the right. Dragging a bet or milestone moves its hosted assumptions with it, and saves them too. Edges along time (`serves`, `requires`) leave and enter by the left/right sides; assumption leaders and sequels use the sides that face each other. Saved positions are never changed by the layout. (User, 2026-10-03, after the first look at the 5a graph.) |
+| D20 | **Fixed points share one column.** Left → right is time, and no fixed point is reached before another, so they are always drawn at one x (the rightmost saved fixed point's) and drag up and down only; only their y is meaningful. Replaces "fixed points are locked" (Phase 5a). (User, 2026-10-05, after the migrated copy showed canvas offsets between fixed points that could not be undone.) |
 
 ### Schema v2 (target)
 
@@ -256,7 +257,7 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - Positions save to `.gsmap` on drag-end only.
   - Renames need no handling because positions are keyed by `id`. A note whose `id` changes is reported.
   - Nodes with no position are placed by **ELK** (layered, left→right: current position → bets → milestones → fixed points, with bets layered along their `serves` chains). Pinned positions are kept. Assumptions and sequels are placed per D19.
-  - Fixed points are locked (not draggable).
+  - Fixed points are locked (not draggable). *(Superseded by D20: one column, vertical drag only.)*
   - Commands: "Open strategy graph" and "Reveal note in graph".
 - **Solutions.**
   - React Flow (`@xyflow/react`) + `elkjs`.
@@ -643,6 +644,16 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
     - Note cards follow renames: a `rename-file` `GsOp` (`gsmap.ts`) moves every note card on a renamed file, or on a file under a renamed folder. With the graph open, the view passes every vault rename to `GraphSession.rename`, which writes the op only when a card is on the file. With it closed, `followRenameInMaps` (registered by the plugin) writes it into each `.gsmap` no graph tab has open, checking again on the text at write time and leaving a map it can't read alone.
   - **Golden diff:** none. No screenshot baseline changed.
   - **Verification:** cloud session: typecheck clean, 421 unit tests, build, 77 Playwright tests (7 of them `@visual`); the new frame-selection test fails on the previous code. **Unverified (user, local, needs Obsidian):** making a frame from a selection, renaming or moving a note (and a folder) in the file explorer with the graph open and with it closed, and box-selecting a frame in Obsidian.
+
+- **2026-10-05**:
+  - **Context:** Phase 9 rehearsal on a migrated copy of the real vault (user, local). The user lost the 2026-10-02 `resolutions.yaml` and is answering the questions again from a fresh dry run; while checking the copy in Obsidian they reported three things about the graph (a fourth item came through empty).
+  - **Actions:**
+    - A `.gsmap` link ending on a deleted note (the user deleted a killed bet, B-2, after the migration) left a warning that could not be cleared from the graph: the link isn't drawn, so it can't be selected. `GraphNotice` gains an optional `action` (`{ label, op }`); that notice offers "Remove link" (`delete-link`), which the issues list shows as a button next to the message.
+    - Fixed points (D20): `placeNodes` puts every fixed point at one x, the rightmost saved fixed point's (else the first one placed); saved ones keep their y and are stacked downward where the column makes them overlap; unsaved ones are placed in the column clear of everything. In the UI they are draggable again, vertically only: `keepColumn` (`model.ts`) pins the x of every position change for a fixed point, and the drag handlers save and move companions with that x. Their hosted assumptions follow the vertical move; frames don't carry them.
+    - Answered, no change: active bets use Obsidian's accent colour (`--interactive-accent`), so they are orange under an orange accent and purple under the default one.
+  - **Decisions:** D20 (user). Dead links are removed only by the button, never automatically (user): until then, a restored note gets its link back.
+  - **Golden diff:** none. No screenshot baseline changed (the test vault's fixed points already share x 2200).
+  - **Verification:** cloud session: typecheck clean, 427 unit tests, build, 78 Playwright tests (7 of them `@visual`). New: the dead-link notice and its button (session and e2e), the fixed-point column (four layout tests, each failing on the previous `placeNodes`), `keepColumn`, and an e2e drag of FP-1 that keeps its x during and after the drag (fails without `keepColumn`). **Unverified (user, local, needs Obsidian):** both on the migrated copy, where the fixed points carry the canvas's offsets.
 
 ## Decisions Log
 

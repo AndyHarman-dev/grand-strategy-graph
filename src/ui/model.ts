@@ -53,7 +53,8 @@ export function titleOf(node: Pick<GraphNode, 'id' | 'basename'>): string {
 
 /**
  * One React Flow node per graph node. A node without a position yet (layout still running)
- * is hidden rather than drawn at the origin. Fixed points are locked (plan Phase 5a).
+ * is hidden rather than drawn at the origin. Fixed points drag up and down only (`keepColumn`):
+ * the layout keeps them in one column.
  */
 export function toFlowNodes(
   graph: Graph,
@@ -70,7 +71,7 @@ export function toFlowNodes(
       type: NODE_TYPE,
       position: position ? { x: position.x, y: position.y } : { x: 0, y: 0 },
       hidden: !position,
-      draggable: pinnable && node.type !== 'fixed-point',
+      draggable: pinnable,
       // Each handle decides for itself (read-only graphs make them all unconnectable); a node is never deleted.
       connectable: true,
       deletable: false,
@@ -362,12 +363,23 @@ export function holds(outer: GsPosition & Size, inner: GsPosition & Size): boole
   return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
 }
 
+export const isFixedPointNode = (node: { type?: string; data?: unknown }): boolean => isStrategyNode(node) && (node as StrategyFlowNode).data.node.type === 'fixed-point';
+
+/**
+ * Fixed points share one column (`placeNodes`), so they move up and down only: each position
+ * change for one keeps the x it has in `nodes`.
+ */
+export function keepColumn<C extends { type: string; id?: string; position?: GsPosition }>(changes: readonly C[], nodes: readonly GraphFlowNode[]): C[] {
+  const fixedX = new Map(nodes.filter(isFixedPointNode).map((n) => [n.id, n.position.x]));
+  return changes.map((c) => (c.type === 'position' && c.position && c.id !== undefined && fixedX.has(c.id) ? { ...c, position: { x: fixedX.get(c.id)!, y: c.position.y } } : c));
+}
+
 /** Positions to save after a drag: by note id, only for nodes that can be pinned. */
 export function movedPositions(nodes: readonly Pick<GraphFlowNode, 'id' | 'position' | 'data' | 'type'>[]): Record<string, GsPosition> {
   const out: Record<string, GsPosition> = {};
   for (const node of nodes) {
     if (!isStrategyNode(node)) continue;
-    if (node.data.pinnable && node.data.node.type !== 'fixed-point') out[node.data.node.id!] = { x: node.position.x, y: node.position.y };
+    if (node.data.pinnable) out[node.data.node.id!] = { x: node.position.x, y: node.position.y };
   }
   return out;
 }

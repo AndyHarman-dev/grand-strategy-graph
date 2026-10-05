@@ -394,12 +394,20 @@ test('without saved positions, assumptions sit above their host and the sequel b
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) expect(overlap(all[i], all[j])).toBe(false);
 });
 
-test('fixed points are locked', async ({ page }) => {
-  const before = await offset(page, 'FP-1', 'B-1');
-  await drag(page, 'FP-1', 150, 80);
-  await page.waitForTimeout(500);
-  expect(await offset(page, 'FP-1', 'B-1')).toEqual(before);
-  expect(await page.evaluate(() => window.gsDev.writes())).toBe(0);
+test('fixed points move up and down only, keeping their column and their assumptions', async ({ page }) => {
+  const [before, fp2, a6] = [await offset(page, 'FP-1', 'B-1'), await offset(page, 'FP-2', 'B-1'), await offset(page, 'A-6', 'FP-1')];
+  await drag(page, 'FP-1', 150, 80, { release: false });
+  expect((await offset(page, 'FP-1', 'B-1')).dx).toBe(before.dx); // during the drag too
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(1);
+  const after = await offset(page, 'FP-1', 'B-1');
+  expect(after.dx).toBe(before.dx);
+  expect(after.dy).toBeGreaterThan(before.dy + 20);
+  expect(await offset(page, 'FP-2', 'B-1')).toEqual(fp2);
+  expect(await offset(page, 'A-6', 'FP-1')).toEqual(a6); // hosted by FP-1, so it came along
+  const saved = await page.evaluate(() => (JSON.parse(window.gsDev.gsmap()) as { positions: Record<string, { x: number; y: number }> }).positions);
+  expect(saved['FP-1'].x).toBe(2200);
+  expect(saved['FP-1'].y).toBeGreaterThan(200);
 });
 
 test('a new note appears, placed where it overlaps nothing, without being saved', async ({ page }) => {
@@ -474,6 +482,21 @@ test('a changed id is reported', async ({ page }) => {
   await page.locator('.gs-notices-list').getByRole('button', { name: /changed id/ }).focus();
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => window.gsDev.opened())).toEqual(['Strategy/Bets/B-1 Get a D7 visa.md']);
+});
+
+test('a link left on a deleted note can be removed from its notice', async ({ page }) => {
+  await expect(page.locator('.react-flow__edge[data-id="link:e12"]')).toHaveCount(1);
+  await page.evaluate(() => window.gsDev.setFile('Strategy/Bets/B-6 Online ceramics course.md', null));
+  await expect(node(page, 'B-6')).toHaveCount(0);
+  await page.getByRole('button', { name: /issues?$/ }).click();
+  const notice = page.locator('.gs-notice').filter({ hasText: '("Killed") ends on "B-6"' });
+  await expect(notice).toHaveCount(1);
+  await notice.getByRole('button', { name: 'Remove link' }).click();
+  await expect(page.locator('.gs-notice').filter({ hasText: 'ends on "B-6"' })).toHaveCount(0);
+  await page.evaluate(() => window.gsDev.flush());
+  const links = await page.evaluate(() => (JSON.parse(window.gsDev.gsmap()) as { links: { id: string }[] }).links.map((l) => l.id));
+  expect(links).not.toContain('e12');
+  expect(links).toContain('e16');
 });
 
 test('the legacy vault lists its problems and still lays out every node', async ({ page }) => {

@@ -16,6 +16,8 @@ export interface GraphNotice {
   message: string;
   /** The note it is about. */
   path?: string;
+  /** A one-click fix: a `.gsmap` edit, offered as a button next to the message. */
+  action?: { label: string; op: GsOp };
 }
 
 export interface GraphState {
@@ -80,7 +82,14 @@ export class GraphSession {
       const known = new Set(this.graph.nodes.map((n) => n.key));
       for (const link of this.store.map.links) {
         const missing = [link.from, link.to].flatMap((end) => ('note' in end && !known.has(end.note) ? [end.note] : []));
-        if (missing.length) notices.push({ severity: 'warning', message: `A link on the graph${link.label ? ` ("${link.label}")` : ''} ends on ${missing.map((id) => `"${id}"`).join(' and ')}, which is not a note on the graph; it is not drawn.` });
+        if (missing.length) {
+          notices.push({
+            severity: 'warning',
+            message: `A link on the graph${link.label ? ` ("${link.label}")` : ''} ends on ${missing.map((id) => `"${id}"`).join(' and ')}, which is not a note on the graph; it is not drawn.`,
+            // It can't be clicked on the graph, so this is the only way to delete it there.
+            action: { label: 'Remove link', op: { op: 'delete-link', id: link.id } },
+          });
+        }
       }
     }
     for (const issue of this.graph?.issues ?? []) {

@@ -4,7 +4,8 @@
  *
  * Left to right is time: the current position, then bets and milestones along their `serves`
  * and `requires` chains, then the fixed points. ELK lays out that time axis. Bets that follow the
- * same bet share a column (they run in parallel).
+ * same bet share a column (they run in parallel). The fixed points always share one column: one is
+ * never reached before another.
  *
  * Assumptions are not on the time axis. Each one sits next to the note that hosts it: above it, or
  * below when there is no room above, or aside (to the right) when below is taken too. The host is
@@ -345,7 +346,10 @@ export function needsElk(graph: Graph, pinned: Readonly<Record<string, GsPositio
 
 /**
  * Final positions.
- * 1. Saved nodes exactly where they were saved.
+ * 0. Fixed points share one column: the rightmost saved fixed point's x (else the first one placed).
+ *    Left to right is time, and one fixed point is not reached before another. Only their saved y
+ *    counts; saved fixed points that the column puts on top of each other are stacked downward.
+ * 1. Other saved nodes exactly where they were saved.
  * 2. Other nodes on the time axis: a sequel directly below its bet; anything else where ELK put
  *    it relative to its placed neighbours along the time axis (a new bet lands left of the bet it
  *    serves); a group with no placed neighbour, as a block below the saved nodes. Pushed down
@@ -365,15 +369,26 @@ export function placeNodes(
   const result: Record<string, GsPosition> = {};
   const space = new Occupancy();
   const keys = graph.nodes.map((n) => n.key);
+  const isFixed = (key: string) => typeOf.get(key) === 'fixed-point';
+
+  // 0. The fixed points' column.
+  const savedFixed = keys.filter((k) => isFixed(k) && pinned[k]).sort((a, b) => pinned[a].y - pinned[b].y || byKey(a, b));
+  let column: number | null = savedFixed.length ? Math.max(...savedFixed.map((k) => pinned[k].x)) : null;
+  const columnX = (key: string, x: number) => (isFixed(key) ? (column ??= x) : x);
+  const stacked = new Occupancy();
+  for (const key of savedFixed) {
+    const rect = stacked.settle({ x: column!, y: pinned[key].y, ...size(key) });
+    result[key] = { x: rect.x, y: rect.y };
+  }
   for (const key of keys) {
     if (!pinned[key]) continue;
-    result[key] = { ...pinned[key] };
+    if (!isFixed(key)) result[key] = { ...pinned[key] };
     space.add({ ...result[key], ...size(key) });
   }
   const anyPinned = Object.keys(result).length > 0;
   const at = (key: string): GsPosition => layered[key];
   const place = (key: string, position: GsPosition) => {
-    const rect = space.settle({ ...position, ...size(key) });
+    const rect = space.settle({ ...position, x: columnX(key, position.x), ...size(key) });
     result[key] = { x: rect.x, y: rect.y };
   };
 
@@ -382,8 +397,9 @@ export function placeNodes(
     .filter((k) => !result[k] && layered[k])
     .sort((a, b) => at(a).x - at(b).x || at(a).y - at(b).y || byKey(a, b));
   if (!anyPinned) {
+    // ELK puts every fixed point in its last layer already; the column only makes that exact.
     for (const key of waiting) {
-      result[key] = { ...at(key) };
+      result[key] = { x: columnX(key, at(key).x), y: at(key).y };
       space.add({ ...result[key], ...size(key) });
     }
     waiting = [];

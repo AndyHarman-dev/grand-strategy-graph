@@ -50,11 +50,13 @@ import {
   frameContents,
   holds,
   isCardNode,
+  isFixedPointNode,
   isFrameNode,
   isJunctionNode,
   isStrategyNode,
   JUNCTION_TYPE,
   junctionsOf,
+  keepColumn,
   localToday,
   movedPositions,
   NODE_TYPE,
@@ -489,7 +491,8 @@ function Flow({
   }, []);
 
   const onNodesChange = useCallback(
-    (changes: NodeChange<GraphFlowNode>[]) => {
+    (all: NodeChange<GraphFlowNode>[]) => {
+      const changes = keepColumn(all, nodesRef.current);
       if (boxSelecting.current) {
         const isFrame = new Set(nodesRef.current.filter(isFrameNode).map((n) => n.id));
         const frames = new Set(changes.flatMap((c) => (c.type === 'select' && isFrame.has(c.id) ? [c.id] : [])));
@@ -557,12 +560,14 @@ function Flow({
   const onNodeDragStart = useCallback(
     (_event: unknown, _node: GraphFlowNode, dragged: GraphFlowNode[]) => {
       const { start, movable } = companions(nodesRef.current, new Map(dragged.map((n) => [n.id, n.position])));
-      // A dragged frame carries what lies inside it (what can move: not fixed points, not what is dragged anyway).
+      // A dragged frame carries what lies inside it (what can move: not fixed points, which keep their column, not what is dragged anyway).
       const rectOf = (n: GraphFlowNode) => ({ ...n.position, width: n.width ?? n.measured?.width ?? 0, height: n.height ?? n.measured?.height ?? 0 });
       const frames = new Map(dragged.filter(isFrameNode).map((n) => [n.id, rectOf(n)]));
       const draggedIds = new Set(dragged.map((n) => n.id));
       const items = new Map(
-        nodesRef.current.filter((n) => !n.hidden && !draggedIds.has(n.id) && n.draggable !== false && !isJunctionNode(n)).map((n) => [n.id, rectOf(n)])
+        nodesRef.current
+          .filter((n) => !n.hidden && !draggedIds.has(n.id) && n.draggable !== false && !isJunctionNode(n) && !isFixedPointNode(n))
+          .map((n) => [n.id, rectOf(n)])
       );
       const carried = new Map<string, { frame: GsPosition; from: GsPosition; by: string }>();
       if (frames.size) {
@@ -573,12 +578,22 @@ function Flow({
     [companions]
   );
 
+  /** React Flow reports a dragged fixed point where the pointer has it: back in its column, as `keepColumn` draws it. */
+  const inColumn = useCallback(
+    (dragged: GraphFlowNode[]) =>
+      dragged.map((n) => {
+        const was = dragging.current?.start.get(n.id);
+        return was && isFixedPointNode(n) ? { ...n, position: { x: was.x, y: n.position.y } } : n;
+      }),
+    []
+  );
+
   /** Where the drag has moved the other notes now: what moves along, and what no longer does back where it was. */
   const follow = useCallback(
     (dragged: GraphFlowNode[]) => {
       const drag = dragging.current;
       if (!drag) return new Map<string, GsPosition>();
-      const now = new Map(dragged.map((n) => [n.id, n.position]));
+      const now = new Map(inColumn(dragged).map((n) => [n.id, n.position]));
       const carried = new Map<string, GsPosition>();
       for (const [id, { frame, from, by }] of drag.carried) {
         const at = now.get(by);
@@ -595,7 +610,7 @@ function Flow({
       drag.along = along;
       return changed;
     },
-    [satellites, requires]
+    [satellites, requires, inColumn]
   );
 
   const onNodeDrag = useCallback(
@@ -610,13 +625,14 @@ function Flow({
     (_event: unknown, _node: GraphFlowNode, dragged: GraphFlowNode[]) => {
       // Hosted assumptions and pushed prerequisites moved too: save them with the dragged notes.
       const changed = follow(dragged);
+      const moved = inColumn(dragged);
       const along = dragging.current?.along ?? new Map<string, GsPosition>();
       dragging.current = null;
       if (changed.size) setNodes((current) => current.map((n) => (changed.has(n.id) ? { ...n, position: changed.get(n.id)! } : n)));
       const others = nodesRef.current.filter((n) => along.has(n.id)).map((n) => ({ ...n, position: along.get(n.id)! }));
-      save([...dragged, ...others]);
+      save([...moved, ...others]);
     },
-    [follow, save]
+    [follow, save, inColumn]
   );
 
   const onNodeDoubleClick = useCallback(
@@ -1110,7 +1126,7 @@ function Flow({
         {menu && <PopupMenu at={menu.at} items={menu.items} label={menu.label} onClose={closeMenu} />}
         <Toast outcome={outcome} onDone={dismissOutcome} />
         <Panel position="top-left" className="gs-toolbar">
-          {notices && notices.length > 0 && <Notices notices={notices} onOpenNote={onOpenNote} />}
+          {notices && notices.length > 0 && <Notices notices={notices} onOpenNote={onOpenNote} onOp={mapOp} />}
           <SmellsPanel graph={graph} smells={smells} onFocus={focusNode} />
           <button className="gs-toolbar-button" onClick={() => (walkKey === null ? startWalk() : setWalkKey(null))} aria-pressed={walkKey !== null}>
             Review walk
@@ -1146,7 +1162,15 @@ function UltimateIcon() {
   );
 }
 
-function Notices({ notices, onOpenNote }: { notices: readonly GraphNotice[]; onOpenNote?: StrategyGraphProps['onOpenNote'] }) {
+function Notices({
+  notices,
+  onOpenNote,
+  onOp,
+}: {
+  notices: readonly GraphNotice[];
+  onOpenNote?: StrategyGraphProps['onOpenNote'];
+  onOp: (op: GsOp) => boolean;
+}) {
   const [open, setOpen] = useState(false);
   const errors = notices.filter((n) => n.severity === 'error').length;
   const label = `${notices.length} ${notices.length === 1 ? 'issue' : 'issues'}`;
@@ -1165,6 +1189,11 @@ function Notices({ notices, onOpenNote }: { notices: readonly GraphNotice[]; onO
                 </button>
               ) : (
                 notice.message
+              )}
+              {notice.action && (
+                <button className="gs-notice-action" onClick={() => onOp(notice.action!.op)}>
+                  {notice.action.label}
+                </button>
               )}
             </li>
           ))}

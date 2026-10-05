@@ -164,6 +164,20 @@ describe('GraphSession: the free part of the map (Phase 7)', () => {
       'A link on the graph ends on "B-405", which is not a note on the graph; it is not drawn.',
     ]);
     expect(warnings.every((n) => n.severity === 'warning')).toBe(true);
+    expect(warnings.map((n) => n.action)).toEqual([
+      { label: 'Remove link', op: { op: 'delete-link', id: 'gone' } },
+      { label: 'Remove link', op: { op: 'delete-link', id: 'both' } },
+    ]);
+  });
+
+  it("removes such a link with its notice's action, and only that link", async () => {
+    const { s } = session(new MemoryAdapter({ 'Strategy/B-1.md': note('B-1') }));
+    s.loadMap(gsmap);
+    await s.rebuild();
+    const notice = s.state.notices.find((n) => n.message.includes('"B-404"'))!;
+    expect(s.editMap(notice.action!.op)).toBe(true);
+    expect(s.state.map!.links.map((l) => l.id)).toEqual(['ok', 'both']);
+    expect(s.state.notices.map((n) => n.message)).toEqual(['A link on the graph ends on "B-405", which is not a note on the graph; it is not drawn.']);
   });
 
   it('has no such warning when every end is there', async () => {
