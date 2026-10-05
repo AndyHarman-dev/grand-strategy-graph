@@ -50,9 +50,10 @@ The orange numbers are smells (see [Smells and the review walk](#smells-and-the-
 
 ![An open and a reached milestone](docs/images/milestones.png)
 
-A milestone is a checkpoint between bets. Bets that work toward it `serve` it. The milestone `serves`
-a fixed point or another milestone. Bets that start from it list it in `requires`. So the chain reads
-*bets → milestone → further bets → fixed point*. Above, *Save 20000 for kiln and lease* serves the
+A milestone is a checkpoint between bets. Bets that work toward it `serve` it. Bets that start from it
+list it in `requires`, and the milestone `serves` them (the plugin writes that side for you). It can also
+serve a fixed point or the next milestone. So the chain reads
+*bets → milestone → further bets → next milestone or fixed point*. Above, *Save 20000 for kiln and lease* serves the
 open milestone *Studio lease signed*, and *Open the studio for walk-in sales* requires it, so it stays
 dormant until the lease is signed. On the visa route, *Residence permit issued* is already `reached`
 (green). An active bet that requires an open milestone is a smell.
@@ -112,8 +113,11 @@ The plugin flags strategy smells on the nodes and lists them in a panel:
 - a dormant bet that isn't any bet's `next`
 - an active bet that requires a milestone that's still open
 
-**Review walk** steps through the strategy one note at a time. It starts at each fixed point and works
-outward along the chains that lead to it, showing each note's path, dates, smells and assumptions.
+**Review walk** steps through the strategy one note at a time, the way it was broken down: each fixed
+point, then each route that leads to it, followed back to your current position before the next route
+starts ("Route 1 of 4 to FP-2 · step 2 of 3"). A note on two routes comes up on each. Each step shows
+the note's path, dates, smells and assumptions. Bets and milestones on no route aren't walked; the
+smells panel lists them.
 
 ### Dark theme
 

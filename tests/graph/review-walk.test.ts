@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { naturalCompare, reviewWalk } from '../../src/core/review-walk';
+import { naturalCompare, reviewWalk, type WalkStep } from '../../src/core/review-walk';
 import { plannedTestVault } from '../../tools/test-vault';
 import { graphOf, md, migratedTestVault } from '../support/v2';
 
@@ -9,50 +9,113 @@ describe('naturalCompare', () => {
   });
 });
 
+/** `M-1.md` with that frontmatter; links are by basename, so `[[B-1]]` finds `Strategy/B-1.md`. */
+const note = (id: string, type: string, fm: Record<string, unknown> = {}): [string, string] => [`Strategy/${id}.md`, md({ id, type, ...fm })];
+const vault = (...notes: [string, string][]) => Object.fromEntries(notes);
+const CP = note('CP', 'current-position');
+/** A note's id from its key, for the vaults made with `note`. */
+const idOf = (key: string) => key.replace(/^Strategy\/|\.md$/g, '');
+const ids = (steps: WalkStep[]) => steps.map((s) => idOf(s.node));
+
 describe('reviewWalk', () => {
-  it('goes through each fixed point, then outward along the serves chains, nearest first', async () => {
-    const steps = reviewWalk(await graphOf(migratedTestVault()));
-    expect(steps.map((s) => `${s.group}:${s.node}@${s.depth}`)).toEqual([
-      'fixed-point:FP-1@0',
-      'route:B-1@1',
-      'route:B-2@1',
-      'route:B-5@1',
-      'fixed-point:FP-2@0',
-      'route:B-4@1',
-      'route:B-6@1',
-      'route:B-3@2',
-      'route:B-8@2',
-      'unrouted:B-7@0',
+  it('walks each route from the fixed point back to the current position before the next route starts', async () => {
+    // C → B-1 → B-2 → F-1 and C → B-4 → B-5 → M-1 → F-1 (C, the current position, is where both start).
+    const steps = reviewWalk(await graphOf(vault(
+      CP,
+      note('F-1', 'fixed-point'),
+      note('B-1', 'bet', { serves: '[[B-2]]' }),
+      note('B-2', 'bet', { serves: '[[F-1]]' }),
+      note('B-4', 'bet', { serves: '[[B-5]]' }),
+      note('B-5', 'bet', { serves: '[[M-1]]' }),
+      note('M-1', 'milestone', { status: 'open', serves: '[[F-1]]' }),
+    )));
+    expect(ids(steps)).toEqual(['F-1', 'B-2', 'B-1', 'CP', 'M-1', 'B-5', 'B-4', 'CP']);
+    expect(steps.map((s) => `${s.group} ${s.route}/${s.routes} ${s.depth}/${s.routeLength}`)).toEqual([
+      'fixed-point 0/2 0/0',
+      'route 1/2 1/3', 'route 1/2 2/3', 'current-position 1/2 3/3',
+      'route 2/2 1/4', 'route 2/2 2/4', 'route 2/2 3/4', 'current-position 2/2 4/4',
     ]);
+    expect(steps[6].via.map(idOf)).toEqual(['B-4', 'B-5', 'M-1', 'F-1']);
+    expect(new Set(steps.map((s) => s.id)).size).toBe(steps.length);
+  });
+
+  it('takes the branches of a fork by id, and shows the fork once', async () => {
+    const steps = reviewWalk(await graphOf(vault(
+      CP,
+      note('F-1', 'fixed-point'),
+      note('M-1', 'milestone', { status: 'open', serves: '[[F-1]]' }),
+      note('B-6', 'bet', { serves: '[[M-1]]' }),
+      note('B-5', 'bet', { serves: '[[M-1]]' }),
+      note('B-4', 'bet', { serves: '[[B-5]]' }),
+    )));
+    expect(ids(steps)).toEqual(['F-1', 'M-1', 'B-5', 'B-4', 'CP', 'B-6', 'CP']);
+    expect(steps.map((s) => s.route)).toEqual([0, 1, 1, 1, 1, 2, 2]);
+  });
+
+  it('walks a note on two routes on each, with what is behind it, and under each fixed point it leads to', async () => {
+    const steps = reviewWalk(await graphOf(vault(
+      note('F-1', 'fixed-point'),
+      note('F-2', 'fixed-point'),
+      note('B-1', 'bet', { serves: '[[B-2]]' }),
+      note('B-2', 'bet', { serves: ['[[B-3]]', '[[B-4]]', '[[F-2]]'] }),
+      note('B-3', 'bet', { serves: '[[F-1]]' }),
+      note('B-4', 'bet', { serves: '[[F-1]]' }),
+    )));
+    // No current position in this vault: a route ends on its first note.
+    expect(ids(steps)).toEqual(['F-1', 'B-3', 'B-2', 'B-1', 'B-4', 'B-2', 'B-1', 'F-2', 'B-2', 'B-1']);
+    expect(steps.map((s) => idOf(s.fixedPoint))).toEqual(['F-1', 'F-1', 'F-1', 'F-1', 'F-1', 'F-1', 'F-1', 'F-2', 'F-2', 'F-2']);
+  });
+
+  it('goes through a milestone to the bets that start from it, and follows a requires whose serves is missing', async () => {
+    // M-1 → B-2 → M-2 → F-1: the bets between two milestones (D17). B-1 is only in M-1's requires.
+    const steps = reviewWalk(await graphOf(vault(
+      CP,
+      note('F-1', 'fixed-point'),
+      note('M-2', 'milestone', { status: 'open', serves: '[[F-1]]' }),
+      note('B-2', 'bet', { serves: '[[M-2]]' }),
+      note('M-1', 'milestone', { status: 'reached', serves: '[[B-2]]', requires: '[[B-1]]' }),
+      note('B-1', 'bet'),
+    )));
+    expect(ids(steps)).toEqual(['F-1', 'M-2', 'B-2', 'M-1', 'B-1', 'CP']);
+  });
+
+  it('leaves out bets and milestones on no route, and stops a serves loop where it closes', async () => {
+    const steps = reviewWalk(await graphOf(vault(
+      CP,
+      note('F-1', 'fixed-point'),
+      note('B-1', 'bet', { serves: ['[[F-1]]', '[[B-2]]'] }),
+      note('B-2', 'bet', { serves: '[[B-1]]' }),
+      note('B-9', 'bet'),
+      note('M-9', 'milestone', { status: 'open' }),
+    )));
+    expect(ids(steps)).toEqual(['F-1', 'B-1', 'B-2', 'CP']);
+  });
+
+  it('shows a fixed point nothing leads to as a step of its own, and walks nothing without a fixed point', async () => {
+    const steps = reviewWalk(await graphOf(vault(CP, note('F-1', 'fixed-point'), note('B-1', 'bet'))));
+    expect(steps).toMatchObject([{ group: 'fixed-point', route: 0, routes: 0 }]);
+    expect(reviewWalk(await graphOf(vault(CP, note('B-1', 'bet'))))).toEqual([]);
+    expect(reviewWalk(await graphOf({}))).toEqual([]);
+  });
+
+  it('over the test vault: each fixed point by id, each route to its end, the assumptions with their note', async () => {
+    const graph = await graphOf(migratedTestVault());
+    const idIn = (key: string) => graph.nodes.find((n) => n.key === key)!.id;
+    const steps = reviewWalk(graph);
+    // B-4 requires B-3 and B-5 and both serve it; B-7 serves nothing, so it is on no route.
+    expect(steps.map((s) => idIn(s.node))).toEqual([
+      'FP-1', 'B-1', 'CP', 'B-2', 'CP', 'B-5', 'CP',
+      'FP-2', 'B-4', 'B-3', 'CP', 'B-5', 'CP', 'B-8', 'CP', 'B-6', 'CP',
+    ]);
+    expect(steps[9]).toMatchObject({ group: 'route', depth: 2, route: 1, routes: 4, routeLength: 3 });
+    expect(steps[9].via.map(idIn)).toEqual(['B-3', 'B-4', 'FP-2']);
+    expect(steps[0].assumptions.map(idIn)).toEqual(['A-6']);
+    expect(steps[9].assumptions.map(idIn)).toEqual(['A-3', 'A-4']);
   });
 
   it('over the planner\'s migrated test vault: B-7 serves B-4, and B-6 (whose link is the phantom note, D13) is on no route', async () => {
-    const steps = reviewWalk(await graphOf(plannedTestVault()));
-    expect(steps.map((s) => s.node)).toEqual(['FP-1', 'B-1', 'B-2', 'B-5', 'FP-2', 'B-4', 'B-3', 'B-7', 'B-8', 'B-6']);
-    expect(steps[steps.length - 1]).toMatchObject({ group: 'unrouted' });
-  });
-
-  it('says how each note reaches its fixed point, and which assumptions it leans on', async () => {
-    const steps = Object.fromEntries(reviewWalk(await graphOf(migratedTestVault())).map((s) => [s.node, s]));
-    expect(steps['B-3']).toMatchObject({ fixedPoint: 'FP-2', depth: 2, via: ['B-3', 'B-4', 'FP-2'], assumptions: ['A-3', 'A-4'] });
-    expect(steps['FP-1']).toMatchObject({ fixedPoint: null, via: ['FP-1'], assumptions: ['A-6'] });
-    expect(steps['B-7']).toMatchObject({ group: 'unrouted', fixedPoint: null, via: ['B-7'] });
-  });
-
-  it('visits a note two fixed points share once, under the first, and handles a serves loop', async () => {
-    const files = {
-      'Strategy/FP-1 One.md': md({ id: 'FP-1', type: 'fixed-point' }),
-      'Strategy/FP-2 Two.md': md({ id: 'FP-2', type: 'fixed-point' }),
-      'Strategy/B-1 Shared.md': md({ id: 'B-1', type: 'bet', status: 'active', serves: ['[[FP-1 One]]', '[[FP-2 Two]]', '[[B-2 Loop]]'] }),
-      'Strategy/B-2 Loop.md': md({ id: 'B-2', type: 'bet', status: 'active', serves: ['[[B-1 Shared]]'] }),
-    };
-    const steps = reviewWalk(await graphOf(files));
-    expect(steps.map((s) => `${s.node}<${s.fixedPoint}`)).toEqual(['FP-1<null', 'B-1<FP-1', 'B-2<FP-1', 'FP-2<null']);
-  });
-
-  it('walks a vault with no fixed point as unrouted notes, and an empty one as nothing', async () => {
-    const steps = reviewWalk(await graphOf({ 'Strategy/B-2.md': md({ id: 'B-2', type: 'bet' }), 'Strategy/B-10.md': md({ id: 'B-10', type: 'bet' }) }));
-    expect(steps.map((s) => s.node)).toEqual(['B-2', 'B-10']);
-    expect(reviewWalk(await graphOf({}))).toEqual([]);
+    const graph = await graphOf(plannedTestVault());
+    const steps = reviewWalk(graph).filter((s) => s.group !== 'current-position');
+    expect(steps.map((s) => graph.nodes.find((n) => n.key === s.node)!.id)).toEqual(['FP-1', 'B-1', 'B-2', 'B-5', 'FP-2', 'B-4', 'B-3', 'B-5', 'B-7', 'B-8']);
   });
 });

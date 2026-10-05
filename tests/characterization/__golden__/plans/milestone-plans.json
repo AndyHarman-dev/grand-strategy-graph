@@ -47,10 +47,18 @@
     "error": "The milestone title is empty after removing illegal filename characters. Nothing was created."
   },
   "servesABet": {
-    "error": "\"Serves\" must be notes in Strategy/Milestones, Strategy/Fixed Points (not B-8 Teach pottery workshops). Nothing was created."
+    "writes": [
+      {
+        "kind": "create",
+        "path": "Strategy/Milestones/M-1 T.md",
+        "content": "---\nid: M-1\ntype: milestone\nstatus: open\nserves:\n  - \"[[B-8 Teach pottery workshops]]\"\nassumptions:\n---\n## The Milestone\n*What will be true when this milestone is reached? Set `status: reached` then: the bets that require it can start.*\n\n## Log\n- 2026-10-01: Created\n"
+      }
+    ],
+    "open": "Strategy/Milestones/M-1 T.md",
+    "notice": "Created M-1 T."
   },
   "servesAnAssumption": {
-    "error": "\"Serves\" must be notes in Strategy/Milestones, Strategy/Fixed Points (not A-1 D7 accepts freelance income). Nothing was created."
+    "error": "\"Serves\" must be notes in Strategy/Bets, Strategy/Milestones, Strategy/Fixed Points (not A-1 D7 accepts freelance income). Nothing was created."
   },
   "pathTaken": {
     "error": "A note already exists at \"Strategy/Milestones/M-1 Taken.md\". Nothing was created."

@@ -38,7 +38,7 @@ import { NodeActionsContext, type NodeActions } from './actions-context';
 import type { RelationField } from '../core/writes';
 import { Inspector } from './Inspector';
 import { ReviewWalk, SmellsPanel } from './ReviewPanels';
-import { reviewWalk } from '../core/review-walk';
+import { reviewWalk, type WalkStep } from '../core/review-walk';
 import { PopupMenu, QuickCreate, Toast, type MenuItem, type QuickCreateKind } from './GraphMenus';
 import {
   CARD_DEFAULT_SIZE,
@@ -302,6 +302,7 @@ function Flow({
     [onHoverNote, perform, canEditMap, editing, cards, frames, mapOp, onOpenNote]
   );
   const dismissOutcome = useCallback(() => setOutcome(null), []);
+  /** The id of the review walk's step (`WalkStep.id`), null when no walk is on. */
   const [walkKey, setWalkKey] = useState<string | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   /** The note whose inspector was closed by hand: it stays closed until another note is selected. */
@@ -316,16 +317,15 @@ function Flow({
   const [create, setCreate] = useState<{ request: QuickCreateKind; anchor: string | null } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
   // ---- review walk (Phase 8)
+  const stepWalk = useCallback((step: WalkStep) => {
+    setWalkKey(step.id);
+    focusNodeRef.current(step.node);
+  }, []);
   const startWalk = useCallback(() => {
     const first = reviewWalk(graph)[0];
     if (!first) return setWalkKey('');
-    setWalkKey(first.node);
-    focusNodeRef.current(first.node);
-  }, [graph]);
-  const stepWalk = useCallback((key: string) => {
-    setWalkKey(key);
-    focusNodeRef.current(key);
-  }, []);
+    stepWalk(first);
+  }, [graph, stepWalk]);
   /** `focusNode` is defined further down, once the nodes exist; the walk calls it through here. */
   const focusNodeRef = useRef<(key: string) => boolean>(() => false);
   const editedItem: EditedItem | null = (() => {

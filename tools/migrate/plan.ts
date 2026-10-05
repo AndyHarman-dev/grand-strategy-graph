@@ -614,7 +614,7 @@ export function planMigration(files: Readonly<Record<string, string>>, options: 
   }
 
   // ---------------------------------------------------------------- serves implied by requires
-  // A prerequisite serves what requires it, wherever the relation table lets it (a milestone can't serve a bet).
+  // A prerequisite serves what requires it, wherever the relation table lets it.
   for (const holder of strategy.slice().sort((a, b) => sortPaths(a.path, b.path))) {
     const plan = fieldPlans.get(holder.path)?.get('requires');
     if (!plan) continue;

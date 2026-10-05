@@ -4,6 +4,12 @@
       "kind": "create",
       "path": "Strategy/Bets/B-9 Fire the first kiln load.md",
       "content": "---\nid: B-9\ntype: bet\nstatus: active\nstarted: 2026-10-01\ndeadline:\nexpected-result: \"b\"\nserves:\n  - \"[[M-1 Studio lease signed]]\"\nrequires:\n  - \"[[M-1 Studio lease signed]]\"\nnext:\nassumptions:\n---\n## The Bet\nI believe continuing **a:** `[action/effort]`\nwill produce **b:** `[concrete, observable result]`\nwithin **c:** `[timeframe — must match the deadline above]`\n\n## Kill Condition (decided NOW, before the deadline)\nWhen the deadline arrives and Y has not materialized, this bet is:\n- [ ] **Killed** — X stops entirely\n- [ ] **Modified** — X changes to: \n- [ ] **Extended once** — new deadline: `____` — written justification required below\n\n> Extension justification (fill only if extending; one extension maximum):\n\n## Log\n*Weekly check-ins go here. Date + one line: on track / off track / signal observed.*\n\n- 2026-10-01: created\n\n## Resolution\n*Fill when the bet closes.*\n- **Outcome:** \n- **What I learned:** \n- **Status updated in frontmatter?** (active → won / killed / extended)\n"
+    },
+    {
+      "kind": "add-link",
+      "path": "Strategy/Milestones/M-1 Studio lease signed.md",
+      "field": "serves",
+      "link": "[[B-9 Fire the first kiln load]]"
     }
   ],
   "open": "Strategy/Bets/B-9 Fire the first kiln load.md",

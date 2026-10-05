@@ -211,7 +211,7 @@ try {
   await page.getByRole('button', { name: /smells?$/ }).click();
   await page.getByRole('button', { name: 'Review walk' }).click();
   const walk = page.getByRole('dialog', { name: 'Review walk' });
-  for (let i = 0; i < 6; i++) await walk.getByRole('button', { name: /Next/ }).click();
+  for (let i = 0; i < 9; i++) await walk.getByRole('button', { name: /Next/ }).click(); // B-3
   await page.waitForTimeout(600);
   await shot(page, 'smells-and-walk.png');
 } finally {

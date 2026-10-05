@@ -141,10 +141,11 @@ describe('relations', () => {
     expect(edge(g, 'requires:FP-1>B-7') && edge(g, 'serves:B-7>FP-1')).toBe(true);
     ({ graph: g } = await run({ kind: 'add-relation', holder: 'M-1', field: 'requires', target: 'B-8' }));
     expect(edge(g, 'requires:M-1>B-8') && edge(g, 'serves:B-8>M-1')).toBe(true);
-    // A milestone can't serve a bet: requiring one writes the requires alone.
+    // A bet that starts from a milestone: the milestone serves it (D17).
     const { plan, graph: after } = await run({ kind: 'add-relation', holder: 'B-7', field: 'requires', target: 'M-1' });
-    expect(plan!.writes).toHaveLength(1);
-    expect(edge(after, 'requires:B-7>M-1')).toBe(true);
+    expect(plan!.writes).toHaveLength(2);
+    expect(plan!.notice).toBe('B-7 requires M-1, so M-1 serves B-7.');
+    expect(edge(after, 'requires:B-7>M-1') && edge(after, 'serves:M-1>B-7')).toBe(true);
     expect(after.issues.filter((i) => i.severity === 'error').map((i) => i.message)).toEqual(g.issues.filter((i) => i.severity === 'error').map((i) => i.message));
   });
 });
@@ -255,8 +256,10 @@ describe('creating a milestone, and what a creation reports (Phase 7)', () => {
     expect(edge(g, 'serves:M-1>FP-1')).toBe(true);
   });
 
-  it('refuses a milestone that serves a bet, and an empty title', async () => {
-    expect((await run({ kind: 'new-milestone', form: { title: 'X', description: '' }, serves: ['B-1'] })).error).toContain('"Serves" must be notes in');
+  it('creates a milestone that serves a bet, and refuses one that serves an assumption, and an empty title', async () => {
+    const { graph: g } = await run({ kind: 'new-milestone', form: { title: 'X', description: '' }, serves: ['B-1'] });
+    expect(edge(g, 'serves:M-1>B-1')).toBe(true);
+    expect((await run({ kind: 'new-milestone', form: { title: 'Y', description: '' }, serves: ['A-1'] })).error).toContain('"Serves" must be notes in');
     expect((await run({ kind: 'new-milestone', form: { title: '???', description: '' }, serves: [] })).error).toContain('title is empty');
   });
 

@@ -34,8 +34,9 @@ export interface RelationRule {
 
 /** One row per relationship field: which edge it makes, from whom, to what. */
 export const RELATIONS: readonly RelationRule[] = [
-  // A bet serves a bet, a milestone or a fixed point; a milestone serves the checkpoint or fixed point beyond it (D17).
-  { field: 'serves', kind: 'serves', to: { bet: ['bet', 'milestone', 'fixed-point'], milestone: ['milestone', 'fixed-point'] } },
+  // A bet serves a bet, a milestone or a fixed point; a milestone serves what starts from it: the bets toward the next
+  // checkpoint, that checkpoint, or a fixed point (D17).
+  { field: 'serves', kind: 'serves', to: { bet: ['bet', 'milestone', 'fixed-point'], milestone: ['bet', 'milestone', 'fixed-point'] } },
   { field: 'ultimately-serves', kind: 'ultimately-serves', to: { bet: ['fixed-point'] } },
   // Prerequisites: bets, or milestones that must be reached first (D17). A milestone or a fixed point
   // can require them too: all of them must be done before it is (the graph draws an "AND" for two or more).
@@ -59,8 +60,8 @@ export function targetsOf(rule: RelationRule, holder: NodeType): readonly NodeTy
 /**
  * Whether "`holder` requires `prerequisite`" also means "`prerequisite` serves `holder`": a
  * prerequisite is done for what requires it. True when the relation table lets the prerequisite's
- * type serve the holder's (a bet serving a bet, milestone or fixed point; a milestone serving a
- * milestone or fixed point), false otherwise (a milestone can't serve a bet).
+ * type serve the holder's: today every `requires` the table allows (bets and milestones both serve
+ * bets, milestones and fixed points), false otherwise.
  */
 export function requiresImpliesServes(holder: NodeType, prerequisite: NodeType): boolean {
   return targetsOf(relationFor('serves'), prerequisite)?.includes(holder) ?? false;

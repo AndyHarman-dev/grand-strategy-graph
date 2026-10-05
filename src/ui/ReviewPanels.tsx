@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Graph, GraphNode } from '../core/schema';
 import type { Smell } from '../core/smells';
-import { reviewWalk, type WalkGroup, type WalkStep } from '../core/review-walk';
+import { reviewWalk, type WalkStep } from '../core/review-walk';
 import { groupSmellsForPanel, titleOf } from './model';
 
 const idOf = (n: GraphNode) => n.id ?? n.basename;
@@ -47,17 +47,12 @@ export function SmellsPanel({ graph, smells, onFocus }: { graph: Graph; smells: 
   );
 }
 
-const GROUP_TITLE: Record<WalkGroup, string> = {
-  'fixed-point': 'Fixed point',
-  route: 'On the way to',
-  unrouted: 'Not on any route to a fixed point',
-};
-
 /**
  * The review walk (plan Phase 8, replacing the canvas's presentation mode): each fixed point, then
- * outward along the `serves` chains that lead to it, in a fixed order. A step centers the graph on
- * the note and shows what review looks at: status and dates, the route, the smells, the assumptions.
- * It follows the notes: an edit that changes the order keeps the walk on the note it was on.
+ * each route that leads to it, walked back to the current position before the next starts. A step
+ * centers the graph on the note and shows what review looks at: where it is on its route, status and
+ * dates, the smells, the assumptions. It follows its step (a note on two routes has one on each): an
+ * edit that changes the order keeps the walk on it, or on the same note, or else at the same place.
  */
 export function ReviewWalk({
   graph,
@@ -68,28 +63,35 @@ export function ReviewWalk({
 }: {
   graph: Graph;
   smells: readonly Smell[];
-  /** The key of the note the walk is on. */
+  /** The id of the step the walk is on (`WalkStep.id`). */
   current: string;
-  onStep: (key: string) => void;
+  onStep: (step: WalkStep) => void;
   onClose: () => void;
 }) {
   const steps = useMemo(() => reviewWalk(graph), [graph]);
-  const found = steps.findIndex((s) => s.node === current);
-  const index = found >= 0 ? found : 0;
+  const last = useRef(0);
+  let index = steps.findIndex((s) => s.id === current);
+  if (index < 0) index = steps.findIndex((s) => s.node === current.split('\n')[0]);
+  if (index < 0) index = Math.min(last.current, steps.length - 1);
+  last.current = Math.max(index, 0);
   const step: WalkStep | undefined = steps[index];
+  // The step went (an edit): move the walk, and the selection, to the one shown instead.
+  useEffect(() => {
+    if (step && step.id !== current) onStep(step);
+  }, [step, current, onStep]);
   if (!step) {
     return (
       <div className="gs-walk" role="dialog" aria-label="Review walk">
-        <p>There is nothing to walk through yet: no fixed points, bets or milestones.</p>
+        <p>There is nothing to walk through yet: no fixed points.</p>
         <button onClick={onClose}>Close</button>
       </div>
     );
   }
   const nodeOf = (key: string) => graph.nodes.find((n) => n.key === key);
   const node = nodeOf(step.node)!;
-  const fixed = step.fixedPoint ? nodeOf(step.fixedPoint) : null;
+  const fixed = nodeOf(step.fixedPoint);
   const mine = smells.filter((s) => s.node === step.node);
-  const go = (to: number) => steps[to] && onStep(steps[to].node);
+  const go = (to: number) => steps[to] && onStep(steps[to]);
   const date = node.type === 'bet' ? node.deadline : node.type === 'assumption' ? node.verifyBy : null;
   const result = typeof node.frontmatter['expected-result'] === 'string' ? (node.frontmatter['expected-result'] as string) : '';
   return (
@@ -114,9 +116,9 @@ export function ReviewWalk({
         </button>
       </header>
       <p className="gs-walk-group">
-        {GROUP_TITLE[step.group]}
-        {fixed ? ` ${idOf(fixed)}` : ''}
-        {step.group === 'route' ? ` · ${step.depth} ${step.depth === 1 ? 'step' : 'steps'} out` : ''}
+        {step.group === 'fixed-point'
+          ? `Fixed point · ${step.routes ? `${step.routes} ${step.routes === 1 ? 'route leads' : 'routes lead'} here` : 'nothing leads here yet'}`
+          : `Route ${step.route} of ${step.routes} to ${fixed ? idOf(fixed) : step.fixedPoint} · step ${step.depth} of ${step.routeLength}${step.group === 'current-position' ? ' · where you are now' : ''}`}
       </p>
       <h3>
         {idOf(node)} {titleOf(node)}

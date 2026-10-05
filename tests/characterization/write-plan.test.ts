@@ -137,7 +137,7 @@ describe('write plans over the test vault (schema v2)', () => {
       nextIdAfterExisting: planMilestone(withMilestone, { title: 'Next', description: '', servesFiles: [] }, TODAY),
       emptyVault: planMilestone(new FakeVault(), { title: 'First', description: '', servesFiles: [] }, TODAY),
       emptyTitle: planMilestone(vault, { title: '#[]?', description: '', servesFiles: [] }, TODAY),
-      // A milestone serves fixed points and milestones only (D17).
+      // A milestone serves bets (the ones that start from it), milestones and fixed points (D17).
       servesABet: planMilestone(vault, { title: 'T', description: '', servesFiles: [vault.file('Strategy/Bets/B-8 Teach pottery workshops.md')] }, TODAY),
       servesAnAssumption: planMilestone(vault, { title: 'T', description: '', servesFiles: [vault.file('Strategy/Assumptions/A-1 D7 accepts freelance income.md')] }, TODAY),
       pathTaken: planMilestone(new FakeVault({}, ['Strategy/Milestones/M-1 Taken.md']), { title: 'Taken', description: '', servesFiles: [] }, TODAY),
@@ -154,7 +154,7 @@ describe('write plans over the test vault (schema v2)', () => {
       }
     }
     expect(pickFolders('requires', 'bet')).toEqual(['Strategy/Bets', 'Strategy/Milestones']);
-    expect(pickFolders('serves', 'milestone')).toEqual(['Strategy/Milestones', 'Strategy/Fixed Points']);
+    expect(pickFolders('serves', 'milestone')).toEqual(['Strategy/Bets', 'Strategy/Milestones', 'Strategy/Fixed Points']);
     expect(pickFolders('requires', 'milestone')).toEqual(['Strategy/Bets', 'Strategy/Milestones']);
     expect(pickFolders('requires', 'fixed-point')).toEqual(['Strategy/Bets', 'Strategy/Milestones']);
     expect(pickFolders('requires', 'assumption')).toEqual([]);
