@@ -960,6 +960,7 @@
 
 .gs-walk-group,
 .gs-walk-via,
+.gs-walk-joins,
 .gs-walk-facts {
   color: var(--text-muted);
 }

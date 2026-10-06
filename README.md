@@ -115,8 +115,9 @@ The plugin flags strategy smells on the nodes and lists them in a panel:
 
 **Review walk** steps through the strategy one note at a time, the way it was broken down: each fixed
 point, then each route that leads to it, followed back to your current position before the next route
-starts ("Route 1 of 4 to FP-2 · step 2 of 3"). A note on two routes comes up on each. Each step shows
-the note's path, dates, smells and assumptions. Bets and milestones on no route aren't walked; the
+starts ("Route 1 of 3 to FP-2 · step 2 of 3"). Each note comes up once: a route that meets a note
+already walked stops there and says so ("Also builds on B-5"). Each step shows the note's path, dates,
+smells and assumptions. Bets and milestones on no route aren't walked; the
 smells panel lists them.
 
 ### Dark theme

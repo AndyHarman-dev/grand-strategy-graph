@@ -52,8 +52,9 @@ describe('reviewWalk', () => {
     expect(steps.map((s) => s.route)).toEqual([0, 1, 1, 1, 1, 2, 2]);
   });
 
-  it('walks a note on two routes on each, with what is behind it, and under each fixed point it leads to', async () => {
+  it('walks every note once: a second route stops where it meets a walked note, and names it', async () => {
     const steps = reviewWalk(await graphOf(vault(
+      CP,
       note('F-1', 'fixed-point'),
       note('F-2', 'fixed-point'),
       note('B-1', 'bet', { serves: '[[B-2]]' }),
@@ -61,9 +62,24 @@ describe('reviewWalk', () => {
       note('B-3', 'bet', { serves: '[[F-1]]' }),
       note('B-4', 'bet', { serves: '[[F-1]]' }),
     )));
-    // No current position in this vault: a route ends on its first note.
-    expect(ids(steps)).toEqual(['F-1', 'B-3', 'B-2', 'B-1', 'B-4', 'B-2', 'B-1', 'F-2', 'B-2', 'B-1']);
-    expect(steps.map((s) => idOf(s.fixedPoint))).toEqual(['F-1', 'F-1', 'F-1', 'F-1', 'F-1', 'F-1', 'F-1', 'F-2', 'F-2', 'F-2']);
+    // B-4's route meets B-2, walked on B-3's: it ends there, not on the current position.
+    expect(ids(steps)).toEqual(['F-1', 'B-3', 'B-2', 'B-1', 'CP', 'B-4', 'F-2']);
+    expect(steps.map((s) => s.joins.map(idOf))).toEqual([[], [], [], [], [], ['B-2'], ['B-2']]);
+    expect(steps.map((s) => `${s.route}/${s.routes} ${s.depth}/${s.routeLength}`)).toEqual(['0/2 0/0', '1/2 1/4', '1/2 2/4', '1/2 3/4', '1/2 4/4', '2/2 1/1', '0/0 0/0']);
+  });
+
+  it('names a branch walked earlier on the same route', async () => {
+    // B-5 serves both B-4 and B-3: walked behind B-3, then met again by B-4.
+    const steps = reviewWalk(await graphOf(vault(
+      CP,
+      note('F-1', 'fixed-point'),
+      note('B-4', 'bet', { serves: '[[F-1]]' }),
+      note('B-3', 'bet', { serves: '[[B-4]]' }),
+      note('B-5', 'bet', { serves: ['[[B-3]]', '[[B-4]]'] }),
+    )));
+    expect(ids(steps)).toEqual(['F-1', 'B-4', 'B-3', 'B-5', 'CP']);
+    expect(steps[1].joins.map(idOf)).toEqual(['B-5']);
+    expect(steps[0].routes).toBe(1);
   });
 
   it('goes through a milestone to the bets that start from it, and follows a requires whose serves is missing', async () => {
@@ -103,11 +119,13 @@ describe('reviewWalk', () => {
     const idIn = (key: string) => graph.nodes.find((n) => n.key === key)!.id;
     const steps = reviewWalk(graph);
     // B-4 requires B-3 and B-5 and both serve it; B-7 serves nothing, so it is on no route.
+    // B-5 serves FP-1 and B-4: walked under FP-1, then only named on B-4.
     expect(steps.map((s) => idIn(s.node))).toEqual([
       'FP-1', 'B-1', 'CP', 'B-2', 'CP', 'B-5', 'CP',
-      'FP-2', 'B-4', 'B-3', 'CP', 'B-5', 'CP', 'B-8', 'CP', 'B-6', 'CP',
+      'FP-2', 'B-4', 'B-3', 'CP', 'B-8', 'CP', 'B-6', 'CP',
     ]);
-    expect(steps[9]).toMatchObject({ group: 'route', depth: 2, route: 1, routes: 4, routeLength: 3 });
+    expect(steps[8].joins.map(idIn)).toEqual(['B-5']);
+    expect(steps[9]).toMatchObject({ group: 'route', depth: 2, route: 1, routes: 3, routeLength: 3 });
     expect(steps[9].via.map(idIn)).toEqual(['B-3', 'B-4', 'FP-2']);
     expect(steps[0].assumptions.map(idIn)).toEqual(['A-6']);
     expect(steps[9].assumptions.map(idIn)).toEqual(['A-3', 'A-4']);
@@ -116,6 +134,6 @@ describe('reviewWalk', () => {
   it('over the planner\'s migrated test vault: B-7 serves B-4, and B-6 (whose link is the phantom note, D13) is on no route', async () => {
     const graph = await graphOf(plannedTestVault());
     const steps = reviewWalk(graph).filter((s) => s.group !== 'current-position');
-    expect(steps.map((s) => graph.nodes.find((n) => n.key === s.node)!.id)).toEqual(['FP-1', 'B-1', 'B-2', 'B-5', 'FP-2', 'B-4', 'B-3', 'B-5', 'B-7', 'B-8']);
+    expect(steps.map((s) => graph.nodes.find((n) => n.key === s.node)!.id)).toEqual(['FP-1', 'B-1', 'B-2', 'B-5', 'FP-2', 'B-4', 'B-3', 'B-7', 'B-8']);
   });
 });

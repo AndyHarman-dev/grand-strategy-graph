@@ -1319,27 +1319,28 @@ test.describe('smells panel and review walk (Phase 8)', () => {
     await expect(page.getByRole('button', { name: '0 smells' })).toBeVisible();
   });
 
-  test('the walk takes each fixed point, then each route to it back to the current position, one route at a time', async ({ page }) => {
+  test('the walk takes each fixed point, then each route to it back to the current position, one route at a time, each note once', async ({ page }) => {
     await page.goto('/?today=2026-10-04');
     await expect(node(page, 'B-1')).toBeVisible();
     await page.getByRole('button', { name: 'Review walk' }).click();
     const dialog = walk(page);
-    await expect(dialog).toContainText('Step 1 of 17');
+    await expect(dialog).toContainText('Step 1 of 15');
     await expect(dialog).toContainText('Fixed point · 3 routes lead here');
     await expect(dialog).toContainText('FP-1 Live in Portugal');
     await expect(dialog.getByText('A-6 Portugal stays open')).toBeVisible(); // the assumption held by the fixed point is reviewed with it
     await expect(node(page, 'FP-1')).toHaveClass(/selected/);
     await expect(page.getByRole('complementary', { name: /^Inspector/ })).toHaveCount(0); // the walk has the floor
     const seen: string[] = [];
-    for (let i = 1; i < 17; i++) {
+    for (let i = 1; i < 15; i++) {
       await dialog.getByRole('button', { name: /Next/ }).click();
-      await expect(dialog).toContainText(`Step ${i + 1} of 17`);
+      await expect(dialog).toContainText(`Step ${i + 1} of 15`);
+      if (i === 8) await expect(dialog).toContainText('Also builds on B-5 (walked earlier)'); // B-4
       seen.push((await dialog.locator('h3').textContent())!.match(/^[A-Z]+(-\d+)?/)![0]);
     }
-    // B-5 serves both fixed points, so it is on a route to each. B-7 serves B-4 here, and B-6's only serves
-    // is the phantom note kept as it is (D13): it is on no route, so not walked.
-    expect(seen).toEqual(['B-1', 'CP', 'B-2', 'CP', 'B-5', 'CP', 'FP-2', 'B-4', 'B-3', 'CP', 'B-5', 'CP', 'B-7', 'CP', 'B-8', 'CP']);
-    await expect(dialog).toContainText('Route 4 of 4 to FP-2 · step 3 of 3 · where you are now');
+    // Each note once: B-5 serves FP-1 and B-4, so it is walked under FP-1 and only named on B-4. B-7 serves
+    // B-4 here, and B-6's only serves is the phantom note kept as it is (D13): it is on no route, so not walked.
+    expect(seen).toEqual(['B-1', 'CP', 'B-2', 'CP', 'B-5', 'CP', 'FP-2', 'B-4', 'B-3', 'CP', 'B-7', 'CP', 'B-8', 'CP']);
+    await expect(dialog).toContainText('Route 3 of 3 to FP-2 · step 3 of 3 · where you are now');
     await expect(dialog).toContainText('CP → B-8 → B-4 → FP-2');
     await expect(dialog.getByRole('button', { name: /Next/ })).toBeDisabled();
     await expect(node(page, 'CP')).toHaveClass(/selected/);
@@ -1353,7 +1354,7 @@ test.describe('smells panel and review walk (Phase 8)', () => {
     const dialog = walk(page);
     for (let i = 0; i < 9; i++) await dialog.getByRole('button', { name: /Next/ }).click(); // → B-3
     await expect(dialog.locator('h3')).toContainText('B-3 Sell pottery at weekend markets');
-    await expect(dialog).toContainText('Route 1 of 4 to FP-2 · step 2 of 3');
+    await expect(dialog).toContainText('Route 1 of 3 to FP-2 · step 2 of 3');
     await expect(dialog).toContainText('B-3 → B-4 → FP-2');
     await expect(dialog).toContainText('Deadline 2026-10-15');
     await expect(dialog.getByRole('list', { name: 'Smells' })).toContainText('passed its deadline');

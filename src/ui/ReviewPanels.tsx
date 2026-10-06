@@ -50,9 +50,9 @@ export function SmellsPanel({ graph, smells, onFocus }: { graph: Graph; smells: 
 /**
  * The review walk (plan Phase 8, replacing the canvas's presentation mode): each fixed point, then
  * each route that leads to it, walked back to the current position before the next starts. A step
- * centers the graph on the note and shows what review looks at: where it is on its route, status and
- * dates, the smells, the assumptions. It follows its step (a note on two routes has one on each): an
- * edit that changes the order keeps the walk on it, or on the same note, or else at the same place.
+ * centers the graph on the note and shows what review looks at: where it is on its route, what it
+ * builds on that was walked earlier, status and dates, the smells, the assumptions. It follows its step:
+ * an edit that changes the order keeps the walk on it, or on the same note, or else at the same place.
  */
 export function ReviewWalk({
   graph,
@@ -117,13 +117,16 @@ export function ReviewWalk({
       </header>
       <p className="gs-walk-group">
         {step.group === 'fixed-point'
-          ? `Fixed point · ${step.routes ? `${step.routes} ${step.routes === 1 ? 'route leads' : 'routes lead'} here` : 'nothing leads here yet'}`
+          ? `Fixed point · ${step.routes ? `${step.routes} ${step.routes === 1 ? 'route leads' : 'routes lead'} here` : step.joins.length ? 'its routes were walked already' : 'nothing leads here yet'}`
           : `Route ${step.route} of ${step.routes} to ${fixed ? idOf(fixed) : step.fixedPoint} · step ${step.depth} of ${step.routeLength}${step.group === 'current-position' ? ' · where you are now' : ''}`}
       </p>
       <h3>
         {idOf(node)} {titleOf(node)}
         {node.status && <span className="gs-walk-status">{node.status}</span>}
       </h3>
+      {step.joins.length > 0 && (
+        <p className="gs-walk-joins">Also builds on {step.joins.map((key) => { const n = nodeOf(key); return n ? idOf(n) : key; }).join(', ')} (walked earlier)</p>
+      )}
       {step.via.length > 1 && <p className="gs-walk-via">{step.via.map((key) => { const n = nodeOf(key); return n ? idOf(n) : key; }).join(' → ')}</p>}
       {(date || result) && (
         <p className="gs-walk-facts">

@@ -6,11 +6,11 @@
  * chains are the strategy's routes (D16); a milestone is on them like a bet (D17).
  *
  * The order is fixed, so a review always goes the same way: fixed points by id, and at every fork the
- * branches by id. A fork is not shown again when the next branch starts, but a note on two routes (or
- * under two fixed points) is walked on each, with everything behind it, so every route reads whole.
- * Each route ends on the current position, when the vault has one. Bets and milestones on no route
- * are not walked (the smells panel lists them), nor are assumptions: they are reviewed with the note
- * that leans on them.
+ * branches by id. Every note is walked once: a note on two routes (or under two fixed points) is walked
+ * on the first, and the second route stops where it meets it, naming it in `joins`. A route that
+ * starts from nothing earlier ends on the current position, when the vault has one. Bets and
+ * milestones on no route are not walked (the smells panel lists them), nor are assumptions: they are
+ * reviewed with the note that leans on them.
  */
 import type { Graph, GraphNode } from './schema';
 
@@ -30,6 +30,8 @@ export interface WalkStep {
   via: string[];
   /** Keys of the assumptions this note leans on, in graph order: reviewed with it. */
   assumptions: string[];
+  /** Keys of the notes one step back from this one that were walked earlier, by id: the walk doesn't go through them again. */
+  joins: string[];
   /** Which of the fixed point's routes this step is on, from 1 (0 on the fixed point's own step). */
   route: number;
   /** How many routes lead to the fixed point. */
@@ -70,11 +72,13 @@ export function reviewWalk(graph: Graph): WalkStep[] {
   const current = graph.nodes.filter((n) => n.type === 'current-position').sort(byLabel)[0] ?? null;
 
   const steps: WalkStep[] = [];
+  const walked = new Set<string>();
   for (const fixed of graph.nodes.filter((n) => n.type === 'fixed-point').sort(byLabel)) {
     const ownSteps: WalkStep[] = [];
     const lengths: number[] = []; // by route, from 0
-    const step = (node: GraphNode, group: WalkGroup, depth: number, via: string[]) =>
-      ownSteps.push({
+    const step = (node: GraphNode, group: WalkGroup, depth: number, via: string[]) => {
+      if (group !== 'current-position') walked.add(node.key);
+      const made: WalkStep = {
         id: via.join('\n'),
         node: node.key,
         group,
@@ -82,30 +86,38 @@ export function reviewWalk(graph: Graph): WalkStep[] {
         depth,
         via,
         assumptions: assumptionsOf.get(node.key) ?? [],
+        joins: [],
         route: group === 'fixed-point' ? 0 : lengths.length + 1,
         routes: 0,
         routeLength: 0,
-      });
-    // Depth first: each branch to its end before the next; `via` holds the chain, so a loop stops where it closes.
-    const walk = (node: GraphNode, depth: number, via: string[]) => {
-      const earlier = [...(before.get(node.key) ?? [])]
+      };
+      ownSteps.push(made);
+      return made;
+    };
+    // Depth first: each branch to its end before the next, skipping what was walked already.
+    const walk = (made: WalkStep, depth: number) => {
+      const earlier = [...(before.get(made.node) ?? [])]
         .map((key) => nodes.get(key))
         .filter(onRoute)
-        .filter((n) => !via.includes(n.key))
+        .filter((n) => !made.via.includes(n.key)) // a serves loop closes here
         .sort(byLabel);
-      if (depth > 0 && !earlier.length) {
-        if (current) step(current, 'current-position', depth + 1, [current.key, ...via]);
-        lengths.push(depth + (current ? 1 : 0));
-        return;
-      }
+      let went = false;
       for (const n of earlier) {
-        const chain = [n.key, ...via];
-        step(n, 'route', depth + 1, chain);
-        walk(n, depth + 1, chain);
+        // Checked as the loop goes: an earlier branch may have walked it.
+        if (walked.has(n.key)) {
+          made.joins.push(n.key);
+          continue;
+        }
+        went = true;
+        walk(step(n, 'route', depth + 1, [n.key, ...made.via]), depth + 1);
       }
+      if (depth === 0 || went) return;
+      // A route ends here. It starts from now only when nothing comes before it; else it joins one walked already.
+      const fromNow = !earlier.length && current;
+      if (fromNow) step(current, 'current-position', depth + 1, [current.key, ...made.via]);
+      lengths.push(depth + (fromNow ? 1 : 0));
     };
-    step(fixed, 'fixed-point', 0, [fixed.key]);
-    walk(fixed, 0, [fixed.key]);
+    walk(step(fixed, 'fixed-point', 0, [fixed.key]), 0);
     for (const s of ownSteps) {
       s.routes = lengths.length;
       s.routeLength = s.route ? lengths[s.route - 1] : 0;
