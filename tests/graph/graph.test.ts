@@ -134,16 +134,18 @@ describe('buildGraph issues', () => {
     expect(codes([fixed, bet('B-1')])).toEqual(['field-not-allowed']);
   });
 
-  it('lets a bet or a milestone require a milestone, and a milestone serve only milestones and fixed points (D17)', () => {
+  it('lets a bet or a milestone require a milestone, and a milestone serve bets, milestones and fixed points (D17)', () => {
     const fp = note('Strategy/FP-1.md', { id: 'FP-1', type: 'fixed-point' });
     const m2 = note('Strategy/M-2.md', { id: 'M-2', type: 'milestone', status: 'open' });
-    const links = { 'FP-1': fp.path, 'M-2': m2.path, 'B-2': 'Strategy/B-2.md', 'M-1': 'Strategy/M-1.md' };
-    const m1 = note('Strategy/M-1.md', { id: 'M-1', type: 'milestone', status: 'open', serves: ['[[M-2]]', '[[FP-1]]', '[[B-2]]'], requires: '[[M-2]]' }, links);
+    const a1 = note('Strategy/A-1.md', { id: 'A-1', type: 'assumption', status: 'unverified' });
+    const links = { 'FP-1': fp.path, 'M-2': m2.path, 'B-2': 'Strategy/B-2.md', 'M-1': 'Strategy/M-1.md', 'A-1': a1.path };
+    // M-1 → B-2 → …: the bets that start from a milestone are what it serves.
+    const m1 = note('Strategy/M-1.md', { id: 'M-1', type: 'milestone', status: 'open', serves: ['[[M-2]]', '[[FP-1]]', '[[B-2]]', '[[A-1]]'], requires: '[[M-2]]' }, links);
     const b1 = bet('B-1', { serves: '[[M-1]]', requires: ['[[M-1]]', '[[B-2]]'] }, links);
-    const graph = buildGraph([fp, m1, m2, b1, bet('B-2')]);
+    const graph = buildGraph([fp, m1, m2, a1, b1, bet('B-2')]);
     expect(graph.issues.map((i) => `${i.code} ${i.path} ${i.field}`).sort()).toEqual(['invalid-target-type Strategy/M-1.md serves']);
     expect(graph.edges.map((e) => e.key).sort()).toEqual([
-      'requires:B-1>B-2', 'requires:B-1>M-1', 'requires:M-1>M-2', 'serves:B-1>M-1', 'serves:M-1>FP-1', 'serves:M-1>M-2',
+      'requires:B-1>B-2', 'requires:B-1>M-1', 'requires:M-1>M-2', 'serves:B-1>M-1', 'serves:M-1>B-2', 'serves:M-1>FP-1', 'serves:M-1>M-2',
     ]);
   });
 

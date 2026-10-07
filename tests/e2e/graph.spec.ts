@@ -394,12 +394,20 @@ test('without saved positions, assumptions sit above their host and the sequel b
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) expect(overlap(all[i], all[j])).toBe(false);
 });
 
-test('fixed points are locked', async ({ page }) => {
-  const before = await offset(page, 'FP-1', 'B-1');
-  await drag(page, 'FP-1', 150, 80);
-  await page.waitForTimeout(500);
-  expect(await offset(page, 'FP-1', 'B-1')).toEqual(before);
-  expect(await page.evaluate(() => window.gsDev.writes())).toBe(0);
+test('fixed points move up and down only, keeping their column and their assumptions', async ({ page }) => {
+  const [before, fp2, a6] = [await offset(page, 'FP-1', 'B-1'), await offset(page, 'FP-2', 'B-1'), await offset(page, 'A-6', 'FP-1')];
+  await drag(page, 'FP-1', 150, 80, { release: false });
+  expect((await offset(page, 'FP-1', 'B-1')).dx).toBe(before.dx); // during the drag too
+  await page.mouse.up();
+  await expect.poll(() => page.evaluate(() => window.gsDev.writes())).toBe(1);
+  const after = await offset(page, 'FP-1', 'B-1');
+  expect(after.dx).toBe(before.dx);
+  expect(after.dy).toBeGreaterThan(before.dy + 20);
+  expect(await offset(page, 'FP-2', 'B-1')).toEqual(fp2);
+  expect(await offset(page, 'A-6', 'FP-1')).toEqual(a6); // hosted by FP-1, so it came along
+  const saved = await page.evaluate(() => (JSON.parse(window.gsDev.gsmap()) as { positions: Record<string, { x: number; y: number }> }).positions);
+  expect(saved['FP-1'].x).toBe(2200);
+  expect(saved['FP-1'].y).toBeGreaterThan(200);
 });
 
 test('a new note appears, placed where it overlaps nothing, without being saved', async ({ page }) => {
@@ -474,6 +482,21 @@ test('a changed id is reported', async ({ page }) => {
   await page.locator('.gs-notices-list').getByRole('button', { name: /changed id/ }).focus();
   await page.keyboard.press('Enter');
   expect(await page.evaluate(() => window.gsDev.opened())).toEqual(['Strategy/Bets/B-1 Get a D7 visa.md']);
+});
+
+test('a link left on a deleted note can be removed from its notice', async ({ page }) => {
+  await expect(page.locator('.react-flow__edge[data-id="link:e12"]')).toHaveCount(1);
+  await page.evaluate(() => window.gsDev.setFile('Strategy/Bets/B-6 Online ceramics course.md', null));
+  await expect(node(page, 'B-6')).toHaveCount(0);
+  await page.getByRole('button', { name: /issues?$/ }).click();
+  const notice = page.locator('.gs-notice').filter({ hasText: '("Killed") ends on "B-6"' });
+  await expect(notice).toHaveCount(1);
+  await notice.getByRole('button', { name: 'Remove link' }).click();
+  await expect(page.locator('.gs-notice').filter({ hasText: 'ends on "B-6"' })).toHaveCount(0);
+  await page.evaluate(() => window.gsDev.flush());
+  const links = await page.evaluate(() => (JSON.parse(window.gsDev.gsmap()) as { links: { id: string }[] }).links.map((l) => l.id));
+  expect(links).not.toContain('e12');
+  expect(links).toContain('e16');
 });
 
 test('the legacy vault lists its problems and still lays out every node', async ({ page }) => {
@@ -1296,29 +1319,32 @@ test.describe('smells panel and review walk (Phase 8)', () => {
     await expect(page.getByRole('button', { name: '0 smells' })).toBeVisible();
   });
 
-  test('the walk goes through each fixed point, then outward along its serves chains, in a fixed order', async ({ page }) => {
+  test('the walk takes each fixed point, then each route to it back to the current position, one route at a time, each note once', async ({ page }) => {
     await page.goto('/?today=2026-10-04');
     await expect(node(page, 'B-1')).toBeVisible();
     await page.getByRole('button', { name: 'Review walk' }).click();
     const dialog = walk(page);
-    await expect(dialog).toContainText('Step 1 of 10');
-    await expect(dialog).toContainText('Fixed point');
+    await expect(dialog).toContainText('Step 1 of 15');
+    await expect(dialog).toContainText('Fixed point · 3 routes lead here');
     await expect(dialog).toContainText('FP-1 Live in Portugal');
     await expect(dialog.getByText('A-6 Portugal stays open')).toBeVisible(); // the assumption held by the fixed point is reviewed with it
     await expect(node(page, 'FP-1')).toHaveClass(/selected/);
     await expect(page.getByRole('complementary', { name: /^Inspector/ })).toHaveCount(0); // the walk has the floor
     const seen: string[] = [];
-    for (let i = 1; i < 10; i++) {
+    for (let i = 1; i < 15; i++) {
       await dialog.getByRole('button', { name: /Next/ }).click();
-      await expect(dialog).toContainText(`Step ${i + 1} of 10`);
-      seen.push((await dialog.locator('h3').textContent())!.match(/^[A-Z]+-\d+/)![0]);
+      await expect(dialog).toContainText(`Step ${i + 1} of 15`);
+      if (i === 8) await expect(dialog).toContainText('Also builds on B-5 (walked earlier)'); // B-4
+      seen.push((await dialog.locator('h3').textContent())!.match(/^[A-Z]+(-\d+)?/)![0]);
     }
-    // B-7 serves B-4 here, and B-6's only serves is the phantom note kept as it is (D13): it is on no route.
-    expect(seen).toEqual(['B-1', 'B-2', 'B-5', 'FP-2', 'B-4', 'B-3', 'B-7', 'B-8', 'B-6']);
-    await expect(dialog).toContainText('Not on any route to a fixed point');
+    // Each note once: B-5 serves FP-1 and B-4, so it is walked under FP-1 and only named on B-4. B-7 serves
+    // B-4 here, and B-6's only serves is the phantom note kept as it is (D13): it is on no route, so not walked.
+    expect(seen).toEqual(['B-1', 'CP', 'B-2', 'CP', 'B-5', 'CP', 'FP-2', 'B-4', 'B-3', 'CP', 'B-7', 'CP', 'B-8', 'CP']);
+    await expect(dialog).toContainText('Route 3 of 3 to FP-2 · step 3 of 3 · where you are now');
+    await expect(dialog).toContainText('CP → B-8 → B-4 → FP-2');
     await expect(dialog.getByRole('button', { name: /Next/ })).toBeDisabled();
-    await expect(node(page, 'B-6')).toHaveClass(/selected/);
-    await expect.poll(() => offCentre(page, 'B-6')).toBeLessThan(40);
+    await expect(node(page, 'CP')).toHaveClass(/selected/);
+    await expect.poll(() => offCentre(page, 'CP')).toBeLessThan(40);
   });
 
   test('a step shows the route, the dates, the smells and the assumptions of the note; Previous and the arrow keys go back and forth', async ({ page }) => {
@@ -1326,9 +1352,9 @@ test.describe('smells panel and review walk (Phase 8)', () => {
     await expect(node(page, 'B-1')).toBeVisible();
     await page.getByRole('button', { name: 'Review walk' }).click();
     const dialog = walk(page);
-    for (let i = 0; i < 6; i++) await dialog.getByRole('button', { name: /Next/ }).click(); // → B-3
+    for (let i = 0; i < 9; i++) await dialog.getByRole('button', { name: /Next/ }).click(); // → B-3
     await expect(dialog.locator('h3')).toContainText('B-3 Sell pottery at weekend markets');
-    await expect(dialog).toContainText('On the way to FP-2 · 2 steps out');
+    await expect(dialog).toContainText('Route 1 of 3 to FP-2 · step 2 of 3');
     await expect(dialog).toContainText('B-3 → B-4 → FP-2');
     await expect(dialog).toContainText('Deadline 2026-10-15');
     await expect(dialog.getByRole('list', { name: 'Smells' })).toContainText('passed its deadline');
@@ -1342,20 +1368,24 @@ test.describe('smells panel and review walk (Phase 8)', () => {
     await expect(dialog.locator('h3')).toContainText('B-4');
   });
 
-  test('the walk ends with Escape or ×, keeps the last note selected, and stays on its note when an edit changes the order', async ({ page }) => {
+  test('the walk ends with Escape or ×, keeps the last note selected, and stays on its step when an edit changes the order', async ({ page }) => {
     await page.goto('/?today=2026-10-04&saveDelay=200');
     await expect(node(page, 'B-1')).toBeVisible();
     await page.getByRole('button', { name: 'Review walk' }).click();
     const dialog = walk(page);
-    await dialog.getByRole('button', { name: /Next/ }).click(); // B-1
-    await expect(dialog.locator('h3')).toContainText('B-1');
-    // B-1 stops serving FP-1 (as an edit would do): the walk stays on it.
+    for (let i = 0; i < 3; i++) await dialog.getByRole('button', { name: /Next/ }).click(); // B-2, route 2 of 3
+    await expect(dialog).toContainText('Route 2 of 3 to FP-1');
+    // B-1 stops serving FP-1 (as an edit would do): its route goes, and the walk stays on B-2.
     await page.evaluate(() => window.gsDev.setFile('Strategy/Bets/B-1 Get a D7 visa.md', '---\nid: B-1\ntype: bet\nstatus: active\n---\n'));
-    await expect(dialog.locator('h3')).toContainText('B-1');
-    await expect(dialog).toContainText('Not on any route to a fixed point');
+    await expect(dialog).toContainText('Route 1 of 2 to FP-1');
+    await expect(dialog.locator('h3')).toContainText('B-2');
+    // B-2 goes off the route too: the walk takes the step now in its place, and selects its note.
+    await page.evaluate(() => window.gsDev.setFile('Strategy/Bets/B-2 Apply for a digital nomad visa.md', '---\nid: B-2\ntype: bet\nstatus: dormant\n---\n'));
+    await expect(dialog.locator('h3')).toContainText('B-5');
+    await expect(node(page, 'B-5')).toHaveClass(/selected/);
     await dialog.press('Escape');
     await expect(dialog).toHaveCount(0);
-    await expect(node(page, 'B-1')).toHaveClass(/selected/);
+    await expect(node(page, 'B-5')).toHaveClass(/selected/);
     await expect(page.getByRole('complementary', { name: /^Inspector/ })).toBeVisible();
     await page.getByRole('button', { name: 'Review walk' }).click();
     await walk(page).getByRole('button', { name: 'End the review walk' }).click();
@@ -1409,7 +1439,7 @@ test.describe('screenshots @visual', () => {
     await expect(node(page, 'B-1')).toBeVisible();
     await page.getByRole('button', { name: /smells?$/ }).click();
     await page.getByRole('button', { name: 'Review walk' }).click();
-    for (let i = 0; i < 6; i++) await page.getByRole('dialog', { name: 'Review walk' }).getByRole('button', { name: /Next/ }).click();
+    for (let i = 0; i < 9; i++) await page.getByRole('dialog', { name: 'Review walk' }).getByRole('button', { name: /Next/ }).click(); // B-3
     await page.waitForTimeout(600);
     await expect(page).toHaveScreenshot('migrated-walk.png');
   });

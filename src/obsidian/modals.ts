@@ -372,7 +372,7 @@ export class MilestoneModal extends Modal {
       .setDesc('What will be true when it is reached?')
       .addText((t) => t.onChange((v) => (this.description = v)));
 
-    addFilePicker(this.app, contentEl, 'Serves (fixed points or milestones further along)', this.servesFiles, pickFolders('serves', 'milestone'), '+ Add link');
+    addFilePicker(this.app, contentEl, 'Serves (the bets that start from it, or the milestone or fixed point further along)', this.servesFiles, pickFolders('serves', 'milestone'), '+ Add link');
 
     const footer = new Setting(contentEl);
     footer.addButton((b) =>

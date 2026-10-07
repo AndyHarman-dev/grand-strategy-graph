@@ -232,7 +232,7 @@ describe('canvas rules', () => {
     expect(none.gsmap.cards.map((c) => c.id)).toContain('and');
   });
 
-  it('writes the serves a requires implies, where a serves may go (a milestone can\'t serve a bet)', async () => {
+  it('writes the serves a requires implies, from a bet or a milestone (D17)', async () => {
     const files = vault({
       [B1]: bet(''),
       [B3]: bet('requires:\n  - "[[B-1 First]]"\n  - "[[M-1 Halfway]]"\n'),
@@ -240,7 +240,8 @@ describe('canvas rules', () => {
     });
     const plan = planMigration(files);
     expect(fm(files, plan, B1).serves).toEqual(['[[B-3 Third]]']);
-    expect(plan.derived.map((d) => d.why)).toEqual(['implied by B-3 Third requires B-1 First']);
+    expect(fm(files, plan, 'Strategy/Milestones/M-1 Halfway.md').serves).toEqual(['[[B-3 Third]]']);
+    expect(plan.derived.map((d) => d.why)).toEqual(['implied by B-3 Third requires B-1 First', 'implied by B-3 Third requires M-1 Halfway']);
     expect((await parityGate(files, plan)).passed).toBe(true);
     // Once written, nothing more is implied.
     expect(planMigration(applyPlan(files, plan)).changes).toEqual([]);
