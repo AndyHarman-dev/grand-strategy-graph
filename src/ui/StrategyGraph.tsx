@@ -26,28 +26,32 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
+  type RefObject,
 } from 'react';
 import { relationCandidates, type Intent } from '../core/edits';
 import type { GraphNotice } from '../core/graph-session';
 import type { GsCard, GsFrame, GsLink, GsMap, GsOp, GsPosition } from '../core/gsmap';
 import { elkPositions, layoutKey, needsElk as needsElkFor, pinnedPositions, placeNodes, structureOf, type Size } from '../core/layout';
 import type { EditOutcome } from '../core/perform';
-import type { Graph } from '../core/schema';
+import { statusesFor, type Graph } from '../core/schema';
 import { findSmells } from '../core/smells';
 import { NodeActionsContext, type NodeActions } from './actions-context';
 import type { RelationField } from '../core/writes';
 import { Inspector } from './Inspector';
-import { ReviewWalk, SmellsPanel } from './ReviewPanels';
+import { ReviewWalk, SmellsList, SmellsPanel } from './ReviewPanels';
+import { ActionSheet, DockCard, FreeItemDetails, Icon, PeekCard, PhoneToolbar, Sheet, useTouchGestures, usePhoneFrame, type PhoneFrame } from './Phone';
 import { reviewWalk, type WalkStep } from '../core/review-walk';
 import { PopupMenu, QuickCreate, Toast, type MenuItem, type QuickCreateKind } from './GraphMenus';
 import {
   CARD_DEFAULT_SIZE,
   CARD_TYPE,
+  cardNodeId,
   FRAME_DEFAULT_SIZE,
   FRAME_TYPE,
   dragCompanions,
   frameAround,
   frameContents,
+  frameNodeId,
   holds,
   isCardNode,
   isFixedPointNode,
@@ -60,6 +64,8 @@ import {
   localToday,
   movedPositions,
   NODE_TYPE,
+  panIntoFree,
+  peekOf,
   requiresOf,
   toFlowCards,
   toFlowEdges,
@@ -112,6 +118,11 @@ export interface StrategyGraphProps {
   droppedNotes?: (event: DragEvent) => string[];
   /** The automatic layout of the time axis. ELK (`elkPositions`); the dev page swaps it to test a failure. */
   autoLayout?: (graph: Graph) => Promise<Record<string, GsPosition>>;
+  /**
+   * The phone layout (plan Phase 8b, D22): taps, sheets and docked cards instead of hover, menus and
+   * panels; one finger pans, and nodes drag only with Edit layout on. Off: the desktop layout.
+   */
+  phone?: boolean;
 }
 
 const nodeTypes = { [NODE_TYPE]: StrategyNode, [CARD_TYPE]: CardNode, [FRAME_TYPE]: FrameNode, [JUNCTION_TYPE]: JunctionNode };
@@ -181,11 +192,13 @@ export function StrategyGraph(props: StrategyGraphProps) {
   useEffect(() => {
     if (layout.complete) setStarted(true);
   }, [layout.complete]);
+  const box = useRef<HTMLDivElement>(null);
+  const frame = usePhoneFrame(box, props.phone === true);
   return (
-    <div className="gs-graph">
+    <div className={`gs-graph${props.phone ? ' gs-graph--phone' : ''}`} ref={box}>
       {started ? (
         <ReactFlowProvider>
-          <Flow {...props} notices={notices} placed={layout.positions} complete={layout.complete} />
+          <Flow {...props} notices={notices} placed={layout.positions} complete={layout.complete} box={box} frame={frame} />
         </ReactFlowProvider>
       ) : (
         <div className="gs-graph-loading">Laying out the graph…</div>
@@ -196,6 +209,14 @@ export function StrategyGraph(props: StrategyGraphProps) {
 
 /** Deleting more cards, frames and links than this in one go (counting what is selected) asks first. */
 const BULK_DELETE = 3;
+
+/** The phone's modal sheets (D22). Details are by React Flow id: a note, a free card or a frame. */
+type PhoneSheet =
+  | { kind: 'details'; id: string }
+  | { kind: 'smells' }
+  | { kind: 'issues' }
+  | { kind: 'actions'; title: string; items: MenuItem[] }
+  | { kind: 'confirm'; question: string; label: string; run: () => void };
 
 const NO_CARDS: readonly GsCard[] = [];
 const NO_FRAMES: readonly GsFrame[] = [];
@@ -223,12 +244,19 @@ function Flow({
   today,
   reveal,
   notices,
-}: StrategyGraphProps & { placed: Record<string, GsPosition>; complete: boolean }) {
+  phone = false,
+  box,
+  frame,
+}: StrategyGraphProps & { placed: Record<string, GsPosition>; complete: boolean; box: RefObject<HTMLDivElement | null>; frame: PhoneFrame }) {
   const flow = useReactFlow<GraphFlowNode>();
   const store = useStoreApi<GraphFlowNode>();
   const editable = onMove !== null;
   const smells = useMemo(() => findSmells(graph, { today: today ?? localToday() }), [graph, today]);
   const [showUltimate, setShowUltimate] = useState(false);
+  /** Phone only: nodes, cards and frames drag only while this is on (O5: it starts off every time). */
+  const [editLayout, setEditLayout] = useState(false);
+  /** Phone only: the modal sheet that is open (one at a time). */
+  const [sheet, setSheet] = useState<PhoneSheet | null>(null);
 
   // ---- editing (Phase 6): every change is an intent for the host; the graph re-derives from the notes.
   const [outcome, setOutcome] = useState<(EditOutcome & { id: number }) | null>(null);
@@ -262,13 +290,19 @@ function Flow({
   }, [cards, frames, links]);
   const actions = useMemo<NodeActions>(
     () => ({
-      hover: onHoverNote,
-      canEdit: perform !== null,
+      // A phone has no hover, and edits go through the sheets, not controls on the nodes.
+      hover: phone ? undefined : onHoverNote,
+      canEdit: perform !== null && !phone,
       setStatus: (key, status) => void perform?.({ kind: 'set-status', key, status }),
       setDate: (key, value) => void perform?.({ kind: 'set-date', key, value }),
-      canEditMap,
+      // On a phone, cards and frames resize only with Edit layout on, and are edited in the details sheet (O4).
+      canEditMap: canEditMap && (!phone || editLayout),
       editing,
-      startEdit: (kind, id) => canEditMap && setEditing({ kind, id }),
+      startEdit: (kind, id) => {
+        if (!canEditMap) return;
+        if (phone) openDetailsRef.current(kind === 'card' ? cardNodeId(id) : frameNodeId(id));
+        else setEditing({ kind, id });
+      },
       commitText: (kind, id, text) => {
         setEditing(null);
         if (kind === 'card') {
@@ -299,7 +333,7 @@ function Flow({
       },
       openNote: onOpenNote,
     }),
-    [onHoverNote, perform, canEditMap, editing, cards, frames, mapOp, onOpenNote]
+    [onHoverNote, perform, canEditMap, editing, cards, frames, mapOp, onOpenNote, phone, editLayout]
   );
   const dismissOutcome = useCallback(() => setOutcome(null), []);
   /** The id of the review walk's step (`WalkStep.id`), null when no walk is on. */
@@ -312,7 +346,7 @@ function Flow({
     setSelectedKey(key);
     setClosedKey((closed) => (closed === key ? closed : null));
   }, []);
-  const inspected = walkKey === null && selectedKey !== null && selectedKey !== closedKey ? graph.nodes.find((n) => n.key === selectedKey) ?? null : null;
+  const inspected = !phone && walkKey === null && selectedKey !== null && selectedKey !== closedKey ? graph.nodes.find((n) => n.key === selectedKey) ?? null : null;
   const [menu, setMenu] = useState<{ at: { x: number; y: number }; label: string; items: MenuItem[] } | null>(null);
   const [create, setCreate] = useState<{ request: QuickCreateKind; anchor: string | null } | null>(null);
   const closeMenu = useCallback(() => setMenu(null), []);
@@ -339,14 +373,15 @@ function Flow({
     const box = store.getState().domNode?.getBoundingClientRect();
     return { x: client.clientX - (box?.left ?? 0), y: client.clientY - (box?.top ?? 0) };
   }, [store]);
-  const build = useCallback(
-    (): GraphFlowNode[] => [
+  const build = useCallback((): GraphFlowNode[] => {
+    const all = [
       ...toFlowFrames(frames, canEditMap),
       ...toFlowNodes(graph, placed, smells).map((n) => (editable ? n : { ...n, draggable: false })),
       ...toFlowCards(cards, canEditMap),
-    ],
-    [graph, placed, editable, smells, cards, frames, canEditMap]
-  );
+    ];
+    // On a phone one finger pans: nothing drags unless Edit layout is on.
+    return phone && !editLayout ? all.map((n) => (n.draggable === false ? n : { ...n, draggable: false })) : all;
+  }, [graph, placed, editable, smells, cards, frames, canEditMap, phone, editLayout]);
   const [nodes, setNodes] = useState<GraphFlowNode[]>(build);
   /** `nodes` as last rendered, for handlers React Flow calls synchronously. */
   const nodesRef = useRef(nodes);
@@ -790,11 +825,12 @@ function Flow({
     },
     [canEditMap, flow, newCard]
   );
-  const openCardMenu = useCallback(
-    (event: ReactMouseEvent, card: GsCard) => {
+  /** A card's menu items: the right-click menu, and the phone's actions sheet (`phone`: text is edited in the details sheet). */
+  const cardMenu = useCallback(
+    (card: GsCard, phone = false): MenuItem[] => {
       const items: MenuItem[] = [];
       if (canEditMap) {
-        if (card.kind === 'text') items.push({ label: 'Edit text', run: () => setEditing({ kind: 'card', id: card.id }) });
+        if (card.kind === 'text') items.push({ label: 'Edit text', run: () => (phone ? openDetailsRef.current(cardNodeId(card.id)) : setEditing({ kind: 'card', id: card.id })) });
         items.push({ label: 'Style…', run: () => setEditor({ kind: 'card', id: card.id }) });
         if (card.kind === 'text' && perform) {
           const first = card.text.trim().split(/\r?\n/)[0] ?? '';
@@ -807,36 +843,29 @@ function Flow({
         }
       }
       if (card.kind === 'note-ref' && onOpenNote) items.push({ label: 'Open note', run: () => onOpenNote(card.file, false) });
-      if (canEditMap) items.push({ label: 'Delete card', run: () => void mapOp({ op: 'delete-card', id: card.id }) });
-      if (items.length) setMenu({ at: placeOf(event), label: 'Card', items });
+      if (canEditMap) items.push({ label: 'Delete card', danger: true, run: () => void mapOp({ op: 'delete-card', id: card.id }) });
+      return items;
     },
-    [canEditMap, perform, onOpenNote, mapOp, placeOf]
+    [canEditMap, perform, onOpenNote, mapOp]
   );
-  const openFrameMenu = useCallback(
-    (event: ReactMouseEvent, frame: GsFrame) => {
-      if (!canEditMap) return;
-      setMenu({
-        at: placeOf(event),
-        label: 'Frame',
-        items: [
-          { label: 'Rename', run: () => setEditing({ kind: 'frame', id: frame.id }) },
-          { label: 'Style…', run: () => setEditor({ kind: 'frame', id: frame.id }) },
-          { label: 'Delete frame', run: () => void mapOp({ op: 'delete-frame', id: frame.id }) },
-        ],
-      });
-    },
-    [canEditMap, placeOf, mapOp]
+  /** A frame's menu items (`phone`: it is renamed in the details sheet). */
+  const frameMenu = useCallback(
+    (frame: GsFrame, phone = false): MenuItem[] =>
+      canEditMap
+        ? [
+            { label: 'Rename', run: () => (phone ? openDetailsRef.current(frameNodeId(frame.id)) : setEditing({ kind: 'frame', id: frame.id })) },
+            { label: 'Style…', run: () => setEditor({ kind: 'frame', id: frame.id }) },
+            { label: 'Delete frame', danger: true, run: () => void mapOp({ op: 'delete-frame', id: frame.id }) },
+          ]
+        : [],
+    [canEditMap, mapOp]
   );
-
-  const onNodeContextMenu = useCallback(
-    (event: ReactMouseEvent, flowNode: GraphFlowNode) => {
-      event.preventDefault();
-      // One of several selected nodes: the menu is the selection's, as on a canvas.
-      if (flowNode.selected && canEditMap && nodesRef.current.filter((n) => n.selected && !n.hidden).length > 1) return openSelectionMenu(event);
-      if (isCardNode(flowNode)) return openCardMenu(event, flowNode.data.card);
-      if (isFrameNode(flowNode)) return openFrameMenu(event, flowNode.data.frame);
-      if (!isStrategyNode(flowNode)) return;
-      const n = flowNode.data.node;
+  /**
+   * A note's menu: the right-click menu, and the phone's actions sheet. On a phone the note opens in
+   * the graph's place only (no split), and killing a bet asks first (`confirm`).
+   */
+  const noteMenu = useCallback(
+    (n: Graph['nodes'][number], phone = false): MenuItem[] => {
       const items: MenuItem[] = [];
       const ask = (request: QuickCreateKind) => () => setCreate({ request, anchor: n.key });
       if (perform) {
@@ -861,7 +890,13 @@ function Flow({
               : sequelNode.status !== 'dormant'
                 ? `${sequelNode.id ?? sequelNode.basename} is not dormant`
                 : undefined;
-          items.push({ label: 'Kill → activate next', disabled: why, run: () => void perform({ kind: 'kill-activate-next', key: n.key }) });
+          items.push({
+            label: 'Kill → activate next',
+            disabled: why,
+            danger: true,
+            confirm: sequelNode ? `Kill ${n.id ?? n.basename} and activate ${sequelNode.id ?? sequelNode.basename}?` : undefined,
+            run: () => void perform({ kind: 'kill-activate-next', key: n.key }),
+          });
         }
         if (n.type === 'assumption') {
           items.push({
@@ -872,12 +907,35 @@ function Flow({
         }
       }
       if (onOpenNote) {
-        items.push({ label: 'Open note', run: () => onOpenNote(n.path, false) }, { label: 'Open in split', run: () => onOpenNote(n.path, true) });
+        items.push({ label: 'Open note', run: () => onOpenNote(n.path, false) });
+        if (!phone) items.push({ label: 'Open in split', run: () => onOpenNote(n.path, true) });
       }
-      if (items.length) setMenu({ at: placeOf(event), label: `Actions for ${n.id ?? n.basename}`, items });
+      return items;
     },
-    [graph, perform, onOpenNote, placeOf, openCardMenu, openFrameMenu, openSelectionMenu, canEditMap]
+    [graph, perform, onOpenNote]
   );
+  /** What the details sheet opens on (by React Flow id); filled in further down, once the phone's state exists. */
+  const openDetailsRef = useRef<(id: string) => void>(() => {});
+
+  const onNodeContextMenu = useCallback(
+    (event: ReactMouseEvent, flowNode: GraphFlowNode) => {
+      event.preventDefault();
+      // On a phone a long-press (Android sends it as a context menu) opens the actions sheet.
+      if (phone) return openActionsRef.current(flowNode.id);
+      // One of several selected nodes: the menu is the selection's, as on a canvas.
+      if (flowNode.selected && canEditMap && nodesRef.current.filter((n) => n.selected && !n.hidden).length > 1) return openSelectionMenu(event);
+      let label: string;
+      let items: MenuItem[];
+      if (isCardNode(flowNode)) [label, items] = ['Card', cardMenu(flowNode.data.card)];
+      else if (isFrameNode(flowNode)) [label, items] = ['Frame', frameMenu(flowNode.data.frame)];
+      else if (isStrategyNode(flowNode)) [label, items] = [`Actions for ${flowNode.data.node.id ?? flowNode.data.node.basename}`, noteMenu(flowNode.data.node)];
+      else return;
+      if (items.length) setMenu({ at: placeOf(event), label, items });
+    },
+    [phone, placeOf, cardMenu, frameMenu, noteMenu, openSelectionMenu, canEditMap]
+  );
+  /** The phone's actions sheet for a node (by React Flow id); filled in further down. */
+  const openActionsRef = useRef<(id: string) => void>(() => {});
 
   const onEdgeContextMenu = useCallback(
     (event: ReactMouseEvent, edge: Edge) => {
@@ -946,17 +1004,60 @@ function Flow({
     [reveal, viewport]
   );
 
+  /**
+   * The part of the graph's box no phone surface covers (the toolbar or rail, a docked card), in
+   * pixels of the box; the whole box when nothing is shown.
+   */
+  const freeArea = useCallback(() => {
+    const el = box.current;
+    if (!el) return null;
+    const outer = el.getBoundingClientRect();
+    const rectOf = (selector: string) => el.querySelector(selector)?.getBoundingClientRect();
+    const [bar, dock, inset] = [rectOf('.gs-phone-toolbar'), rectOf('.gs-dock'), rectOf('.gs-inset-probe')];
+    // The navbar's keep-out: the probe is as tall as `--gs-inset-bottom` resolves to (env() included).
+    const floor = outer.height - (inset?.height ?? 0);
+    if (frame.orientation === 'landscape') {
+      const left = bar ? bar.right - outer.left : 0;
+      const right = dock ? dock.left - outer.left : outer.width;
+      return { x: left, y: 0, width: Math.max(0, right - left), height: Math.max(0, floor) };
+    }
+    const top = bar ? bar.bottom - outer.top : 0;
+    const bottom = Math.min(dock ? dock.top - outer.top : outer.height, floor);
+    return { x: 0, y: top, width: outer.width, height: Math.max(0, bottom - top) };
+  }, [box, frame.orientation]);
+  /** Phone: pan the node (any kind, by React Flow id) into the free area, so the docked card never covers it. */
+  const revealInFree = useCallback(
+    (id: string, zoom?: number) => {
+      const target = nodesRef.current.find((n) => n.id === id && !n.hidden);
+      const free = freeArea();
+      if (!target || !free) return;
+      const rect = { ...target.position, width: target.width ?? target.measured?.width ?? 0, height: target.height ?? target.measured?.height ?? 0 };
+      void flow.setViewport(panIntoFree(rect, free, flow.getViewport(), zoom), { duration: 250 });
+    },
+    [flow, freeArea]
+  );
+  /** The zoom the next phone reveal goes to (a smell or a walk step zooms in when the graph is far out). */
+  const revealZoom = useRef<number | undefined>(undefined);
+  /** Counts the phone reveals asked for, so asking again for the node already selected still pans to it. */
+  const [revealAsked, setRevealAsked] = useState(0);
+
   /** Select a note and center the view on it (the smells panel, the review walk, "Reveal note in graph"). False when it isn't shown. */
   const focusNode = useCallback(
     (key: string) => {
       const target = nodesRef.current.find((n) => n.id === key && isStrategyNode(n) && !n.hidden);
       if (!target) return false;
       setNodes((current) => current.map((n) => (n.selected === (n.id === key) ? n : { ...n, selected: n.id === key })));
+      // On a phone the node goes into the free area instead, once its docked card is up (the effect below).
+      if (phone) {
+        revealZoom.current = flow.getZoom() < 0.6 ? 0.8 : undefined;
+        setRevealAsked((n) => n + 1);
+        return true;
+      }
       const [w, h] = [target.width ?? 0, target.height ?? 0];
       void flow.setCenter(target.position.x + w / 2, target.position.y + h / 2, { zoom: Math.max(flow.getZoom(), 1), duration: 300 });
       return true;
     },
-    [flow]
+    [flow, phone]
   );
 
   useEffect(() => {
@@ -974,6 +1075,129 @@ function Flow({
     resetFrom.current = positions;
     onResetPositions();
   }, [onResetPositions, positions]);
+
+  // ---- the phone layout (Phase 8b, D22): sheets, the peek card, gestures.
+  /** Select one node only (a long-press or double-tap selects what it opens, as a tap does). */
+  const selectOnly = useCallback((id: string) => {
+    setNodes((current) => current.map((n) => (n.selected === (n.id === id) ? n : { ...n, selected: n.id === id })));
+  }, []);
+  /** What a card's text field holds while the details sheet is open: saved (or the card deleted, when empty) on close. */
+  const draft = useRef<string | null>(null);
+  const openDetails = useCallback(
+    (id: string) => {
+      const target = nodesRef.current.find((n) => n.id === id);
+      if (!target || !(isStrategyNode(target) || isCardNode(target) || isFrameNode(target))) return;
+      selectOnly(id);
+      draft.current = null;
+      setCreate(null);
+      setEditor(null);
+      setSheet((open) => (open?.kind === 'details' && open.id === id ? open : { kind: 'details', id }));
+    },
+    [selectOnly]
+  );
+  openDetailsRef.current = openDetails;
+  /** A long-press (or a context menu on Android): the node's actions sheet, the right-click menu's items as rows. */
+  const openActions = useCallback(
+    (id: string) => {
+      const target = nodesRef.current.find((n) => n.id === id);
+      if (!target) return;
+      const details: MenuItem = { label: 'Show details', run: () => openDetails(id) };
+      let title: string;
+      let items: MenuItem[];
+      if (isStrategyNode(target)) {
+        const n = target.data.node;
+        title = `${n.id ?? n.basename} ${target.data.title}`;
+        const dated = n.type === 'bet' || n.type === 'assumption';
+        items = [details, ...(perform && (statusesFor(n.type) || dated) ? [{ label: dated ? 'Change status or dates' : 'Change status', run: () => openDetails(id) }] : []), ...noteMenu(n, true)];
+      } else if (isCardNode(target)) [title, items] = [peekOf(target)!.title, [details, ...cardMenu(target.data.card, true)]];
+      else if (isFrameNode(target)) [title, items] = [peekOf(target)!.title, [details, ...frameMenu(target.data.frame, true)]];
+      else return;
+      selectOnly(id);
+      setSheet({ kind: 'actions', title, items: items.map(confirmFirst) });
+    },
+    [perform, noteMenu, cardMenu, frameMenu, openDetails, selectOnly]
+  );
+  openActionsRef.current = openActions;
+  /** An item that asks first (`confirm`) opens the confirm sheet instead of running. */
+  const confirmFirst = (item: MenuItem): MenuItem =>
+    item.confirm ? { ...item, run: () => setSheet({ kind: 'confirm', question: item.confirm!, label: item.label, run: item.run }) } : item;
+  const closeSheet = useCallback(() => {
+    setSheet((open) => {
+      // A card's text is saved as the sheet closes too (a tap on the scrim may come before the field's blur is handled).
+      if (open?.kind === 'details' && open.id.startsWith('card:') && draft.current !== null) {
+        const card = cards.find((c) => cardNodeId(c.id) === open.id);
+        if (card?.kind === 'text') {
+          if (!draft.current.trim()) mapOp({ op: 'delete-card', id: card.id });
+          else if (draft.current !== card.text) mapOp({ op: 'put-card', card: { ...card, text: draft.current } });
+        }
+      }
+      draft.current = null;
+      return null;
+    });
+  }, [cards, mapOp]);
+  useTouchGestures(box, phone, { longPress: openActions, doubleTap: openDetails });
+
+  /** The selected node, on a phone: the peek card shows it, and it is kept out from under the docked cards. */
+  const selectedNode = phone && selectedKey !== null ? nodes.find((n) => n.id === selectedKey && !n.hidden) ?? null : null;
+  const anySheet = sheet !== null || create !== null || editor !== null;
+  const peek = selectedNode && walkKey === null && !anySheet ? peekOf(selectedNode) : null;
+  const docked = phone && !anySheet && (walkKey !== null || peek !== null) ? selectedKey : null;
+  useEffect(() => {
+    if (docked === null) return;
+    // After the docked card has been drawn, so the free area is measured with it.
+    const id = requestAnimationFrame(() => {
+      revealInFree(docked, revealZoom.current);
+      revealZoom.current = undefined;
+    });
+    return () => cancelAnimationFrame(id);
+  }, [docked, revealAsked, revealInFree]);
+
+  /** A tap during the review walk goes to that note's step, if it has one. */
+  const onPhoneNodeClick = useCallback(
+    (_event: ReactMouseEvent, flowNode: GraphFlowNode) => {
+      if (walkKey === null) return;
+      const step = reviewWalk(graph).find((s) => s.node === flowNode.id);
+      if (step) stepWalk(step);
+    },
+    [walkKey, graph, stepWalk]
+  );
+  /** Phone: ⋯ → Add card puts a card in the middle of the free area, and opens it in the details sheet. */
+  const addCard = useCallback(() => {
+    const free = freeArea();
+    const outer = box.current?.getBoundingClientRect();
+    if (!free || !outer) return;
+    const centre = flow.screenToFlowPosition({ x: outer.left + free.x + free.width / 2, y: outer.top + free.y + free.height / 2 });
+    const id = freshId();
+    const at = { x: Math.round(centre.x - CARD_DEFAULT_SIZE.width / 2), y: Math.round(centre.y - CARD_DEFAULT_SIZE.height / 2) };
+    if (!mapOp({ op: 'put-card', card: { id, kind: 'text', text: '', ...at, ...CARD_DEFAULT_SIZE } })) return;
+    // The card is drawn on the next render: open its sheet then.
+    requestAnimationFrame(() => {
+      openDetails(cardNodeId(id));
+      draft.current = '';
+    });
+  }, [freeArea, box, flow, freshId, mapOp, openDetails]);
+  const openMore = () =>
+    setSheet({
+      kind: 'actions',
+      title: 'Graph',
+      items: [
+        ...(notices?.length ? [{ label: `${notices.length} ${notices.length === 1 ? 'issue' : 'issues'} on the graph…`, run: () => setSheet({ kind: 'issues' }) }] : []),
+        { label: showUltimate ? 'Hide ultimately-serves links' : 'Show ultimately-serves links', run: () => setShowUltimate(!showUltimate) },
+        ...(canEditMap ? [{ label: 'Add card', run: addCard }] : []),
+        ...(editable ? [{ label: editLayout ? 'Stop editing layout' : 'Edit layout', run: () => setEditLayout(!editLayout) }] : []),
+        ...(onResetPositions
+          ? [
+              confirmFirst({
+                label: 'Reset layout',
+                danger: true,
+                disabled: hasSaved ? undefined : 'No position is saved yet',
+                confirm: 'Forget every saved position and lay the whole graph out automatically?',
+                run: resetPositions,
+              }),
+            ]
+          : []),
+      ],
+    });
 
   // After a reset, show the whole new layout once it is complete. Positions that come back (the reset
   // couldn't be saved) or a drag before the layout is done cancel the fit.
@@ -1008,24 +1232,25 @@ function Flow({
         onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
-        onNodeDoubleClick={onNodeDoubleClick}
+        onNodeDoubleClick={phone ? (_event, n) => openDetails(n.id) : onNodeDoubleClick}
+        onNodeClick={phone ? onPhoneNodeClick : undefined}
         onInit={onInit}
         defaultViewport={viewport ?? { x: 0, y: 0, zoom: 1 }}
         minZoom={0.1}
         maxZoom={2}
-        nodesConnectable={onEdit !== undefined || canEditMap}
+        nodesConnectable={!phone && (onEdit !== undefined || canEditMap)}
         edgesFocusable={false}
-        deleteKeyCode={onEdit || canEditMap ? ['Backspace', 'Delete'] : null}
+        deleteKeyCode={!phone && (onEdit || canEditMap) ? ['Backspace', 'Delete'] : null}
         onNodesDelete={onNodesDelete}
         onBeforeDelete={onBeforeDelete}
-        onDoubleClickCapture={onDoubleClickCapture}
+        onDoubleClickCapture={phone ? undefined : onDoubleClickCapture}
         onConnectEnd={onConnectEnd}
         onEdgesChange={onEdgesChange}
         onEdgesDelete={onEdgesDelete}
         onNodeContextMenu={onNodeContextMenu}
-        onEdgeContextMenu={onEdgeContextMenu}
-        onPaneContextMenu={onPaneContextMenu}
-        onSelectionContextMenu={openSelectionMenu}
+        onEdgeContextMenu={phone ? preventDefault : onEdgeContextMenu}
+        onPaneContextMenu={phone ? preventDefault : onPaneContextMenu}
+        onSelectionContextMenu={phone ? undefined : openSelectionMenu}
         onDragOver={onDragOver}
         onDrop={onDrop}
         onSelectionChange={onSelectionChange}
@@ -1036,18 +1261,21 @@ function Flow({
         // Space+drag or middle-drag pans; a pinch or Cmd/Ctrl+scroll zooms. Dragging any selected node
         // moves the whole selection. The swipe moves the graph with the fingers, 1:1 (React Flow's
         // default is half speed).
-        selectionOnDrag
+        // On a phone (D22) one finger pans and two zoom; nothing draws a selection box.
+        selectionOnDrag={!phone}
         selectionMode={SelectionMode.Partial}
-        panOnDrag={PAN_BUTTONS}
-        panOnScroll
+        panOnDrag={phone ? true : PAN_BUTTONS}
+        panOnScroll={!phone}
         panOnScrollSpeed={1}
-        multiSelectionKeyCode={MULTI_SELECT_KEYS}
+        zoomOnPinch
+        multiSelectionKeyCode={phone ? null : MULTI_SELECT_KEYS}
         tabIndex={-1}
         onKeyDown={onKeyDown}
         onKeyDownCapture={onKeyDownCapture}
         onPointerDownCapture={onPointerDownCapture}
       >
         <Background gap={20} />
+        {!phone && (
         <Controls showInteractive={false}>
           <ControlButton
             className="gs-reset-layout"
@@ -1068,6 +1296,7 @@ function Flow({
             <UltimateIcon />
           </ControlButton>
         </Controls>
+        )}
         {confirmingDelete && (
           <Panel position="bottom-center">
             <div className="gs-confirm" role="dialog" aria-label="Delete">
@@ -1103,7 +1332,7 @@ function Flow({
             />
           </Panel>
         )}
-        {create && perform && (
+        {create && perform && !phone && (
           <Panel position="bottom-center">
             <QuickCreate
               request={create.request}
@@ -1118,26 +1347,80 @@ function Flow({
             />
           </Panel>
         )}
-        {editor && editedItem && (
+        {editor && editedItem && !phone && (
           <Panel position="bottom-center">
             <ItemEditor edited={editedItem} onOp={mapOp} onClose={() => setEditor(null)} />
           </Panel>
         )}
         {menu && <PopupMenu at={menu.at} items={menu.items} label={menu.label} onClose={closeMenu} />}
         <Toast outcome={outcome} onDone={dismissOutcome} />
-        <Panel position="top-left" className="gs-toolbar">
-          {notices && notices.length > 0 && <Notices notices={notices} onOpenNote={onOpenNote} onOp={mapOp} />}
-          <SmellsPanel graph={graph} smells={smells} onFocus={focusNode} />
-          <button className="gs-toolbar-button" onClick={() => (walkKey === null ? startWalk() : setWalkKey(null))} aria-pressed={walkKey !== null}>
-            Review walk
-          </button>
-        </Panel>
-        {walkKey !== null && (
+        {!phone && (
+          <Panel position="top-left" className="gs-toolbar">
+            {notices && notices.length > 0 && <Notices notices={notices} onOpenNote={onOpenNote} onOp={mapOp} />}
+            <SmellsPanel graph={graph} smells={smells} onFocus={focusNode} />
+            <button className="gs-toolbar-button" onClick={() => (walkKey === null ? startWalk() : setWalkKey(null))} aria-pressed={walkKey !== null}>
+              Review walk
+            </button>
+          </Panel>
+        )}
+        {walkKey !== null && !phone && (
           <Panel position="bottom-center">
             <ReviewWalk graph={graph} smells={smells} current={walkKey} onStep={stepWalk} onClose={() => setWalkKey(null)} />
           </Panel>
         )}
       </ReactFlow>
+      {phone && (
+        <PhoneChrome
+          frame={frame}
+          graph={graph}
+          smells={smells}
+          notices={notices ?? []}
+          nodes={nodes}
+          links={links}
+          sheet={sheet}
+          peek={peek}
+          walkKey={walkKey}
+          editLayout={editLayout}
+          perform={perform}
+          canEditMap={canEditMap}
+          readNote={readNote}
+          renderNote={renderNote}
+          onOpenNote={onOpenNote}
+          mapOp={mapOp}
+          draft={draft}
+          selectedKey={selectedKey}
+          onCloseSheet={closeSheet}
+          onSheet={setSheet}
+          onDetails={openDetails}
+          onActions={openActions}
+          onFocus={focusNode}
+          onFit={() => void flow.fitView({ padding: 0.1, duration: 300 })}
+          onWalk={() => (walkKey === null ? startWalk() : setWalkKey(null))}
+          onStep={stepWalk}
+          onEndWalk={() => setWalkKey(null)}
+          onMore={openMore}
+          onEditDone={() => setEditLayout(false)}
+        />
+      )}
+      {phone && create && perform && (
+        <Sheet frame={frame} label={create.request.heading} onClose={() => setCreate(null)} className="gs-sheet--form">
+          <QuickCreate
+            request={create.request}
+            anchor={create.anchor === null ? undefined : graph.nodes.find((n) => n.key === create.anchor)}
+            perform={perform}
+            onCreated={(outcome) => {
+              const card = create.request.promote;
+              if (card && outcome.created) mapOp({ op: 'promote-card', card, note: outcome.created.id });
+            }}
+            onClose={() => setCreate(null)}
+          />
+        </Sheet>
+      )}
+      {phone && editor && editedItem && (
+        <Sheet frame={frame} label={editedItem.kind === 'card' ? 'Card style' : editedItem.kind === 'frame' ? 'Frame style' : 'Link style'} onClose={() => setEditor(null)} className="gs-sheet--form">
+          <ItemEditor edited={editedItem} onOp={mapOp} onClose={() => setEditor(null)} />
+        </Sheet>
+      )}
     </NodeActionsContext.Provider>
   );
 }
@@ -1162,6 +1445,209 @@ function UltimateIcon() {
   );
 }
 
+const preventDefault = (event: { preventDefault(): void }) => event.preventDefault();
+
+const KIND_OF_FLOW = (node: GraphFlowNode) => peekOf(node)?.kind ?? '';
+
+/**
+ * The phone's surfaces around the graph (D22): the toolbar (a row, or a rail in landscape), the
+ * docked peek card or review walk, and the modal sheet that is open: details, smells, issues, actions
+ * or a confirm. The forms (quick create, style) open in a sheet from the graph itself.
+ */
+function PhoneChrome(props: {
+  frame: PhoneFrame;
+  graph: Graph;
+  smells: ReturnType<typeof findSmells>;
+  notices: readonly GraphNotice[];
+  nodes: readonly GraphFlowNode[];
+  links: readonly GsLink[];
+  sheet: PhoneSheet | null;
+  peek: ReturnType<typeof peekOf>;
+  walkKey: string | null;
+  editLayout: boolean;
+  perform: ((intent: Intent) => Promise<EditOutcome>) | null;
+  canEditMap: boolean;
+  readNote?: StrategyGraphProps['readNote'];
+  renderNote?: StrategyGraphProps['renderNote'];
+  onOpenNote?: StrategyGraphProps['onOpenNote'];
+  mapOp: (op: GsOp) => boolean;
+  draft: { current: string | null };
+  selectedKey: string | null;
+  onCloseSheet: () => void;
+  onSheet: (sheet: PhoneSheet | null) => void;
+  onDetails: (id: string) => void;
+  onActions: (id: string) => void;
+  onFocus: (key: string) => boolean;
+  onFit: () => void;
+  onWalk: () => void;
+  onStep: (step: WalkStep) => void;
+  onEndWalk: () => void;
+  onMore: () => void;
+  onEditDone: () => void;
+}) {
+  const { frame, graph, sheet, nodes, onCloseSheet, onOpenNote } = props;
+  const pathOf = (id: string): string | null => {
+    const n = nodes.find((x) => x.id === id);
+    if (!n) return null;
+    if (isStrategyNode(n)) return n.data.node.path;
+    if (isCardNode(n) && n.data.card.kind === 'note-ref') return n.data.card.file;
+    return null;
+  };
+  const openNote = (id: string) => {
+    const path = pathOf(id);
+    return path && onOpenNote ? () => onOpenNote(path, false) : undefined;
+  };
+  const nameOf = (id: string) => {
+    const n = nodes.find((x) => x.id === id);
+    if (!n) return id;
+    const peek = peekOf(n);
+    return peek ? (peek.id ? `${peek.id} ${peek.title}` : peek.title) : id;
+  };
+  return (
+    <>
+      <div className="gs-inset-probe" aria-hidden="true" />
+      <PhoneToolbar
+        smells={props.smells.length}
+        issues={props.notices.length}
+        walking={props.walkKey !== null}
+        editLayout={props.editLayout}
+        onFit={props.onFit}
+        onSmells={() => props.onSheet({ kind: 'smells' })}
+        onWalk={props.onWalk}
+        onMore={props.onMore}
+        onEditDone={props.onEditDone}
+      />
+      {props.peek && props.selectedKey && (
+        <PeekCard
+          peek={props.peek}
+          onDetails={() => props.onDetails(props.selectedKey!)}
+          onOpenNote={openNote(props.selectedKey)}
+          onMore={() => props.onActions(props.selectedKey!)}
+        />
+      )}
+      {props.walkKey !== null && sheet === null && (
+        <DockCard label="Review walk" className="gs-dock--walk">
+          <ReviewWalk graph={graph} smells={props.smells} current={props.walkKey} onStep={props.onStep} onClose={props.onEndWalk} docked onDetails={props.onDetails} />
+        </DockCard>
+      )}
+      {sheet?.kind === 'details' && (() => {
+        const target = nodes.find((n) => n.id === sheet.id);
+        if (!target) return null;
+        const peek = peekOf(target);
+        const open = openNote(sheet.id);
+        return (
+          <Sheet
+            frame={frame}
+            label={`Details for ${peek?.id || peek?.title || sheet.id}`}
+            onClose={onCloseSheet}
+            head={
+              <>
+                <span className="gs-sheet-kind">
+                  <span className={`gs-pill ${peek?.tone ?? ''}`}>{KIND_OF_FLOW(target)}</span>
+                  {peek?.id && <span className="gs-peek-id">{peek.id}</span>}
+                </span>
+                <h2 className="gs-sheet-title">{peek?.title}</h2>
+              </>
+            }
+            foot={
+              <>
+                <button type="button" className="gs-icon-button" aria-label="More actions" onClick={() => props.onActions(sheet.id)}>
+                  <Icon name="more" />
+                </button>
+                {open && (
+                  <button type="button" className="gs-sheet-wide" onClick={open}>
+                    <Icon name="file" />
+                    Open note
+                  </button>
+                )}
+              </>
+            }
+          >
+            {isStrategyNode(target) ? (
+              <Inspector
+                graph={graph}
+                node={target.data.node}
+                perform={props.perform}
+                readNote={props.readNote}
+                renderNote={props.renderNote}
+                onOpenNote={onOpenNote}
+                onClose={onCloseSheet}
+                variant="sheet"
+              />
+            ) : isCardNode(target) || isFrameNode(target) ? (
+              <FreeItemDetails
+                item={isCardNode(target) ? { kind: 'card', card: target.data.card } : { kind: 'frame', frame: target.data.frame }}
+                links={props.links}
+                targets={nodes.filter((n) => (isStrategyNode(n) || isCardNode(n)) && !n.hidden).map((n) => ({ id: n.id, label: nameOf(n.id) }))}
+                nameOf={nameOf}
+                onOp={props.mapOp}
+                draft={props.draft}
+                editable={props.canEditMap}
+              />
+            ) : null}
+          </Sheet>
+        );
+      })()}
+      {sheet?.kind === 'smells' && (
+        <Sheet
+          frame={frame}
+          label="Smells"
+          onClose={onCloseSheet}
+          head={
+            <span className="gs-sheet-title">
+              Smells <span className="gs-count">{props.smells.length}</span>
+            </span>
+          }
+        >
+          <div className="gs-smells-list gs-smells-list--sheet">
+            <SmellsList
+              graph={graph}
+              smells={props.smells}
+              messages
+              onFocus={(key) => {
+                onCloseSheet();
+                props.onFocus(key);
+              }}
+            />
+          </div>
+        </Sheet>
+      )}
+      {sheet?.kind === 'issues' && (
+        <Sheet frame={frame} label="Issues" onClose={onCloseSheet}>
+          <NoticesList notices={props.notices} onOpenNote={onOpenNote} onOp={props.mapOp} />
+        </Sheet>
+      )}
+      {sheet?.kind === 'actions' && <ActionSheet frame={frame} title={sheet.title} items={sheet.items} onClose={onCloseSheet} />}
+      {sheet?.kind === 'confirm' && (
+        <Sheet
+          frame={frame}
+          label={sheet.label}
+          onClose={onCloseSheet}
+          foot={
+            <>
+              <button type="button" className="gs-sheet-wide" onClick={onCloseSheet}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="gs-sheet-wide mod-warning"
+                onClick={() => {
+                  onCloseSheet();
+                  sheet.run();
+                }}
+              >
+                {sheet.label.replace(/…$/, '')}
+              </button>
+            </>
+          }
+        >
+          <p className="gs-confirm-question">{sheet.question}</p>
+        </Sheet>
+      )}
+    </>
+  );
+}
+
 function Notices({
   notices,
   onOpenNote,
@@ -1179,26 +1665,31 @@ function Notices({
       <button className="gs-notices-toggle" onClick={() => setOpen(!open)} aria-expanded={open}>
         {label}
       </button>
-      {open && (
-        <ul className="gs-notices-list">
-          {notices.map((notice, i) => (
-            <li key={i} className={`gs-notice gs-notice--${notice.severity}`}>
-              {notice.path && onOpenNote ? (
-                <button className="gs-notice-link" onClick={() => onOpenNote(notice.path!, false)}>
-                  {notice.message}
-                </button>
-              ) : (
-                notice.message
-              )}
-              {notice.action && (
-                <button className="gs-notice-action" onClick={() => onOp(notice.action!.op)}>
-                  {notice.action.label}
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      {open && <NoticesList notices={notices} onOpenNote={onOpenNote} onOp={onOp} />}
     </div>
+  );
+}
+
+/** The issues on the graph (graph issues, changed ids, an unreadable `.gsmap`): the desktop panel's list, and the phone's issues sheet. */
+function NoticesList({ notices, onOpenNote, onOp }: { notices: readonly GraphNotice[]; onOpenNote?: StrategyGraphProps['onOpenNote']; onOp: (op: GsOp) => boolean }) {
+  return (
+    <ul className="gs-notices-list">
+      {notices.map((notice, i) => (
+        <li key={i} className={`gs-notice gs-notice--${notice.severity}`}>
+          {notice.path && onOpenNote ? (
+            <button className="gs-notice-link" onClick={() => onOpenNote(notice.path!, false)}>
+              {notice.message}
+            </button>
+          ) : (
+            notice.message
+          )}
+          {notice.action && (
+            <button className="gs-notice-action" onClick={() => onOp(notice.action!.op)}>
+              {notice.action.label}
+            </button>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

@@ -12,8 +12,6 @@ const idOf = (n: GraphNode) => n.id ?? n.basename;
  */
 export function SmellsPanel({ graph, smells, onFocus }: { graph: Graph; smells: readonly Smell[]; onFocus: (key: string) => void }) {
   const [open, setOpen] = useState(false);
-  const groups = groupSmellsForPanel(smells);
-  const nodeOf = (key: string) => graph.nodes.find((n) => n.key === key);
   return (
     <div className="gs-smells">
       <button className="gs-toolbar-button" onClick={() => setOpen(!open)} aria-expanded={open}>
@@ -21,29 +19,41 @@ export function SmellsPanel({ graph, smells, onFocus }: { graph: Graph; smells: 
       </button>
       {open && (
         <div className="gs-smells-list" role="region" aria-label="Smells">
-          {groups.length === 0 && <p className="gs-smells-none">Nothing to flag.</p>}
-          {groups.map((group) => (
-            <section key={group.code} data-code={group.code}>
-              <h4>
-                {group.title} <span className="gs-smells-count">{group.smells.length}</span>
-              </h4>
-              <ul>
-                {group.smells.map((smell) => {
-                  const node = nodeOf(smell.node);
-                  return (
-                    <li key={`${smell.code}:${smell.node}`}>
-                      <button className="gs-smells-item" title={smell.message} onClick={() => onFocus(smell.node)}>
-                        {node ? `${idOf(node)} ${titleOf(node)}` : smell.node}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-          ))}
+          <SmellsList graph={graph} smells={smells} onFocus={onFocus} />
         </div>
       )}
     </div>
+  );
+}
+
+/** The smells in groups, worst first: the desktop panel's list, and the phone's smells sheet (`messages`: each says what is wrong, as there are no tooltips). */
+export function SmellsList({ graph, smells, onFocus, messages = false }: { graph: Graph; smells: readonly Smell[]; onFocus: (key: string) => void; messages?: boolean }) {
+  const groups = groupSmellsForPanel(smells);
+  const nodeOf = (key: string) => graph.nodes.find((n) => n.key === key);
+  return (
+    <>
+      {groups.length === 0 && <p className="gs-smells-none">Nothing to flag.</p>}
+      {groups.map((group) => (
+        <section key={group.code} data-code={group.code}>
+          <h4>
+            {group.title} <span className="gs-smells-count">{group.smells.length}</span>
+          </h4>
+          <ul>
+            {group.smells.map((smell) => {
+              const node = nodeOf(smell.node);
+              return (
+                <li key={`${smell.code}:${smell.node}`}>
+                  <button className="gs-smells-item" title={smell.message} onClick={() => onFocus(smell.node)}>
+                    {node ? `${idOf(node)} ${titleOf(node)}` : smell.node}
+                    {messages && <span className="gs-smells-message">{smell.message}</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+    </>
   );
 }
 
@@ -60,6 +70,8 @@ export function ReviewWalk({
   current,
   onStep,
   onClose,
+  docked = false,
+  onDetails,
 }: {
   graph: Graph;
   smells: readonly Smell[];
@@ -67,6 +79,10 @@ export function ReviewWalk({
   current: string;
   onStep: (step: WalkStep) => void;
   onClose: () => void;
+  /** Docked on a phone (D22): a progress bar, and Previous · Details · Next: <id> (Finish on the last step). */
+  docked?: boolean;
+  /** Open the step's note in the details sheet (docked only). */
+  onDetails?: (key: string) => void;
 }) {
   const steps = useMemo(() => reviewWalk(graph), [graph]);
   const last = useRef(0);
@@ -81,7 +97,7 @@ export function ReviewWalk({
   }, [step, current, onStep]);
   if (!step) {
     return (
-      <div className="gs-walk" role="dialog" aria-label="Review walk">
+      <div className="gs-walk" role={docked ? undefined : 'dialog'} aria-label={docked ? undefined : 'Review walk'}>
         <p>There is nothing to walk through yet: no fixed points.</p>
         <button onClick={onClose}>Close</button>
       </div>
@@ -92,13 +108,14 @@ export function ReviewWalk({
   const fixed = nodeOf(step.fixedPoint);
   const mine = smells.filter((s) => s.node === step.node);
   const go = (to: number) => steps[to] && onStep(steps[to]);
+  const following = steps[index + 1] && nodeOf(steps[index + 1].node);
   const date = node.type === 'bet' ? node.deadline : node.type === 'assumption' ? node.verifyBy : null;
   const result = typeof node.frontmatter['expected-result'] === 'string' ? (node.frontmatter['expected-result'] as string) : '';
   return (
     <div
-      className="gs-walk nowheel nopan nodrag"
-      role="dialog"
-      aria-label="Review walk"
+      className={`gs-walk nowheel nopan nodrag${docked ? ' gs-walk--docked' : ''}`}
+      role={docked ? undefined : 'dialog'}
+      aria-label={docked ? undefined : 'Review walk'}
       onKeyDown={(event) => {
         if (event.key === 'Escape') onClose();
         else if (event.key === 'ArrowRight') go(index + 1);
@@ -111,6 +128,11 @@ export function ReviewWalk({
         <span className="gs-walk-progress">
           Step {index + 1} of {steps.length}
         </span>
+        {docked && (
+          <span className="gs-walk-bar" aria-hidden="true">
+            <span style={{ width: `${Math.round(((index + 1) / steps.length) * 100)}%` }} />
+          </span>
+        )}
         <button className="gs-walk-close" onClick={onClose} aria-label="End the review walk" title="End the walk">
           ×
         </button>
@@ -158,14 +180,32 @@ export function ReviewWalk({
           </ul>
         </div>
       )}
-      <div className="gs-walk-buttons">
-        <button onClick={() => go(index - 1)} disabled={index === 0}>
-          ← Previous
-        </button>
-        <button className="mod-cta" onClick={() => go(index + 1)} disabled={index === steps.length - 1} autoFocus>
-          Next →
-        </button>
-      </div>
+      {docked ? (
+        <div className="gs-dock-buttons">
+          <button className="gs-icon-button" onClick={() => go(index - 1)} disabled={index === 0} aria-label="Previous step">
+            ‹
+          </button>
+          {onDetails && <button onClick={() => onDetails(step.node)}>Details</button>}
+          {index === steps.length - 1 ? (
+            <button className="mod-cta" onClick={onClose}>
+              Finish
+            </button>
+          ) : (
+            <button className="mod-cta" onClick={() => go(index + 1)}>
+              Next: {following ? idOf(following) : steps[index + 1].node} ›
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="gs-walk-buttons">
+          <button onClick={() => go(index - 1)} disabled={index === 0}>
+            ← Previous
+          </button>
+          <button className="mod-cta" onClick={() => go(index + 1)} disabled={index === steps.length - 1} autoFocus>
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

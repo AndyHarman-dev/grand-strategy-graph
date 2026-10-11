@@ -1,4 +1,4 @@
-import { Component, FileView, MarkdownRenderer, Notice, TFile, type WorkspaceLeaf } from 'obsidian';
+import { Component, FileView, MarkdownRenderer, Notice, Platform, TFile, type WorkspaceLeaf } from 'obsidian';
 import { GraphSession, type GraphState } from '../core/graph-session';
 import { changesGraph } from '../core/edits';
 import { performIntent } from '../core/perform';
@@ -115,6 +115,7 @@ export class StrategyGraphView extends FileView {
       renderNote: (el, path) => this.renderNote(el, path),
       pickNote: (onPick) => new FilePickerModal(this.app, this.app.vault.getMarkdownFiles(), (note) => onPick(note.path)).open(),
       droppedNotes: (event) => this.droppedNotes(event),
+      phone: Platform.isPhone,
     });
     session.loadMap(await this.app.vault.read(file));
     await session.rebuild();

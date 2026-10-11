@@ -29,6 +29,8 @@ export interface GraphHost {
   pickNote?(onPick: (path: string) => void): void;
   /** The notes a drag dropped on the graph carries (from the file explorer), by path; empty when none. */
   droppedNotes?(event: DragEvent): string[];
+  /** The phone layout (D22): `Platform.isPhone` in Obsidian, `?phone=1` on the dev page. Tablets keep the desktop layout. */
+  phone?: boolean;
 }
 
 export interface MountedGraph {
@@ -83,6 +85,7 @@ export function mountGraph(el: HTMLElement, host: GraphHost, options: MountOptio
             reveal={reveal}
             notices={state.notices}
             autoLayout={options.autoLayout}
+            phone={host.phone === true}
           />
         </StrictMode>
       );

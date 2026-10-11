@@ -124,6 +124,11 @@ Release.
   a `requires` is not drawn a second time, and a note with two or more `requires` gets an automatic "AND" junction
   (`junctionsOf`, React Flow id `and:<key>`): never stored, not editable, placed just left of its holder and moving with it only.
   The migration no longer keeps canvas "AND" cards whose `requires` are in the notes.
+- Phone layout (Phase 8b, D22): `GraphHost.phone` (`Platform.isPhone`; `?phone=1` on the dev page, with a stand-in
+  `.mobile-navbar`). Surfaces are in `src/ui/Phone.tsx`: modal sheets are portalled to the body (they cover Obsidian's
+  navbar), docked cards and the toolbar stay in the graph's box above `--gs-inset-bottom`. Node menus are builders
+  (`noteMenu`/`cardMenu`/`frameMenu`) shared by the right-click menu and the actions sheet; change them there. Phone e2e
+  is `tests/e2e/phone.spec.ts` (touch through CDP).
 - Playwright screenshot baselines (`tests/e2e/graph.spec.ts-snapshots/`, tagged `@visual`) are like goldens: update
   them (`npx playwright test -g @visual --update-snapshots`) only for a deliberate visual change, and say so in the
   commit. They are Linux/Chromium baselines from cloud sessions; CI runs `--grep-invert @visual`.

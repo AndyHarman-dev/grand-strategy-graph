@@ -108,11 +108,11 @@ toggled, or when a bet has no `serves` chain reaching a fixed point.
 
 ### Open items
 
-O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
+None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30). O4, O5 resolved 2026-10-11 (user accepted the proposals):
 
-- **O4 (Phase 8b).** Drawing links and editing free cards and frames on a phone. The phone design doesn't cover either.
-  - Proposal: on a phone, links are added and removed only from the details sheet's relation rows, so node handles stay hidden. Cards are added from ⋯ → Add card and edited in the details sheet. Frames can be moved and resized only with Edit layout on.
-- **O5 (Phase 8b).** Whether **Edit layout** is remembered. Proposal: no. It starts off each time the graph opens, so a pan can never move a node by surprise.
+- **O4 (Phase 8b), resolved.** Drawing links and editing free cards and frames on a phone. On a phone, links are added and removed only from the details sheet's relation rows, so node handles stay hidden. Cards are added from ⋯ → Add card and edited in the details sheet. Frames can be moved and resized only with Edit layout on.
+- **O5 (Phase 8b), resolved.** **Edit layout** is not remembered. It starts off each time the graph opens, so a pan can never move a node by surprise.
+- **"Lock positions" (Phase 8b), dropped** (user, 2026-10-11). The design's ⋯ menu listed it next to Edit layout; Edit layout off already is the lock.
 
 ---
 
@@ -370,7 +370,7 @@ The design is fixed, so the work is integration.
     - The selected or current node is panned into the free area, so a card never covers it.
   - **Toolbar:**
     - Portrait: a row of Fit · Smells (count) · Review walk · ⋯. Landscape: the same buttons as an icon rail on the left.
-    - ⋯ holds Ultimately serves, Add card, Edit layout and Lock positions (Reset layout too, behind its confirm).
+    - ⋯ holds Ultimately serves, Add card, Edit layout (Reset layout too, behind its confirm). "Lock positions" was dropped (see Open items).
     - React Flow's `<Controls>` (and a minimap, if one is ever added) are hidden on a phone.
   - **Insets:**
     - **Bottom:** the navbar's height plus 12 px, measured from Obsidian's navbar element at runtime. If that fails: `env(safe-area-inset-bottom)` + 64 px.
@@ -775,6 +775,24 @@ The design is fixed, so the work is integration.
     - Proposed, not decided: O4 (links and cards on a phone), O5 (Edit layout not remembered).
   - **Golden diff:** none. No code changed.
   - **Verification:** none to run (docs only). Copies checked by SHA-256 against the canvas's published files.
+
+- **2026-10-11** (Phase 8b — phone layout, D22):
+  - **Context:** build the phone design (`docs/design/phone/`) as Phase 8b, on `feat/phone-layout` (branched from the design branch `claude/peaceful-bardeen-1emx74`).
+  - **Actions:**
+    - `GraphHost.phone` (`Platform.isPhone` in the view, `?phone=1` on the dev page, with a stand-in `.mobile-navbar`) → `<StrategyGraph phone>`.
+    - `src/ui/Phone.tsx`: `usePhoneFrame` (orientation from the box's own size; `--gs-inset-bottom` from the navbar's measured overlap + 12 px, else the CSS fallback `env(safe-area-inset-bottom) + 64px`; re-measured on resize, rotation and `visualViewport` changes), `useTouchGestures` (long-press 500 ms / 8 px, double-tap; the follow-up click is swallowed document-wide), `Sheet`, `ActionSheet`, `DockCard`, `PeekCard`, `PhoneToolbar`, `FreeItemDetails` (O4).
+    - `model.ts`: `panIntoFree` and `bottomInset` (pure, unit-tested), `peekOf`.
+    - Reused, not duplicated: the node/card/frame menus are now builders (`noteMenu`, `cardMenu`, `frameMenu`) for both the right-click menu and the actions sheet; `SmellsList` and `NoticesList` split out of their panels; `Inspector variant="sheet"` (no header, status chips); `ReviewWalk docked` (progress bar, Previous · Details · Next: <id> / Finish).
+    - React Flow on a phone: `panOnDrag`, `selectionOnDrag={false}`, `zoomOnPinch`, no delete keys, no connections, no controls; nodes, cards and frames drag only with Edit layout.
+  - **Decisions:**
+    - O4 and O5 as proposed; "Lock positions" dropped (user).
+    - Insets and orientation are measured in shared React code on the graph's box, not by the view as the plan said, so the dev page runs the same path.
+    - Modal sheets are portalled to the document body (so they cover Obsidian's navbar) and rendered outside `<ReactFlow>`, so React Flow's key and focus handlers never see their fields.
+    - The graph's issues moved under ⋯ (with a badge on it) on a phone: a fifth toolbar button didn't fit a 390 px row.
+    - Kill → activate asks first on a phone (`MenuItem.confirm`); the desktop menu still runs it at once.
+    - **Not built:** the system back gesture closing a sheet (Obsidian gives a plugin no clean hook for it). Swipe, scrim tap, × and Escape close sheets.
+  - **Golden diff:** none. No `@visual` baseline added or changed: the two new `@visual` phone screenshots need a Linux cloud run (`npx playwright test -g @visual --update-snapshots`).
+  - **Verification:** local (macOS): typecheck clean, 443 unit tests, build, 84 Playwright tests (71 desktop unchanged, 13 phone with CDP touch events at 390×844 and 844×390). **Unverified (user, local, needs a phone):** Obsidian's real navbar measurement (`.mobile-navbar`), the notch in landscape, iOS callout suppression, the system back gesture (not built), the keyboard pushing a field into view, double-tap on iOS, and that Obsidian's own edge swipes still work over the graph.
 
 ## Decisions Log
 

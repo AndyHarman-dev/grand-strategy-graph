@@ -27,7 +27,11 @@ export function resetObsidianMock(): void {
   rendered.length = 0;
   openedModals.length = 0;
   today = '2026-10-01';
+  Object.assign(Platform, { isPhone: false, isMobile: false, isDesktop: true, isTablet: false });
 }
+
+/** A desktop by default; a test can set `isPhone` to see the phone layout asked for. */
+export const Platform = { isPhone: false, isMobile: false, isDesktop: true, isTablet: false };
 
 export class Notice {
   constructor(message: string, timeout?: number) {
