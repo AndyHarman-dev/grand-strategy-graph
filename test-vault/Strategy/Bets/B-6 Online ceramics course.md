@@ -16,6 +16,7 @@ within **one month:** `[timeframe — must match the deadline above]`
 
 ## Serves
 Which fixed point / direction does this bet serve?
+- [[FP-2 Profitable pottery business]]
 
 ## Kill Condition (decided NOW, before the deadline)
 When the deadline arrives and Y has not materialized, this bet is:

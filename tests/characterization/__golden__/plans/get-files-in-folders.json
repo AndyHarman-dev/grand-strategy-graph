@@ -1,0 +1,24 @@
+{
+  "fixedPointsAndBets": [
+    "Strategy/Bets/B-1 Get a D7 visa.md",
+    "Strategy/Bets/B-2 Apply for a digital nomad visa.md",
+    "Strategy/Bets/B-3 Sell pottery at weekend markets.md",
+    "Strategy/Bets/B-4 Save 20000 for kiln and lease.md",
+    "Strategy/Bets/B-5 Learn Portuguese to B1.md",
+    "Strategy/Bets/B-6 Online ceramics course.md",
+    "Strategy/Bets/B-7  Part-time barista job.md",
+    "Strategy/Bets/B-8 Teach pottery workshops.md",
+    "Strategy/Fixed Points/FP-1 Live in Portugal.md",
+    "Strategy/Fixed Points/FP-2 Own a profitable ceramics studio.md"
+  ],
+  "assumptions": [
+    "Strategy/Assumptions/A-1 D7 accepts freelance income.md",
+    "Strategy/Assumptions/A-2 Rent in Lisbon stays under 1200.md",
+    "Strategy/Assumptions/A-3 Weekend market stalls are available.md",
+    "Strategy/Assumptions/A-4 Tourists buy handmade ceramics.md",
+    "Strategy/Assumptions/A-5 I can study one hour a day.md",
+    "Strategy/Assumptions/A-6 Portugal stays open to non-EU residents.md",
+    "Strategy/Assumptions/A-7 Workshops can fill eight seats.md"
+  ],
+  "noTrailingSlashMatch": []
+}

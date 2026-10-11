@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.build/
 data.json
 
 # Obsidian per-machine state in the test vault
@@ -15,3 +16,11 @@ migration-report.md
 resolutions.yaml
 legacy-edges.json
 *.migration-report.md
+migration.diff
+migration-plan.json
+migration-out/
+migration-applied.json
+
+# Playwright
+test-results/
+playwright-report/

@@ -426,6 +426,21 @@
 			"styleAttributes": {
 				"path": "long-dashed"
 			}
+		},
+		{
+			"id": "e18",
+			"fromNode": "b6",
+			"fromSide": "bottom",
+			"toNode": "g-studio",
+			"toSide": "left",
+			"label": "On Kill"
+		},
+		{
+			"id": "e19",
+			"fromNode": "g-studio",
+			"fromSide": "right",
+			"toNode": "b4",
+			"toSide": "left"
 		}
 	]
 }

@@ -1,0 +1,29 @@
+{
+  "ops": [
+    {
+      "op": "createFolder",
+      "path": "Strategy/Bets"
+    },
+    {
+      "op": "createFolder",
+      "path": "Strategy/Assumptions"
+    },
+    {
+      "op": "create",
+      "path": "Strategy/Bets/B-1 First bet.md"
+    },
+    {
+      "op": "openFile",
+      "path": "Strategy/Bets/B-1 First bet.md"
+    }
+  ],
+  "notices": [
+    {
+      "message": "Created B-1 First bet — 0 new assumption(s), 0 reused."
+    }
+  ],
+  "console": [],
+  "changed": [
+    "Strategy/Bets/B-1 First bet.md"
+  ]
+}

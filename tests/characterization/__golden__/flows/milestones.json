@@ -1,0 +1,33 @@
+{
+  "ops": [
+    {
+      "op": "create",
+      "path": "Strategy/Milestones/M-1 Studio lease signed.md"
+    },
+    {
+      "op": "openFile",
+      "path": "Strategy/Milestones/M-1 Studio lease signed.md"
+    },
+    {
+      "op": "create",
+      "path": "Strategy/Milestones/M-2 First workshop held.md"
+    },
+    {
+      "op": "openFile",
+      "path": "Strategy/Milestones/M-2 First workshop held.md"
+    }
+  ],
+  "notices": [
+    {
+      "message": "Created M-1 Studio lease signed."
+    },
+    {
+      "message": "Created M-2 First workshop held."
+    }
+  ],
+  "console": [],
+  "changed": [
+    "Strategy/Milestones/M-1 Studio lease signed.md",
+    "Strategy/Milestones/M-2 First workshop held.md"
+  ]
+}

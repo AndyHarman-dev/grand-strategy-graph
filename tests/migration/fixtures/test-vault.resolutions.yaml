@@ -1,0 +1,18 @@
+# Answers for the synthetic test vault (the shape `npm run migrate` writes, trimmed to key + answer).
+# Each kind of answer appears at least once: drop, retarget, annotate, relation.
+version: 1
+items:
+  - key: "link: B-5 Learn Portuguese to B1 / fm:serves / [[B-5 Learn Portuguese to B1]]"
+    answer: drop
+  - key: "link: B-7  Part-time barista job / fm:serves / [[...]]"
+    answer: drop
+  - key: "link: B-1 Get a D7 visa / body:assumptions / [[A-9 Testing new assumption]]"
+    answer: drop
+  - key: "link: B-7  Part-time barista job / body:assumptions / [[A-]]"
+    answer: { retarget: "[[A-7 Workshops can fill eight seats]]" }
+  - key: "canvas-edge: e12"
+    answer: annotate
+  - key: "canvas-edge: e13"
+    answer: { relation: serves }
+  - key: "canvas-edge: e16"
+    answer: annotate

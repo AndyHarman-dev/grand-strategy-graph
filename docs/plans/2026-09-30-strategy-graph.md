@@ -1,5 +1,5 @@
 ---
-status: Pending
+status: In Progress
 ---
 
 # Strategy Graph — data-driven, Obsidian-native graph for the Grand Strategy
@@ -23,51 +23,58 @@ plugin (plain JS, 883 lines, no build step), and a read-only survey of the real 
 | D1 | One merged plugin (bet creator + graph), rewritten in TypeScript + React, built with esbuild. |
 | D2 | All relationships live in **frontmatter**. Duplicate relationship sections in note bodies are removed. "Depended on by" is computed from frontmatter, never written. |
 | D3 | Node positions, viewport, free cards and frames live in a **vault file** `Strategy/Strategy.gsmap` (JSON), opened as the graph tab. |
-| D4 | Routes, milestones, ghosts and current position are **real notes** with a `type`. |
+| D4 | Milestones and the current position are **real notes** with a `type`. (Routes and ghosts were in the original D4; see D16.) |
 | D5 | Serves is split in two: `serves` (direct parent) and `ultimately-serves` (the far fixed point). |
 | D6 | Statuses are **normalized to canvas_rules**: `asleep → dormant`, `cancelled → killed`. |
-| D7 | New bet→bet relation `requires` (prerequisites; the canvas "AND" diamond becomes several `requires` links). Assumptions can attach to any node type, including fixed points. |
+| D7 | New bet→bet relation `requires` (prerequisites; the canvas "AND" diamond becomes several `requires` links). Assumptions can attach to any node type, including fixed points. A bet may also require a milestone (D17). |
 | D8 | Canvas migration: copy positions into `.gsmap`, migrate canvas text cards and groups, and support **free cards**. Free cards exist only on the graph (stored in `.gsmap`) and can be promoted to a real note. |
 | D9 | Development happens in a GitHub repo using Claude on GitHub / Claude Code on the web. **The real vault never goes into the repo**; cloud work runs against synthetic fixtures only. |
 | D10 | The repo lives at `~/dev/grand-strategy-graph`, remote `https://github.com/AndyHarman-dev/grand-strategy-graph.git`, branch `main`. No feature branch (user instruction, 2026-09-30). esbuild writes to `dist/` (gitignored). The real vault's plugin folder is **not** the repo: it gets tagged releases only, via BRAT. |
 | D11 | A synthetic **test vault** lives at `test-vault/` in the repo. It is legacy format and covers every anomaly class (see `test-vault/ANOMALIES.md`). Its plugin folder `test-vault/.obsidian/plugins/strategy-bet-creator` is a committed **symlink to `../../../dist`**, so it always runs the latest build. The symlink targets `dist/`, not the repo root, which would create a loop. The test vault is both the test fixture and the vault to open in Obsidian for manual testing. |
 | D12 | The body `## Serves` list is **dropped** without being merged (user: "it's just the same as the frontmatter"). Body-only links still appear in the migration report as *dropped*, so the parity gate accounts for them. `ultimately-serves` stays in the schema as an optional field, set by hand or from the graph; the migration doesn't fill it. |
 | D13 | Assumption status `undeterminable` is kept (styled gray). Links to the phantom `FP-2 Multi-billion dollar AI company` are **left as they are**: no retargeting, only listed in the report. |
-| D14 | **The UI design is locked** (2026-10-01) to the design canvas [Grand Strategy Graph](https://claude.ai/artifact/381wJ3mBWBE3PY9SWMMNUU) and its five mockups, copied into `docs/design/mockups/`. See **UI design** below. The mockups are the visual spec, not code to port: their hex colours stand in for Obsidian CSS variables. |
-| D15 | **Components first.** Every React component is built and screenshot-tested in the dev gallery (`npm run dev:web`, no Obsidian) before it is wired into the plugin. Phase 5 is reordered to match: 5a = components + gallery, 5b = Obsidian integration. |
-| D16 | The **inspector lives inside the graph view** (right-hand panel, 360 px), not in Obsidian's sidebar, so it travels with the tab. Right-click menus, the relation picker and confirm dialogs use Obsidian's native `Menu` and `Modal`. Hover previews use Obsidian's page preview (`hover-link`). |
+| D14 | Canvas edges that touch a **group** (note→group, group→note, an "On Kill" to a group included) are **dropped** and listed in the report. The group itself still becomes a frame. (User, 2026-10-02, after the real-vault dry run found four.) |
+| D15 | `type: strategic-inbox` is a known **non-graph** type: such notes are left untouched by the migration and skipped by `buildGraph` without an issue. Other unknown types are still reported. (User, 2026-10-02.) |
+| D16 | **Routes are not a node type.** The "route" boxes on the old canvas were placeholders for starting something, with no strategic value of their own. What a route means in the strategy is a chain of `serves` links from bets up to a fixed point (B-1 serves B-2 serves FP-1). That chain is derived from the relations and never stored. So: no `route` type, no ghost routes, no `R-<n>` ids, no route commands. The canvas route labels migrate as free cards (D8) like any other text card, and stay free cards. (User, 2026-10-03.) |
+| D17 | **Milestones are checkpoints** on the way to a fixed point: the place to begin from when paving further bets. A milestone `serves` a fixed point, another milestone, or the bets that start from it (added 2026-10-05: between two milestones there are bets on how to get from one to the next, so M-1 → bets → M-2). Bets that work toward it `serve` it. Bets that start from it list it in `requires`, which may now point at a bet or a milestone; that `requires` implies the milestone `serves` them. So the chain reads: bets → milestone → further bets → milestone or fixed point. A milestone has `status: open | reached`; flipping it to `reached` is the moment those bets can start, and an active bet that requires a milestone still `open` is a smell. (User, 2026-10-03; the attached meta-framework has no milestone concept, so this is the user's own definition.) |
+| D18 | **The real vault is migrated once, at the very end** (Phase 9, cutover), after the graph is built and tested. Until then the real vault keeps changing and stays in the legacy format, so the dry runs on it so far are rehearsals: the cutover starts with a fresh dry run on a fresh copy. For the same reason **no tagged release goes to the real vault before the cutover**: the plugin has written schema v2 since Phase 4, and v2 notes must not land in an unmigrated vault. Phases 5a–8 are built and tested on `test-vault/` and its migrated form. (User, 2026-10-03.) |
+| D19 | **Graph layout follows the canvas convention.** Left → right is time: the current position, then bets and milestones along their `serves`/`requires` chains, then the fixed points. Bets that follow the same bet share a column (they run in parallel). **Assumptions are never on the time axis**: each sits above the note that hosts it, or below when there is no room above. A shared assumption is hosted by its holder that comes first in time. A `next` sequel sits directly below the bet it follows; that pushes the assumptions that would go below the bet aside, to the right. Dragging a bet or milestone moves its hosted assumptions with it, and saves them too. Edges along time (`serves`, `requires`) leave and enter by the left/right sides; assumption leaders and sequels use the sides that face each other. Saved positions are never changed by the layout. (User, 2026-10-03, after the first look at the 5a graph.) |
+| D20 | **Fixed points share one column.** Left → right is time, and no fixed point is reached before another, so they are always drawn at one x (the rightmost saved fixed point's) and drag up and down only; only their y is meaningful. Replaces "fixed points are locked" (Phase 5a). (User, 2026-10-05, after the migrated copy showed canvas offsets between fixed points that could not be undone.) |
+| D21 | **The review walk goes route by route, from the goal back to now.** A strategy is reviewed the way it was broken down (goal → milestones → bets → daily work): each fixed point by id, then each route that leads to it, walked from the fixed point back to the current position before the next route starts. At a fork the branches go by id and the fork isn't shown again. Every note is walked once (2026-10-06: walking a shared note on each route made the walk loop over the same ground): a route that meets a note walked earlier stops there and names it ("Also builds on …"); a route that starts from nothing earlier ends on the current position. Bets and milestones on no route are not walked (the smells panel lists them), nor are free cards or note cards. (User, 2026-10-05; replaces the breadth-first order of 2026-10-04.) |
 
 ### Schema v2 (target)
 
 ```yaml
 # Every strategy note
 id: B-10                  # stable key used for positions; never derived from the filename again
-type: bet | assumption | fixed-point | route | milestone | current-position
+type: bet | assumption | fixed-point | milestone | current-position
 status: ...               # per type, below
 
 # bet
 status: active | dormant | won | killed | extended
 started, deadline, expected-result      # unchanged
-serves: ["[[B-11 …]]"]                  # direct parents (bet | route | milestone | fixed-point)
+serves: ["[[B-11 …]]"]                  # direct parents (bet | milestone | fixed-point)
 ultimately-serves: ["[[FP-3 …]]"]       # far anchor(s); fixed points only
-requires: ["[[B-1 …]]"]                 # prerequisite bets
+requires: ["[[B-1 …]]"]                 # prerequisites: bets, or milestones that must be reached first (D17)
 next: "[[B-16 …]]"                      # sequel activated on kill (renamed from `next sequel`)
-assumptions: ["[[A-1 …]]"]              # also allowed on fixed-point / route / milestone
+assumptions: ["[[A-1 …]]"]              # also allowed on fixed-point / milestone
 
 # assumption
 status: unverified | confirmed | falsified | undeterminable   # undeterminable kept (D13)
 created, verify-by                       # unchanged; existing datetime values are left as they are
 
-# route
-status: active | ghost                   # ghost = suspected, unexplored route
-serves: ["[[FP-1 …]]"]
+# milestone
+status: open | reached                   # reached = the checkpoint the bets that require it start from
+serves: ["[[FP-1 …]]"]                  # fixed point | another milestone | a bet that starts from it
+assumptions: ["[[A-1 …]]"]
 ```
 
-Edges are drawn per canvas_rules. Bet→serves: solid. Ghost or unverified serve: dashed.
+A "route" is not a type (D16): it is any chain of `serves` links leading to a fixed point.
+
+Edges are drawn per canvas_rules. Bet→serves: solid. Unverified serve: dashed.
 `next`: dashed with an "on kill" label. Assumption leader: thin dashed with no arrowhead.
 `requires`: a distinct dotted style. `ultimately-serves`: hidden by default; shown when
-toggled, or when a bet has no `serves` chain reaching a fixed point. Exact strokes and
-colours: **UI design → Edges**.
+toggled, or when a bet has no `serves` chain reaching a fixed point.
 
 ### Survey findings that shape the migration (from the real vault)
 
@@ -100,176 +107,7 @@ colours: **UI design → Edges**.
 
 ### Open items
 
-O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
-
-- **O4 (needed by Phase 4).** `id` prefixes for routes and milestones. The schema only shows `B-`, `A-` and `FP-`, and the mockups use `[M-id]` as a placeholder. Proposal: `R-n` for routes (ghost routes included) and `M-n` for milestones.
-
----
-
-## UI design (D14–D16)
-
-**Source of truth:** the design canvas [Grand Strategy Graph](https://claude.ai/artifact/381wJ3mBWBE3PY9SWMMNUU), with copies of its artboards in `docs/design/mockups/`. The copies are Design Component files (`.dc.html`) and only render on the canvas. Read them for exact sizes, spacing and CSS. Each component below names the artboard that specifies it.
-
-| Artboard | Specifies | Built in |
-|---|---|---|
-| `Main.dc.html` | The assembled graph tab: frames, nodes, edges, toolbar, controls, minimap, smells panel, inspector. Interactive: click to select, change statuses and dates, kill and activate next, toggle ultimately-serves. | 5a (shell) → 5b, 6, 8 |
-| `Nodes.dc.html` | Every node type in every status, plus the selected, smell, issue, overdue and hover-handle states. Free cards, diamond, note reference, frame. The status dropdown and date picker on a node. | 5a, 6, 7 |
-| `Edges.dc.html` | One row per relation, plus selected and dimmed states. The relation picker shown after drawing an ambiguous edge. | 5a, 6 |
-| `Inspector.dc.html` | Inspector states for a bet, an assumption and a free card (promote to note). | 6, 7 |
-| `Overlays.dc.html` | Bet and assumption right-click menus, the kill-and-activate confirm dialog, hover preview, review walk bar. | 6, 8 |
-
-The fixture data in the mockups is the test vault (`test-vault/`) as planned by Phase 2, so the screenshots in Phase 5a can be checked against it. Two mockup details are **not** in the fixture: B-8's `ultimately-serves: FP-2` was invented to demonstrate the toggle, and node positions were placed by hand. The real positions come from `The Map.canvas` through the `.gsmap` migration.
-
-### Theme
-
-No colour is hard-coded in the plugin. `src/ui/theme.css` maps every mockup token to an Obsidian variable:
-
-| Mockup token | Obsidian variable |
-|---|---|
-| `--background-*`, `--text-normal/muted/faint/accent`, `--interactive-accent`, `--text-on-accent` | same name |
-| `--red-rgb` … `--purple-rgb`, `--gray-rgb` | `--color-red-rgb` … `--color-purple-rgb`; gray = `--text-faint` |
-| `--red-text` … (status text on a tint) | `color-mix(in srgb, var(--color-X) 70%, var(--text-normal))` in light mode, `var(--color-X)` in dark mode. Pill text keeps 4.5:1 contrast in both. |
-| `--node-bg` / `--node-bg-alt` | `--background-secondary` / `--background-primary-alt` |
-| `--edge` | `--text-faint` |
-| `--canvas-dot`, `--frame-*` | `--canvas-dot-pattern`, `--background-modifier-border` |
-| fonts | `--font-interface`, `--font-monospace` (ids and dates) |
-
-React Flow's `--xy-*` variables are set from the same tokens. The dev page ships `src/ui/dev/obsidian-vars.css` with the dark and light values from the mockups, so one stylesheet is tested in both themes.
-
-### Layout of the graph tab (`Main`)
-
-- The view is the graph pane with the **inspector** to its right (360 px; it shows an empty state when nothing is selected).
-- On the graph pane:
-  - a dot-grid background
-  - a **toolbar** top-left: Fit view · Ultimately serves (toggle) · Smells (toggle, shows the count) · Add card · Review walk
-  - React Flow **controls** bottom-left: zoom in, zoom out, lock positions
-  - a **minimap** bottom-right, coloured by node status
-- The view header shows a summary such as "8 bets · 4 active · 7 assumptions · 2 fixed points".
-
-### Nodes (`Nodes`)
-
-| Type | Component | Size (px) | Look |
-|---|---|---|---|
-| bet | `BetNode` | 220×84 | Row 1: id (mono) · deadline · status pill. Row 2: title, up to two lines. Border tinted by status. |
-| assumption | `AssumptionNode` | 200×60 | Sharper corners (4 px). Row 1: id · verify-by · pill. Row 2: title, one line with ellipsis. |
-| fixed-point | `FixedPointNode` | 200×96 | Purple double ring, 20 px radius, lock icon, "FIXED POINT · FP-n". Locked, never draggable. |
-| current-position | `CurrentPositionNode` | 170×84 | Neutral, "YOU ARE HERE" pin, a two-line summary. Placed leftmost. |
-| route | `RouteNode` | 240×64 | Blue capsule. |
-| ghost route | `RouteNode` (ghost) | 240×64 | Dashed gray capsule, italic title, mostly empty. |
-| milestone | `MilestoneNode` | 200×64 | Rotated-square marker, id · date, title. |
-| free card | `CardNode` | text width × 44 | Tinted by its canvas colour (1–6 → red, orange, yellow, green, cyan, purple); optional dashed border. |
-| diamond card | `CardNode` (diamond) | 64×64 | Rotated square with centred text (the old "AND"). |
-| note reference | `NoteRefNode` | 170×56 | File icon, basename, "Note reference". |
-| frame | `FrameNode` | resizable | Faint fill and border, label top-left, resize handle. Sits behind nodes. |
-
-**Status colours.** For bets:
-
-| Status | Colour | Extra styling |
-|---|---|---|
-| active | green | — |
-| dormant | gray | faded to 66% |
-| won | cyan | check mark in the pill |
-| killed | red | faded to 55%, title struck through |
-| extended | yellow | — |
-
-For assumptions: unverified amber, confirmed green, falsified red, undeterminable gray.
-
-**Dates shown on nodes.** These turn orange:
-- an overdue bet ("Overdue <date>")
-- an unverified assumption whose verify-by is today ("Verify today") or has passed ("Verify-by passed")
-
-`today` is a prop, never `new Date()` inside a component.
-
-**Badges.** Each sits on the node's top-right corner:
-- orange **smell badge** with the count; its tooltip lists the smell kinds
-- gray **issue badge** "?", for problems from the migration report that the graph still shows, such as a link to a phantom note
-
-**States.**
-- **Selected:** accent ring with a 2 px gap.
-- **Hover:** source and target handles appear on the node's sides.
-- Nodes are `<button>`s with an `aria-label` such as "Bet Get a D7 visa, active, 1 smell".
-
-### Edges (`Edges`)
-
-| Relation | Stroke | Arrow | Label |
-|---|---|---|---|
-| `serves` | solid, `--edge`, 1.6 | yes | — |
-| `serves` from a ghost route or unverified | dashed 6/5 | yes | — |
-| `next` | orange, dashed 7/5 | yes | "on kill" pill |
-| assumption leader | `--text-faint`, 1.1, dashed 3/4 | **no** | — |
-| `requires` | purple, round dots (0.1/5, width 2.2) | yes | — |
-| `ultimately-serves` | purple, 75% opacity, dashed 12/6 | yes | "ultimately serves" (hidden until toggled) |
-| free-card link | `--text-faint`, dashed 6/4 | yes | its canvas label, if any |
-
-- **Arrow direction:** from the note that holds the field to the note it names. The exception is `requires`, which points at the bet that needs the prerequisite.
-- **Selection:** edges touching the selected node turn accent-coloured at width 2.6. All other edges dim to 38%.
-- **Dormant and killed sources:** edges leaving these nodes are always dimmed.
-- **Arrowheads** are drawn as path triangles, not SVG markers.
-- **Parallel edges:** ports are spread 16 px apart along a node's side, so two edges between the same pair (B-3 → B-4 `serves` and `requires`) don't overlap.
-
-### Inspector (`Inspector`, `Main`)
-
-Sections, top to bottom:
-
-1. **Header:** type pill, id, "Open in split", close.
-2. **Title.**
-3. **Status:** a segmented control. A bet has five segments; an assumption has four.
-4. **Smell and issue callouts:** one per smell, each with its kind and a one-line reason.
-5. **Kill and activate `<next>`:** a red button. It appears when a bet has a `next` and isn't killed or won.
-6. **Fields:** a two-column grid.
-   - bet: *I believe continuing* (X), *will produce* (Y), *within* (Z), expected result, started, deadline
-   - assumption: statement, *How I'd know it's false*, created, verify-by
-   - fixed point: statement, established
-   - card: text
-   - A missing verify-by that gates an active bet gets an orange outline.
-7. **Relations:** one row per frontmatter field, each with "+ Add", and chips with ×.
-   - bet: Serves · Requires · Next (on kill) · Assumptions · Ultimately serves
-   - Computed rows are read-only and tagged *computed*: Served by · Required by · Sequel of (bets), Depended on by (assumptions).
-   - Clicking a chip selects that node. An unresolved link (phantom note) shows as a dashed chip.
-8. **Log:** the dated lines, plus an input. Enter or "+ Log entry" appends `YYYY-MM-DD: text` under `## Log`.
-9. **Promote to note** (free cards only): Route · Ghost route · Milestone · Bet · Assumption, then "Create <type>".
-10. **Footer:** Open in split · Open note.
-
-### Menus, dialogs, panels (`Overlays`, `Main`)
-
-- **Bet right-click menu** (Obsidian `Menu`):
-  - Open in split · Reveal in file explorer
-  - New sequel bet (pre-fills `next`) · Add assumption · New bet serving this · Set status ▸
-  - **Kill and activate `<next>`** (red), with the sequel's title as a subtitle
-- **Assumption right-click menu:** Mark confirmed · **Mark falsified** (subtitle names the dependents it flags) · Mark undeterminable · Set verify-by date · Open in split.
-- **Kill and activate dialog** (Obsidian `Modal`):
-  - lists both status changes (active → killed, dormant → active)
-  - lists both log lines that will be written
-  - "Both notes change together, or neither does."
-  - Cancel · Kill and activate
-- **Relation picker** (Obsidian `Menu` at the drop point), for ambiguous pairs only:
-  - title such as "B-3 → B-4 · bet to bet, pick one"
-  - Serves (S) · Requires (R) · Next (on kill) (N)
-  - Assumption, disabled unless one end is an assumption
-- **Hover preview:** Obsidian's native page preview of the note.
-- **Smells panel:** a floating panel top-right of the graph, opened from the toolbar.
-  - One row per smell, then the issues. Each row shows kind · id + title · reason.
-  - Clicking a row selects and centres the node.
-- **Review walk bar:** pinned to the bottom of the graph.
-  - Step dots and "n of N · Fixed points, then routes, then bets".
-  - The current node's id and title, and what it is served by.
-  - Previous · Next: `<id>` · Exit.
-  - The current node is focused and centred; nodes that aren't its neighbours dim.
-
-### Fixture acceptance
-
-`npm run dev:web` on the test vault (planned to v2, `today` = 2026-10-01) must show these smells and issues:
-
-| Node | Smell or issue | Why |
-|---|---|---|
-| B-1 | gating violation | relies on A-2: unverified, no verify-by |
-| B-4 | gating violation | relies on A-2 (unioned in from A-2's reverse list) |
-| B-3 | falsified dependency | relies on A-3 |
-| B-7 | orphan | its placeholder `[[...]]` is not migrated |
-| B-8 | dormant, not a sequel | dormant, and no bet names it as `next` |
-| B-6 | issue badge | serves the phantom `FP-2 Profitable pottery business` |
-
-A-5 shows "Verify today". Setting A-2's verify-by clears both gating violations. Killing B-1 from the inspector activates B-2.
+None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
 
 ---
 
@@ -312,13 +150,6 @@ A-5 shows "Verify today". Setting A-2's verify-by clears both gating violations.
   - an active bet whose assumption is falsified
   - a deadline that has passed on an active bet
   - a dormant bet that isn't anyone's `next`
-
-  **Scope (from the design, D14):**
-  - Orphan checks skip won and killed bets.
-  - Gating, falsified-dependency and overdue checks apply only to active and extended bets.
-  - Smells are recomputed from the current frontmatter on every change, so editing a status or date in the graph adds or clears them at once.
-  - `today` is a parameter, never read from the clock inside `smells.ts`.
-  - Migration-report problems that survive into v2 (a phantom target) are returned as `issues`, separate from smells.
 - **Problems.** Link resolution must match Obsidian's rules, not the filename prefix. Edge kinds come from the field name **and** the target's `type`.
 - **Solutions.**
   - Types live in `src/core/schema.ts`.
@@ -382,7 +213,7 @@ A-5 shows "Verify today". Setting A-2's verify-by clears both gating violations.
      - Groups become **frames** (label, rect, color).
      - Labelled edges between cards and notes become free card links.
      - The non-strategy note node (`argentine-citizenship-affects-us-path.md`) becomes a **note-reference card**.
-- **Parity gate (named step, must pass before Phase 3).** Run the planner on the test vault (`test-vault/`) and on a **copy** of the real vault. Then run `buildGraph` (Phase 1) over the *planned* output and check:
+- **Parity gate (named step, must pass before any apply; re-run at the cutover, Phase 9, D18).** Run the planner on the test vault (`test-vault/`) and on a **copy** of the real vault. Then run `buildGraph` (Phase 1) over the *planned* output and check:
   - every oracle edge is either present as its classified relation or listed in the report as dropped with a reason
   - **zero unaccounted edges**
   - the prose diff outside the three sections is empty
@@ -390,20 +221,19 @@ A-5 shows "Verify today". Setting A-2's verify-by clears both gating violations.
 
   The user reviews `migration-report.md` and fills in `resolutions.yaml`. The planner is re-run until the report has no open ambiguities.
 
-## Phase 3 — Apply migration to the real vault (user-run, local)
+## Phase 3 — Apply tooling (built and tested; the real-vault run is Phase 9)
 
 **Model: Sonnet 5.** The planner did the thinking. Apply only writes planned content, and a full backup outside the vault makes it reversible.
 **Escalate/stop if:** apply sees any file whose content hash differs from the dry-run plan, which means the vault changed in between.
 
 - **Current State.** Reviewed dry-run, filled-in resolutions.
-- **Desired State.** The real vault is in schema v2, `Strategy/Strategy.gsmap` exists, and `The Map.canvas` is untouched.
-- **Solutions.**
-  1. Close Obsidian, or pause Sync.
-  2. `--apply` first copies `Strategy/`, `Templates/`, `The Map.canvas` and the phantom root file to `~/strategy-backups/<timestamp>/`. **This is outside the vault on purpose:** a copy inside the vault would duplicate basenames and break link resolution.
-  3. Apply writes are hash-guarded against the dry-run.
-  4. Update `Templates/Bet Template.md` and `Templates/Assumption Template.md` to schema v2.
-  5. Re-run the parity check on the live result.
-- **Verify:** the user opens a few migrated notes in Obsidian. The Properties panel shows the relations, and the Dataview "dependents" block renders.
+- **Desired State.** `--apply` exists and is tested on throwaway copies of `test-vault/`. **It is not run on the real vault here** (D18): that happens once, in Phase 9.
+- **What `--apply` does** (used in Phase 9):
+  1. Requires Obsidian closed, or Sync paused (user step).
+  2. Copies `Strategy/`, `Templates/`, `The Map.canvas` and the phantom root file to `~/strategy-backups/<timestamp>/` first. **This is outside the vault on purpose:** a copy inside the vault would duplicate basenames and break link resolution.
+  3. Hash-guards every write against the dry run.
+  4. Updates `Templates/Bet Template.md` and `Templates/Assumption Template.md` to schema v2 (they are part of the plan).
+  5. Re-plans the live result as a post-check.
 
 ## Phase 4 — Creation flows write schema v2
 
@@ -415,92 +245,61 @@ A-5 shows "Verify today". Setting A-2's verify-by clears both gating violations.
   - There are **no cross-note body writes**, and `insertIntoSection` is deleted.
   - Creating an assumption for existing bets appends to *the bet's* `assumptions` via `processFrontMatter`.
   - Modals gain optional fields `requires`, `next` and `ultimately-serves`.
-  - New commands: "New route", "New milestone", "New ghost route".
+  - New command: "New milestone" (`status: open`). The bet form's `requires` picker offers bets and milestones.
 - **Solutions.** All creation goes through `src/core/actions.ts`, a set of pure "intent → planned writes" functions, executed by the adapter. The graph's quick actions in Phase 6 reuse exactly these.
 
-## Phase 5a — Graph components + dev gallery (no Obsidian)
+## Phase 5a — Graph view integration (React Flow in Obsidian)
 
-**Model: Sonnet 5.** Presentational React components with a fixed visual target (the mockups, D14) and fixture props. Nothing here imports `obsidian`, so all of it runs in the cloud and is checked with Playwright screenshots (D15).
+**Model: Opus 5.** This is the first integration with no precedent in the repo. Correctness spans `FileView` lifecycle, React mount/unmount, `metadataCache` change/rename/delete events, and `.gsmap` save debouncing all at once. The bugs here (stale graph after rename, lost positions, leaks on tab close) don't fail any unit test.
 
-- **Current State.** Phase 1 gives `buildGraph` and smells. Phase 2 gives the planner. No UI exists.
 - **Desired State.**
-  - `src/ui/` holds the graph-canvas components from **UI design**:
-    - every node type and its states
-    - the custom edges
-    - frame, toolbar, controls, minimap
-    - badges
-    - the smells panel shell
-    - a read-only inspector shell
-  - `<StrategyGraph graph positions selection today onIntent>` is pure: props in, intents out (`select`, `move`, `setStatus`, `connect`, …). Phase 5b and Phase 6 attach the intents to real actions.
-  - `src/ui/theme.css` uses Obsidian variables only (**UI design → Theme**).
-  - `npm run dev:web` (Vite) serves two pages, each with a dark/light toggle:
-    - `/`: the assembled graph tab (the `Main` artboard). It is built from `MemoryAdapter` loaded with `test-vault/` **after running the Phase 2 planner in memory**, since the graph only understands schema v2. Positions come from the planned `.gsmap`.
-    - `/gallery`: one section per artboard (`Nodes`, `Edges`, and later `Inspector` and `Overlays`), with every component in every state, fed by fixture props.
-- **Problems.**
-  - React Flow joins every edge at one handle point, so parallel edges (B-3 → B-4 `serves` + `requires`) overlap.
-  - Dates drive what's shown ("Verify today", overdue), so screenshots would change from day to day.
-  - Obsidian's CSS variables don't exist outside Obsidian.
-- **Solutions.**
-  - A custom edge spreads ports 16 px apart along the node side and draws arrowheads as paths.
-  - `today` is a prop. The dev page and the tests pin it to 2026-10-01.
-  - `src/ui/dev/obsidian-vars.css` defines the dark and light values used in the mockups. It is loaded only by the dev page.
-  - Playwright screenshots `/` and each gallery section in both themes and compares them with committed baselines.
-- **Verify:**
-  - `/` passes **UI design → Fixture acceptance** (as a Playwright test).
-  - The user compares the first screenshot baselines (attached to the PR) with the design canvas and approves them.
-- **Playwright:** not installed globally on the user's machine. It is added as a dev dependency in the repo. **Suggest the user does visual verification with it** after 5a, 5b and 6.
-
-## Phase 5b — Graph view integration (React Flow in Obsidian)
-
-**Model: Opus 5.** This is the first integration with no precedent in the repo. Correctness spans the `FileView` lifecycle, React mount/unmount, `metadataCache` change/rename/delete events, and `.gsmap` save debouncing all at once. The bugs here (stale graph after a rename, lost positions, leaks on tab close) don't fail any unit test.
-
-- **Current State.** The 5a components render the fixture graph in the dev page.
-- **Desired State.**
-  - `registerExtensions(['gsmap'], VIEW_TYPE)`. Opening `Strategy.gsmap` shows the 5a `<StrategyGraph>` in a normal tab, with the inspector panel inside the view (D16).
+  - `registerExtensions(['gsmap'], VIEW_TYPE)`. Opening `Strategy.gsmap` shows the graph in a normal tab.
   - The view re-derives the graph from `metadataCache` on every change, debounced.
   - Positions save to `.gsmap` on drag-end only.
   - Renames need no handling because positions are keyed by `id`. A note whose `id` changes is reported.
-  - Nodes with no position are placed by **ELK** (layered, left→right: current position → routes → bets → milestones → fixed points). Pinned positions are kept.
-  - Fixed points are locked (not draggable).
-  - Selection, the toolbar toggles and the viewport persist per view in the `.gsmap` view state.
-  - Hovering a node opens Obsidian's page preview (D16).
+  - Nodes with no position are placed by **ELK** (layered, left→right: current position → bets → milestones → fixed points, with bets layered along their `serves` chains). Pinned positions are kept. Assumptions and sequels are placed per D19.
+  - Fixed points are locked (not draggable). *(Superseded by D20: one column, vertical drag only.)*
   - Commands: "Open strategy graph" and "Reveal note in graph".
 - **Solutions.**
   - React Flow (`@xyflow/react`) + `elkjs`.
   - `.gsmap` writes go through `vault.process` with a schema version field.
-  - Hover: `registerHoverLinkSource(VIEW_TYPE, …)`, then `app.workspace.trigger('hover-link', …)` from the node.
-  - The plugin's `styles.css` bundles `src/ui/theme.css` and nothing else from `src/ui/dev/`.
   - On close: unmount the React root and unregister events.
-- **Verify:** the user opens `test-vault/Strategy/Strategy.gsmap` in Obsidian and checks the same graph as the dev page, in both themes.
+- **Dev harness (cloud-friendly).** `npm run dev:web` runs a Vite page that renders the same `<StrategyGraph>` from `MemoryAdapter`, loaded with the test vault (`test-vault/`). Playwright screenshot tests run there.
+- **Playwright:** not installed globally on the user's machine. It is added as a dev dependency in the repo. **Suggest the user does visual verification with it** after 5a/5b/6.
+
+## Phase 5b — Node and edge styling per canvas_rules
+
+**Model: Sonnet 5.** A direct mapping table from canvas_rules to components. Playwright screenshots of the fixture graph catch regressions.
+
+- Node components per type and status:
+  - fixed point: distinct shape, locked
+  - milestone: checkpoint shape, open vs reached
+  - active / dormant / won / killed bets
+  - assumption amber / green / red / gray
+  - current position: leftmost and neutral
+- Edge styles as in the Schema section.
+- Theme via Obsidian CSS variables.
+- Node shows: id, title, status pill, deadline or verify-by, and a smell badge.
+- Hover shows the note preview.
 
 ## Phase 6 — Editing from the graph
 
 **Model: Sonnet 5.** Every edit is a Phase 4 action (an intent → frontmatter patch), unit-tested in core. The UI only dispatches intents.
 
-Gallery first (D15): the inspector, the inline editors, the relation picker and the menus land in `/gallery` (`Inspector` and `Overlays` sections) before they are wired to Obsidian. Layouts and item lists: **UI design → Inspector** and **→ Menus, dialogs, panels**.
-
-- **Inline on the node** (`Nodes` artboard): a status pill dropdown, and a date popover for the deadline or verify-by.
+- **Inline on the node:** status pill dropdown, deadline or verify-by date picker.
 - **Inspector side panel** (on select):
-  - status as a segmented control
-  - smell and issue callouts
-  - "Kill and activate `<next>`"
-  - the fields grid. Bet X/Y/Z live in the `## The Bet` sentence: an edit rewrites only the matching bold span on that line. This is a pure function in core with golden tests.
-  - relation rows with add/remove and link pickers, plus read-only computed rows (Served by, Required by, Sequel of, Depended on by)
-  - the log list, with an input that appends a dated line under `## Log`
-  - "Open in split" and "Open note"
-  - The rendered note body (`MarkdownRenderer`) is dropped from the inspector: the hover preview and "Open in split" cover it (D16).
-- **Edge drawing:** drag from a handle to a node. The relation is inferred from the source and target types:
-  - bet → fixed point is always `serves`
-  - assumption → anything is always `assumptions`
-  - ambiguous pairs open the relation picker (Obsidian `Menu`) at the drop point
-  - Deleting an edge removes the link.
-- **Context menu** (Obsidian `Menu`, item lists in **UI design**):
+  - form for X/Y/Z, expected result and falsifier
+  - relation lists with add/remove and link pickers
+  - "+ log entry", which appends a dated line under `## Log`
+  - rendered note body (`MarkdownRenderer`)
+  - "Open in split"
+- **Edge drawing:** drag from a handle to a node. The relation is inferred from the source and target types; if it's ambiguous, a small menu asks (serves / requires / next / assumption). Deleting an edge removes the link.
+- **Context menu:**
   - New sequel bet (pre-fills `next` on the source)
   - Add assumption
   - New bet serving this
-  - Set status
-  - **Kill → activate next**: one atomic action that sets the bet to `killed`, the `next` bet to `active`, and writes log lines in both notes. It is confirmed in a `Modal` that lists both status changes and both log lines.
-  - Mark assumption falsified (dependents get flagged; the menu item names them)
+  - **Kill → activate next**: one atomic action that sets the bet to `killed`, the `next` bet to `active`, and writes log lines in both notes
+  - Mark assumption falsified (dependents get flagged)
 
 ## Phase 7 — Free cards, frames, promote-to-note
 
@@ -508,36 +307,31 @@ Gallery first (D15): the inspector, the inline editors, the relation picker and 
 
 - **Free cards:** create, edit and delete on the graph (stored only in `.gsmap`), with optional links between cards and to notes. The edge style can be set freely, since free cards carry no strategy semantics.
 - **Frames:** resizable labelled regions, the old canvas groups. Purely visual.
-- **"Promote to note":** a free card becomes a real note (route, ghost route, milestone, bet or assumption) via the Phase 4 actions. The card's position transfers to the new note's `id`. In the UI this is the inspector's "Promote to note" section: a type list, then "Create <type>" (`Inspector` artboard).
-- Migrated canvas cards arrive here and can be promoted one by one.
-- **Looks** (`Nodes` artboard):
-  - cards are tinted by canvas colour 1–6 and keep a dashed border when the canvas card had one
-  - the "AND" card renders as a diamond
-  - note references show a file icon
-  - frames sit behind nodes, with a label and a resize handle
+- **"Promote to note":** a free card becomes a real note (bet, assumption or milestone) via the Phase 4 actions. The card's position transfers to the new note's `id`.
+- Migrated canvas cards arrive here and can be promoted one by one. The old route labels stay free cards (D16).
 
 ## Phase 8 — Smell overlay + review walk
 
 **Model: Sonnet 5.** Renders Phase 1 smells that are already tested.
 
-- A badge on each node (orange count for smells, gray "?" for issues), plus a "Smells" panel listing:
-  - orphans, unreached fixed points, gating violations, falsified dependencies, overdue bets, and dormant bets that aren't anyone's sequel
-  - then the issues
-  - Clicking an item selects and centres the node.
-  - The panel floats top-right of the graph and opens from the toolbar button, which shows the count (`Main` artboard).
-- **Review walk:** steps through fixed points → routes → bets in that fixed order, by `id` within each group (replaces canvas presentation mode).
-  - The bar is pinned to the bottom of the graph and shows step dots, "n of N", the current node and what serves it, and Previous · Next: `<id>` · Exit (`Overlays` artboard).
-  - The current node is centred; nodes that aren't its neighbours dim.
-  - ←/→ and Esc work while the view has focus. There is no global key handler.
+- A badge on each node, plus a "Smells" panel listing orphans, unreached fixed points, gating violations, falsified dependencies and overdue bets. Clicking an item focuses the node.
+- **New smell (D17):** an active bet that requires a milestone still `open` (`requires-open-milestone`). Already in `src/core/smells.ts` with tests (added 2026-10-03 with the D16/D17 code); this phase only renders it.
+- **Review walk:** steps through each fixed point, then each route that leads to it (the `serves`/`requires` chains, D16), walked from the fixed point back to the current position before the next route starts (D21), in a fixed order (replaces canvas presentation mode).
 
-## Phase 9 — Retire `The Map.canvas`
+## Phase 9 — Cutover: migrate the real vault, release, retire `The Map.canvas`
 
-**Model: Sonnet 5.** No code. This is a gate plus one user action.
+**Model: Sonnet 5.** Mostly user steps, run locally, once, at the very end (D18). The graph is built and tested by now, so the real vault goes straight from the legacy format to the finished plugin.
+**Escalate/stop if:** the fresh dry run has `unclassified` edges (exit 2), the parity gate fails, or `--apply` refuses on a hash mismatch. Each is a decision for the user, never settled in code.
 
-- **Parity gate:** re-run the Phase 2 oracle against `The Map.canvas` and the live graph. Every canvas edge must be present as a relation or free-card link, or explicitly dropped in the report. Every canvas node must have a position, card or frame.
-- Then the **user** moves the canvas into an archive folder. It is never deleted by tooling.
+1. **Keep the planner current.** Any schema change in Phases 5a–8 must keep `tests/migration/` green, so the planner still turns a legacy vault into what the plugin expects.
+2. **Fresh dry run.** Copy the real vault to a new folder and run `npm run migrate -- --vault <copy> --resolutions <file>`. Reuse the old `resolutions.yaml`: answers are keyed by note path, link and canvas edge id, so the ones still valid carry over, and answers to questions no longer asked are kept under `stale`. Answer whatever is new, until exit 0 and the parity gate passes.
+3. **Apply.** Close Obsidian (or pause Sync), then run the same command on the real vault with `--apply`. It backs up to `~/strategy-backups/` and refuses if anything changed since the dry run; if it refuses, repeat step 2.
+4. **Release.** Bump the version, push a tag; BRAT installs the release in Main Vault. This is the first release the real vault gets (D18).
+5. **Verify in Obsidian:** a few migrated notes show their relations in the Properties panel, the Dataview "dependents" block renders, the graph opens with the canvas positions, and the creation commands write notes the graph accepts.
+6. **Canvas parity gate:** re-run the Phase 2 oracle against `The Map.canvas` and the live graph. Every canvas edge must be present as a relation or free-card link, or explicitly dropped in the report. Every canvas node must have a position, card or frame.
+7. Then the **user** moves the canvas into an archive folder. It is never deleted by tooling.
 
-**Routing:** Phases 0, 1, 3, 4, 5a, 6, 7, 8, 9 → Sonnet 5 · Phases 2, 5b → Opus 5
+**Routing:** Phases 0, 1, 3, 4, 5b, 6, 7, 8, 9 → Sonnet 5 · Phases 2, 5a → Opus 5
 
 ---
 
@@ -549,20 +343,20 @@ Gallery first (D15): the inspector, the inline editors, the relation picker and 
   - `claude-code-action` for PR review / @claude on issues
 
   Both run in a cloud sandbox that can run `npm`, Vitest and Playwright (headless), but **not Obsidian**.
-- **Design reference:** the design canvas (D14) is the visual spec. UI sessions read `docs/design/mockups/` for exact values and link the canvas in their PRs, so the user can compare screenshots with it.
 - **Cloud vs local split:**
 
   | Cloud (any session) | Local (user only) |
   |---|---|
-  | core, migration planner, fixtures, React UI via the dev page, Playwright screenshots, CI | dry-run on the real vault, filling in `resolutions.yaml`, `--apply`, and clicking through the plugin in real Obsidian |
+  | core, migration planner, fixtures, React UI via the dev page, Playwright screenshots, CI | clicking through the plugin in real Obsidian; at the cutover (Phase 9): the dry run on a real-vault copy, `resolutions.yaml`, `--apply` |
 
 - **Install loop:**
   1. A cloud session pushes to `main`, or opens a PR you merge.
   2. Locally: `git pull && npm run build`, or keep `npm run dev` (esbuild watch) running.
   3. In Obsidian's vault switcher, open `~/dev/grand-strategy-graph/test-vault`. It loads `dist/` through the symlink. The hot-reload community plugin picks up rebuilds without restarting. On first open, Obsidian asks you to trust community plugins.
-  4. When it's good, push a tag. CI builds a GitHub Release, and **BRAT** updates the plugin in Main Vault.
+  4. When it's good, push a tag. CI builds a GitHub Release, and **BRAT** updates the plugin in Main Vault. **Not before the cutover (Phase 9, D18):** until then, test in `test-vault/` only.
 
   The real vault never runs an untagged build.
+- **Optional real-data preview (local, user-run).** To see the graph on real data before the cutover, run the migration with `--apply` on a **copy** of the real vault, outside the real vault, and open that copy in Obsidian. The copy is disposable; the real vault stays untouched until Phase 9.
 - **Resetting the test vault:** `git checkout -- test-vault && git clean -fd test-vault`. Note that `git clean` deletes *untracked* files there, so check `git status test-vault` first.
 - **Privacy:** the repo's `.gitignore` excludes `migration-report.md`, `resolutions.yaml` and `legacy-edges.json`, because they contain real strategy content. The repo `CLAUDE.md` states that real-vault outputs are never committed.
 
@@ -586,19 +380,300 @@ Gallery first (D15): the inspector, the inline editors, the relation picker and 
     - Seeded `test-vault/` with `ANOMALIES.md`, the `dist/` symlink and `.gitignore`.
   - **Decisions:** the real vault gets only tagged releases via BRAT, and the test vault runs `dist/` through a symlink (D10/D11 rewritten).
   - **Verification:** all test-vault frontmatter and the canvas parse (PyYAML/JSON). `git add -n` shows the symlink and test vault are tracked and `dist/` is ignored. Unverified: test vault not yet opened in Obsidian (needs user action).
+
 - **2026-10-01**:
-  - **Context:** the user wanted to see the React components and how they look together before implementing. The user approved the design ("I love it") and asked to fold it into the plan.
+  - **Context:** Phase 0 (repo bootstrap, TS port with byte parity), run as a Claude Code on the web session.
   - **Actions:**
-    - Designed the graph UI on the design canvas [Grand Strategy Graph](https://claude.ai/artifact/381wJ3mBWBE3PY9SWMMNUU), using test-vault data planned to v2. It has five artboards: assembled tab, nodes, edges, inspector, overlays.
-    - Copied the artboards to `docs/design/mockups/`.
-    - Added D14–D16, O4, a **UI design** section, a smell-scope note in Phase 1, and design detail in Phases 6–8.
-    - Reordered Phase 5: 5a = components + dev gallery (Sonnet), 5b = Obsidian integration (Opus). The old 5b styling work moved into 5a, and the dev harness moved from integration into 5a.
+    - Moved the shipped `main.js` byte-for-byte to `tests/legacy/main.js` as the oracle, `styles.css` to `src/`; `manifest.json` stays at the root.
+    - Wrote characterization tests *before* porting (separate commit) over `test-vault/`: pure helpers, content builders, write plans, full create flows (write order, notices, console, bytes of every touched file), modal validation and plugin registrations. 41 goldens in `tests/characterization/__golden__/`.
+    - Ported to TS: `src/core/` (pure; planners take a structural `VaultLike`), `src/obsidian/` (modals, create flows), `src/main.ts`. Toolchain: TypeScript 7, esbuild, Vitest 5, React 19 installed for Phase 5.
+    - Added `ci.yml` (typecheck, test, build on PRs and `main`), `release.yml` (tag → checks → GitHub Release with the three BRAT files; fails if the tag doesn't match `manifest.json`/`package.json`), and a repo `CLAUDE.md`.
   - **Decisions:**
-    - The inspector lives inside the view (D16).
-    - Native `Menu`/`Modal` for menus and dialogs (D16).
-    - The rendered note body is dropped from the inspector in favour of the hover preview.
-    - `today` is injected everywhere.
-  - **Verification:** none run. The canvas was not render-checked by Claude; the user reviewed it visually. B-8's `ultimately-serves` in the mockup is illustrative and is not fixture data.
+    - Work was pushed to the session branch `claude/busy-heisenberg-og8u70` rather than `main` (cloud-session setting; D10 still describes the user's local flow).
+    - `tests/legacy/main.js` stays until Phase 4 deliberately changes output.
+    - Bundle is not minified, like the legacy plugin, so dev-console errors stay readable. Revisit in 5a when React Flow and ELK are bundled.
+    - TS 7 always enables `esModuleInterop`, which makes `obsidian.d.ts`'s `moment` non-callable at the type level. The cast is isolated in `src/obsidian/today.ts`.
+    - `src/ui/` and `tools/` are created by the phases that first need them.
+  - **Verification:** `npm run typecheck`, `npm test` (68 tests: each case runs on legacy and port against the same goldens, plus an end-to-end test that builds the real bundle in memory and drives it through its commands) and `npm run build` all pass. Two deliberate mutations of the port (bet log line, section insertion) each failed the suite. Unverified: the first CI/release run on GitHub.
+- **2026-10-01**:
+  - **Context:** Phase 0's manual **Verify**: real-vault byte identity.
+  - **Actions:** the user ran the old plugin and the new `dist/` build in Obsidian on a throwaway copy of the real vault (outside the vault, git-snapshotted, Sync off). Same inputs in both runs, compared with `git diff` excluding `.obsidian`.
+  - **Decisions:** none.
+  - **Verification:** **Create new Bet**: identical. The first attempt differed only in dates (run A and run B were done on different days) and in an `[[A-28 …]]` backlink from an assumption step that was skipped in run B. **Create new Assumption**: re-run with both runs on the same day, no differences. Phase 0 manual check passed.
+
+- **2026-10-01**:
+  - **Context:** Phase 1 (schema v2 + pure graph core), run as a Claude Code on the web session.
+  - **Actions:**
+    - `src/core/schema.ts` (types, status lists, relation table), `links.ts` (wikilink parsing and Obsidian-style link-path resolution), `frontmatter.ts`, `graph.ts` (`buildGraph`), `smells.ts` (`findSmells`), `adapter.ts` (`VaultAdapter`), `memory-adapter.ts`.
+    - Adapters: `MemoryAdapter` (core), `FsAdapter` (`tools/fs-adapter.ts`, reads a folder, never writes), `ObsidianAdapter` (`src/obsidian/adapter.ts`, built but not yet registered anywhere; Phase 5a wires it in).
+    - Added the `yaml` dependency (frontmatter parsing for the Memory/Fs adapters; the plugin bundle doesn't import it yet).
+  - **Decisions:**
+    - `NoteRecord.resolvedLinks` maps each frontmatter linkpath to the resolved vault path or null; the core never sees a vault. Adapters resolve links, scoped to `Strategy/` for records but across the whole vault for targets, so the phantom root note resolves and is reported as `non-strategy-target` (D13).
+    - Notes without `type` are skipped silently; an unknown `type` is an issue. A note without `id` is keyed by its path and flagged, so positions never rest on a filename.
+    - Relation table (`RELATIONS`): which types may carry each field and which targets are valid. A violation is an issue and creates no edge. Scalar values are read as one-element lists. Legacy `next sequel` is not read.
+    - Smell semantics: "active" is `status: active` exactly (not `extended`). `orphan-bet` needs a `serves` chain to a fixed point, so `ultimately-serves` alone doesn't clear it. `unreached-fixed-point` means no incoming `serves` edge from any node. Dates compare by their `YYYY-MM-DD` part; `today` is passed in.
+    - The test vault is legacy format and has no v2 relations, so smells are tested on `tests/support/v2.ts`, a hand-written v2 version of it, until Phase 2's planner can generate it. The legacy test vault is still run through `buildGraph` to pin the issues its anomalies produce.
+  - **Verification:** `npm run typecheck`, `npm test` (116 tests, 48 new) and `npm run build` pass; the Phase 0 goldens are untouched. Unverified: `ObsidianAdapter` against the real `metadataCache` (only a fake is tested; needs the user to open the test vault once a command uses it).
+
+- **2026-10-01**:
+  - **Context:** Phase 2 (migration planner + parity oracle, dry run only), run as a Claude Code on the web session.
+  - **Actions:**
+    - `npm run migrate -- --vault <path> [--resolutions <file>] [--out <dir>]` (`tools/migrate.ts`, logic in `tools/migrate/`). It writes `migration-report.md`, `resolutions.yaml`, `migration.diff`, `legacy-edges.json` and `migration-plan.json` (sha256 of every touched file before/after, for Phase 3's hash guard) to `--out`, default `./migration-out`. It refuses an output folder inside the vault and refuses `--apply`.
+    - `src/core/gsmap.ts`: `.gsmap` format v1 (`positions` by id, `cards` text/note-ref/link, `frames`, `links` with card or note ends), shared with Phase 5a.
+    - Parity gate (`tools/migrate/parity.ts`) runs `buildGraph` over the planned vault. Checks: no refused files; zero unclassified edges; no open questions; every edge classified as a relation is in the planned graph; **every planned relation is backed by an oracle edge or an answer** (nothing invented); prose outside the three sections and unmanaged frontmatter keys unchanged; every canvas node placed; every `.gsmap` link present.
+    - Tests: 70 new (`tests/migration/`). One per `ANOMALIES.md` row; unit cases for each stop/question kind; a fixture `resolutions.yaml` that uses every kind of answer; idempotency (planning the planned vault changes nothing); goldens of the report, skeleton, diff, `.gsmap` and oracle over the test vault; a CLI test showing the vault's bytes are unchanged.
+  - **Decisions:**
+    - Every legacy edge gets exactly one fate: `written` (with field, holder, target), `dropped` (with reason), `kept` (D13), `gsmap-link`, `open` (waiting for an answer) or `unclassified` (stop). The oracle also reads v2 fields already present (`next`, `requires`, `assumptions`, `ultimately-serves`), so re-runs are idempotent.
+    - Malformed, dangling and self-loop links are **left out of the planned frontmatter** until answered (`drop`, or `retarget: "[[…]]"`, which is re-checked against the relation table).
+    - `serves` to any non-strategy note, not only the FP-2 phantom, is kept as is (D13). Any other relation to a non-strategy note, or a source/target type the relation table doesn't allow, is `unclassified`.
+    - Canvas: an unlabelled note↔note edge counts as "other label". It matches an existing relation in either direction, or becomes a question (`drop`, `annotate` = keep it as a `.gsmap` link between the two notes, or `relation: <field>`). An "On kill" edge adds `next` only when the bet has none; if the bet has a different `next`, it's a question. Edges touching a group, and unknown node types, stop the migration. A second canvas node for the same note becomes a note-reference card. Canvas colors and sizes of strategy-note nodes are not carried over (status drives color from 5b).
+    - "AND" junction: a text card whose text is `AND`. If the notes already state every `requires` (as in the test vault), there's nothing to answer; otherwise it's a question (`requires` / `none`).
+    - A managed section with anything besides links and the template prompt lines (`Which fixed point…`, `*Check linked mentions…*`) is a question (`remove` / `keep`). Until it's answered, the section stays. Its links are read either way.
+    - Ids: an explicit `id` is kept, Current Position gets `CP` (as in `tests/support/v2.ts`), others come from `<PREFIX>-<n>` in the basename with `parseIds` collision rules. Collisions and names with no id are questions. Unknown statuses are questions too.
+    - Frontmatter is edited through the `yaml` Document API with no line folding. A note whose YAML doesn't re-serialize byte for byte when unchanged is refused (stop), not reformatted. New relation keys go in schema order (`serves`, `ultimately-serves`, `requires`, `next`, `assumptions`). Existing list nodes keep their style; `next` stays a scalar. Forward assumption lists keep their order, and reverse-only entries are appended.
+    - Templates (`Templates/`, `type: bet|assumption`) are part of the plan, so Phase 3 only writes planned content. They get empty `id` (and `requires`/`assumptions` for bets), `next sequel → next`, and the same section edits.
+    - The `## Depended On By` replacement is `LIST FROM "Strategy" WHERE contains(assumptions, this.file.link) SORT file.name ASC`.
+  - **Verification:** `npm run typecheck`, `npm test` (186 tests) and `npm run build` pass; Phase 0/1 goldens untouched. On the test vault the gate passes with the fixture answers: 51 legacy edges, 0 unclassified, 21 files planned. Without answers it fails only on the 7 open questions, and its graph equals the hand-written v2 vault except B-6's kept phantom link (D13). Five deliberate planner mutations (no union, bets→`assumptions`, merging body serves, a lost blank line, writing an unanswered link) each failed the suite. **Not yet done (user, local):** the run on a *copy* of the real vault, reviewing its report and filling in `resolutions.yaml` until the gate passes. Any `unclassified` row or refused file there is a new decision to bring back. Unverified: the Dataview block rendering in Obsidian (Phase 3's Verify).
+
+- **2026-10-02**:
+  - **Context:** first Phase 2 dry run on a copy of the real vault (run locally by the user): 193 legacy edges, 56 files, 23 open questions, exit 2.
+  - **Actions:**
+    - Fixed a planner bug the gate caught (`relations-present`, 2 failures): a body `## Serves` link to a non-strategy note that is also in frontmatter `serves` (B-3, B-4 → phantom FP-2) was classified `written` instead of `kept` (D13), because `has()` also counts kept frontmatter links. Regression test added.
+    - Four canvas edges touching a group stopped the run (`unclassified`). User decided D14: drop them. Implemented as fate `dropped`.
+    - `Strategy/Strategic Inbox.md` (`type: strategic-inbox`) showed as an `unknown-type` error in the planned graph. User decided D15: a known non-graph type (`IGNORED_TYPES` in `src/core/schema.ts`), skipped by `buildGraph` and logged as info by the planner.
+    - Test vault: B-6 now repeats its phantom link in the body `## Serves`; the canvas gains e18 (B-6 → "Studio route", "On Kill") and e19 ("Studio route" → B-4); `Strategy/Strategic Inbox.md` added. `ANOMALIES.md` updated. Migration goldens regenerated: 54 legacy edges (was 51), 2 more dropped, 1 more kept, one info finding; Phase 0/1 goldens unchanged.
+  - **Decisions:** D14, D15.
+  - **Verification:** `npm run typecheck`, `npm test` and `npm run build` pass. Not yet done (user, local): re-run the dry run on the vault copy with this fix, then answer the 23 open questions until the gate passes. The `{{DATE}}` YAML warning comes from two non-strategy files (`obsidian-task-workflow.md`, `Templates/Project Hub Template.md`) and is harmless.
+
+- **2026-10-02**:
+  - **Context:** Phase 2 parity gate on a copy of the real vault, after the D14/D15 fixes (run locally by the user).
+  - **Actions:** the user answered all 23 questions in `resolutions.yaml` (5 link questions, 1 "AND" junction, 17 canvas-only edges) and re-ran the dry run with `--resolutions`.
+  - **Decisions:** the user's answers, kept in their local `resolutions.yaml` (never committed).
+  - **Verification:** **parity gate passed**, exit 0: 193 legacy edges, 56 files to change, 0 of 23 questions open, all 8 checks `ok`. Remaining for Phase 3: apply from this plan with its hash guard; if the real vault changes first, re-run the dry run on a fresh copy.
+
+- **2026-10-02**:
+  - **Context:** Phase 3 (apply the migration), built as tooling in a Claude Code on the web session. The real-vault apply itself is the user's local step and **has not been run**.
+  - **Actions:**
+    - `npm run migrate -- --vault <path> --resolutions <file> --apply [--plan <file>] [--backup-dir <dir>]` (`tools/migrate/apply.ts`). It re-plans the vault, requires the parity gate to pass, and requires every touched file to hash as the reviewed dry run's `migration-plan.json` saw it (before and after). Then it copies `Strategy/`, `Templates/`, the canvas and the files kept links resolve to (the phantom FP-2) to `<backup-dir>/<timestamp>/` (default `~/strategy-backups`, refused inside the vault), verifies the copy, writes the planned files through a temp-file rename, and re-checks the live result: bytes as planned, `The Map.canvas` untouched, a re-plan changes nothing, the gate passes. It writes `migration-applied.json` to `--out`.
+    - Templates are part of the plan since Phase 2, so Phase 3's step 4 needs no separate code.
+  - **Decisions:** `--apply` stops with nothing written on any mismatch (the "escalate/stop" condition). The dry run's `--out` default doubles as the plan location, so the same two commands with and without `--apply` are the whole workflow.
+  - **Verification:** `npm run typecheck`, `npm test` and `npm run build` pass. New tests apply to temp copies of `test-vault/`: backup contents, exactly the planned files written, canvas untouched, idempotent re-plan, and refusals (late edit, tampered plan hash, plan whose dry run didn't pass, open questions, backup inside the vault, missing plan) each leave the vault byte-identical. Two guard mutations (skipping the before-hash check, skipping a backup file) fail the suite; the first only after adding a test with a tampered hash, since a late edit also changes the recomputed `after`. Unverified (user, local): the run on the real vault, then Phase 3's Verify in Obsidian (Properties panel, the Dataview "dependents" block).
+
+- **2026-10-02**:
+  - **Context:** Phase 4 (creation flows write schema v2), run in the same session.
+  - **Actions:**
+    - `src/core/actions.ts`: `planBet`, `planAssumption`, `planRoute`, `planMilestone` turn a form into an ordered list of writes (`create` a note, or `add-link` to a frontmatter list of an existing note). `src/obsidian/create.ts` only executes them: `vault.create`, `fileManager.processFrontMatter`, open, notice. `insertIntoSection` and `sections.ts` are deleted: nothing writes into another note's body any more.
+    - Bets are written as v2: `id`, `serves`, optional `ultimately-serves`, `requires`, `next`, `assumptions` in the frontmatter, no `## Serves` / `## Assumptions…` sections. Assumptions get `id` and the Dataview "dependents" block, and no bet links. A reused assumption is just listed in the new bet; creating an assumption for existing bets appends it to each bet's `assumptions`. `BetModal` gains pickers for `ultimately-serves`, `requires` and `next`.
+    - New commands "Create new Route", "Create new Ghost Route", "Create new Milestone" (`NoteModal`), writing `Strategy/Routes/R-<n>` and `Strategy/Milestones/M-<n>`. Routes carry `status: active|ghost`; milestones carry no status (schema). Assumptions may be attached to bets, fixed points, routes and milestones.
+    - Form picks are checked against the relation table by folder, so a bet can't be written with `requires` pointing at a fixed point, etc.; a refusal creates nothing.
+    - `tests/legacy/main.js`, `tests/support/legacy.ts` and `impls.ts` removed, as planned for Phase 4.
+  - **Decisions:**
+    - **Golden diff (deliberate):** bet, assumption, route and milestone note goldens; the `plans/` and `flows/` goldens; `modals/*` (new fields, `dependentFiles` replaces `betFiles`, three new commands, `NoteModal`); `pure.json` loses only the `insertIntoSection` key (every other helper's output is identical, checked key by key). Not changed: `get-files-in-folders`, `bet-refused`, `bet-empty-vault`, `assumption-refused`, `assumption-failure` (the error paths and messages are as before, except the console line, which now names the kind: "failed part-way through bet creation"). The old reused-assumption backlink goldens (`bet-mixed` A-1/A-4/A-7) are gone because those notes are no longer edited.
+    - New ids: routes `R-<n>`, milestones `M-<n>`, allocated from basenames like bets and assumptions. A note whose `id` differs from its basename isn't considered; the planner reports those as collisions.
+    - `dependedOnByBlock` moved from the migration planner to `src/core/content.ts`, so notes created by the plugin and notes migrated by Phase 2 hold the same block.
+  - **Verification:** `npm run typecheck`, `npm test` (185 tests, run with `CI=true` so no snapshot is written) and `npm run build` pass. `tests/characterization/v2-graph.test.ts` creates bets, assumptions, routes and milestones in the hand-written v2 vault and checks `buildGraph` reports no new issues and every chosen relation is an edge of its kind; three mutations (dropping `requires`, dropping the `add-link` writes, a misspelled `type`) each fail it. Unverified (user, local, needs Obsidian): real `processFrontMatter` — the fake re-dumps YAML its own way (e.g. `next sequel: null`), so whether Obsidian keeps empty keys and key order as written is a manual check on a throwaway copy; the new modals' layout; the three new commands.
+
+- **2026-10-03**:
+  - **Context:** the user clarified what the old canvas "routes" were: placeholders for starting something, not a step between bets, and of no strategic value. The strategy is bets, assumptions and their relations; the `serves` chain is what defines the routes.
+  - **Actions:** plan only. D4 narrowed, D16 added. Removed the `route` type and its schema block, the ghost status, the route/ghost-route commands (Phase 4), the routes layer in the ELK order (5a), the ghost node style (5b), "route"/"ghost route" as promote targets (7), and "ghost" from the dashed-edge rule. The review walk (8) now follows `serves` chains. Earlier change-log entries are left as written.
+  - **Decisions:** D16. `milestone` is unchanged, since the user only spoke about routes; it is an open question whether it stays.
+  - **Verification:** the plan and the code now disagree, on purpose and temporarily. Still implementing routes: `src/core/schema.ts` (type, `route` status, relation lists) on `main`; and, in PR 1, `planRoute`, `ROUTES_FOLDER`, the route/ghost-route commands and `NoteModal`, plus their goldens. Not yet removed.
+
+- **2026-10-03**:
+  - **Context:** the user asked how milestones work and wanted them kept as checkpoints to begin further bets from. The plan had no definition (only the type, `serves`/`assumptions` fields, layout order and a creation command), and the attached `Grand_Strategy_Meta-Framework.md` has no milestone concept either (its closest line is "a general outline of big actions and directions").
+  - **Actions:** plan only. Added D17 and a milestone schema block; widened `requires` to point at bets or milestones (D7 note); added the milestone node style (5b), the bet form's milestone picker (4) and the `requires-open-milestone` smell (8). The user confirmed the dashed-edge rule stays as "Unverified serve: dashed".
+  - **Decisions:** D17: bets serve a milestone, later bets `require` it, the milestone serves a fixed point or another milestone, and it has `status: open | reached`.
+  - **Verification:** none needed for a plan edit. Code not yet changed, so it disagrees with the plan: `src/core/schema.ts` has no milestone status, `requires` is bet→bet only, and `serves` from a milestone may point at a bet (the relation table needs per-source targets for that). In PR 1, `planMilestone` and the milestone form write no status and don't offer milestones under `requires`. With D16 this is one batch of code changes still to make.
+
+- **2026-10-03**:
+  - **Context:** the user asked for the D16/D17 code changes in PR 1 before merging it, plus two review findings: a duplicate link appended when the existing one is unquoted or folder-qualified, and `?` left in filenames.
+  - **Actions:** `schema.ts`: no `route` type; milestones get `status: open | reached`; `RELATIONS` now lists allowed targets per holder type (`to: { bet: [...], milestone: [...] }`), so a bet `requires` a bet or a milestone and a milestone `serves` only milestones and fixed points. `graph.ts` and the migration planner read it through `targetsOf`. `smells.ts`: new `requires-open-milestone` (active bet, required milestone with status exactly `open`; `related` lists the milestones). PR 1: removed `planRoute`, `buildRouteContent`, `RouteFormData`, `ROUTES_FOLDER`, the Route and Ghost Route commands and `NoteModal`; added `MilestoneModal`; the milestone note is created `status: open`; the bet form's "Requires" offers bets and milestones. The form pickers and the planners' folder checks now come from `RELATIONS` (`pickFolders`), which also settles review finding 3. `addLinkToField` matches folder-qualified links and YAML's nested list for an unquoted `[[link]]`. `sanitizeTitle` also replaces `? " < >`.
+  - **Decisions:** none new. The smell landed now, not in Phase 8, because the user asked for it with the schema change.
+  - **Verification:** typecheck, 197 tests, build. Characterization goldens changed on purpose: route goldens deleted; milestone content gains `status: open`; plugin registrations lose the two route commands; refusal messages no longer list `Strategy/Routes`; `pure.json` gains a `? " < >` case; new milestone, bet-requires-milestone and `MilestoneModal` goldens. Migration goldens unchanged. Mutation checks on the new smell and the link matching all fail at least one test.
+
+- **2026-10-03**:
+  - **Context:** the user wants the real-vault migration postponed to the very end: the vault keeps changing while the later phases are built, so re-running the migration after every phase is impractical.
+  - **Actions:** plan only. Added D18. Phase 3 is now the apply *tooling* (built and tested on `test-vault/` copies); the real-vault run moved into Phase 9, now "Cutover", which starts with a fresh dry run on a fresh copy, then applies, releases, verifies, and only then retires the canvas. The install loop says no tag before the cutover, and an optional local preview (apply to a disposable copy) is described. `CLAUDE.md` updated to match.
+  - **Decisions:** D18. The no-release-before-cutover rule follows from it: since Phase 4 the plugin writes schema v2, which must not land in an unmigrated vault. No tag has been pushed yet, so the real vault still runs the old plugin.
+  - **Verification:** none needed for a plan edit. The Phase 2 dry run that passed on 2026-10-02 is now a rehearsal; its `resolutions.yaml` should be kept for the cutover.
+
+- **2026-10-03**:
+  - **Context:** Phase 5a (graph view integration), run as a Claude Code on the web session.
+  - **Actions:**
+    - `src/obsidian/graph-view.ts`: `StrategyGraphView` (`FileView`) registered for `.gsmap` (`registerExtensions`). Commands "Open strategy graph" (plus a ribbon icon; focuses an open graph tab, else opens `Strategy/Strategy.gsmap`, creating an empty one if missing) and "Reveal note in graph" (offered when the active note has a graph `type`).
+    - `src/core/graph-session.ts`: what the view does outside Obsidian and React, shared with the dev page. Rebuilds from `metadataCache` 250 ms after the last `changed`/`deleted`/`resolved`/rename event, and only the newest rebuild renders. An unchanged graph doesn't re-render. Tracks ids by path (`id-changes.ts`), so a rename is silent and a changed id is reported.
+    - `src/core/gsmap-store.ts` + `parseGsMap`/`writePositions` in `gsmap.ts`: moves show at once and are written 400 ms after the last drag end, through `vault.process`, changing only the moved ids (everything else in the file, unknown keys included, keeps its bytes). Moves still being written survive a reload of the file (our own write echoing back, or Sync).
+    - `src/core/layout.ts`: ELK layered layout, left to right. Pinned positions are kept exactly. Unpinned nodes go where ELK puts them relative to their placed neighbours; a group with no placed neighbour goes below the pinned nodes; nothing overlaps. ELK runs only when the nodes or visible edges change and something is unpinned.
+    - `src/ui/`: `<StrategyGraph>` (React Flow) and `mountGraph`. Plain nodes (id, title, status, date) and a class per type, status and edge kind, ready for 5b. An "N issues" panel lists `buildGraph` issues, changed ids and an unreadable `.gsmap`. Double-click opens the note in a new tab (Ctrl/Cmd: a split), never in the graph's tab.
+    - Dev harness: `npm run dev:web` (`dev/`, Vite) renders the same mount from a `MemoryAdapter` over the test vault. The default is the test vault migrated in memory by the Phase 2 planner with the fixture answers (`tools/test-vault.ts`), so it shows the canvas positions; `?vault=legacy` shows the raw legacy vault. Playwright (`tests/e2e/`, `npm run test:e2e`): 9 behaviour tests and 2 `@visual` screenshot baselines. CI gets an `e2e` job without `@visual`.
+    - Build: `dist/styles.css` is now an esbuild CSS bundle (React Flow's stylesheet inlined). Production `main.js` is minified (4.4 MB → 1.9 MB, ELK alone is 1.6 MB); `npm run dev` stays unminified with a source map.
+  - **Decisions:**
+    - Saves are on drag end only (as planned), debounced 400 ms and flushed when the tab closes or switches file. ELK positions are never saved: a node is pinned the first time it's dragged. Coordinates are rounded to whole pixels.
+    - A `.gsmap` that doesn't parse, has another `version`, or has malformed positions is shown as an error, and the view never writes it (dragging is off). An empty file reads as an empty map.
+    - Fixed points can't be dragged. Neither can nodes without a unique `id` (no key to save under; their notice is already in the panel).
+    - Drawing and layout orientation: `serves` and `next` run from the holder; `requires` and `assumptions` run into the holder (prerequisite and assumption to its left). `ultimately-serves` is hidden and left out of the layout; showing it on toggle or for chainless bets is 5b.
+    - The current position gets ELK's first layer and fixed points the last (`FIRST_SEPARATE`/`LAST_SEPARATE`, with components not separated), so they hold their columns even with no edges.
+    - Free cards, frames and `.gsmap` links are kept in the file but not drawn yet (Phase 7). The saved viewport is used when the graph opens but never written.
+    - A changed id raises a notice and stays in the panel until the id is changed back or the note goes. The orphaned position is left under the old id; nothing is moved automatically.
+    - React Flow's attribution stays visible: their notice asks to hide it only with a Pro subscription.
+    - `@playwright/test` is pinned to 1.56.1 to match the cloud image's preinstalled Chromium. `@visual` baselines are Linux/Chromium from a cloud session and are excluded from CI, because fonts differ between machines.
+    - Golden diff (deliberate): `modals/plugin-registrations.json` gains the ribbon icon, the two commands, the view and the extension; the test now lists `checkCallback` commands instead of calling them. Migration goldens are unchanged.
+  - **Verification:** `npm run typecheck`, `npm test` (267 tests: 69 new in `tests/view/` and one bundle test; `CI=true`), `npm run build` and `npm run test:e2e` (11) pass. Mutations of the view (no flush on close, no unmount, an unregistered `resolved` handler, no `.gsmap` reload, opening notes in the graph tab), of the session (no stale-rebuild guard, no rename tracking, no unchanged-graph skip) and of the UI (draggable fixed points, saving during the drag) each fail at least one test. The manual-check recipe was dry-run on a copy outside the repo (gate passed); `--apply` was not run in the cloud. **Unverified (user, local, needs Obsidian):** the view in the real app: opening `Strategy.gsmap`, live updates while editing properties, drag and save, reveal from a note, closing the tab, a deferred tab after restart, theme colours, popout windows and mobile. To check it on migrated data: copy `test-vault/` outside the repo, replace the copy's plugin symlink with one to the repo's `dist/`, run `npm run migrate` on the copy with `--resolutions tests/migration/fixtures/test-vault.resolutions.yaml`, then the same with `--apply --backup-dir <tmp>`, and open the copy in Obsidian.
+
+- **2026-10-03**:
+  - **Context:** the user looked at the 5a graph in Obsidian (a migrated copy of the test vault): it renders, but with every edge leaving right and entering left, and assumptions laid out as steps in time, the graph loses the canvas's reading. They described the canvas convention and answered four questions (D19).
+  - **Actions:**
+    - `src/core/layout.ts`: `structureOf` splits the graph into the time axis (everything but hosted assumptions), the host of each assumption (lowest column rank along `serves`/`requires`/`next`, then key), and sequel chains (`next`; a bet holds one sequel below it, loops are cut). ELK now lays out column blocks on the time axis: a bet, its sequels below it, and the room its assumptions need, so neighbouring blocks never collide. Assumptions are placed by one rule everywhere (`placeSatellites`): stacked upward above the host; below where above is taken; aside to the right where below is taken too (a sequel). With saved positions, an unsaved sequel goes directly below its bet and unsaved assumptions use the same rule against the saved nodes.
+    - `src/ui/`: each node has a source and a target handle per side; `sidesOf` picks them per edge. Dragging a node moves its hosted assumptions live (`followersOf`) and saves them in the same write.
+    - Dev page: `?layout=auto` (the "ignore saved positions" box) shows the automatic layout of the whole vault.
+  - **Decisions:** D19. Hosting is decided from the links alone, never from positions, so it doesn't change while dragging. A shared assumption's leader to its other holders can be long; accepted. Only assumptions follow a drag, not sequels. An assumption nothing leans on stays on the time axis, as its own block.
+  - **Verification:** `npm run typecheck`, `npm test` (279) and `npm run build` pass; `npm run test:e2e` (14, 3 of them `@visual`). The 5a layout test that put assumptions left of their bet was replaced, and so was the edge test that assumed left/right only; the e2e drag test now expects B-3's hosted A-3/A-4 to move with it. One screenshot baseline was added (`migrated-auto`); the two existing ones still match within their 1% tolerance, so they were not rewritten. Mutations (never above, never aside, latest host, no sequel column, no sequel under a saved bet, time edges by geometry, followers not saved, no live follow) each fail a test. **Unverified (user, local):** the look in Obsidian on the migrated copy; dragging a bet with its assumptions there.
+
+- **2026-10-03**:
+  - **Context:** Phase 5a manual check in Obsidian, run locally by the user on `gs-preview`, a migrated copy of `test-vault/` (dry run, then `--apply` with `--backup-dir` in a temp folder; the plugin folder re-linked to the repo's `dist/`).
+  - **Actions:** the user opened the graph with "Open strategy graph", then emptied `positions` in the copy's `Strategy.gsmap` by hand to see the automatic layout (D19).
+  - **Decisions:** Phase 5a is done and goes to `main` with D19. Colours and node styles are Phase 5b. The old design branch `claude/peaceful-bardeen-1emx74` is not the design and stays unmerged.
+  - **Verification:** confirmed by the user: the graph renders and reads well, with canvas positions and with the automatic layout. Not reported either way: live updates while editing properties, drag-and-save across tab close, Reveal, double-click to open, a changed id, theme switching, popout windows, mobile.
+
+- **2026-10-03**:
+  - **Context:** a code review of Phase 5a with two bug reports from the user's manual check: (1) after enough dragging every edge disappears until the graph is reopened; (2) dragging makes a mess and nodes snap unpredictably, so the user asked for a reset button (a circular arrow) that forgets every custom position.
+  - **Actions:**
+    - (1) `src/ui/StrategyGraph.tsx`: every position change (the drop, the write, its modify echo) rebuilt the React Flow nodes without React Flow's `measured`, which makes React Flow throw away the nodes' measured handles and draw no edge until they are measured again; a drag that began in that window started on an uninitialized node (React Flow warning 015). Rebuilds now keep `measured`. A Playwright test samples the edge count every animation frame through four drag-and-save cycles: it saw 0 before, 19 throughout after.
+    - (2) A "Reset layout" control button (circular arrow) with an inline confirmation. `clearPositions` (`gsmap.ts`) empties `positions` and keeps every other key; `GsMapStore.resetPositions` shows no saved position at once, drops moves not written yet, queues the write after any write under way, keeps moves made after it, and a failed earlier write can't bring a move back. The view fits the new layout once every node is placed. The button is off when nothing is saved or the `.gsmap` can't be read.
+  - **Decisions:** the reset asks for confirmation first, because it can't be undone from the graph (the positions migrated from the canvas go too). Not changed, for the user to decide: unsaved nodes are still re-placed around saved ones on every move (the snapping; see the review).
+  - **Verification:** `npm run typecheck`, `npm test` (289) and `npm run build` pass; `npm run test:e2e` (16, 3 of them `@visual`; the baselines still match within 1% with the extra control button, so they were not rewritten). Mutations (no fit after reset, old positions shown during a reset, a failed pre-reset write re-pended) each fail a test. **Unverified (user, local):** the button and the edge fix in Obsidian.
+
+- **2026-10-03**:
+  - **Context:** the user checked the edge fix and the reset button in Obsidian (both work), chose to save every position on the first drag, asked for the other review findings to be fixed, and asked for canvas-style multi-select.
+  - **Actions:**
+    - Every drag end also saves each shown node that has no saved position yet, fixed points included (`unsavedPositions`, `src/ui/model.ts`), so unsaved nodes are never re-placed around a dropped one. After the first drag only new notes are left to pin.
+    - Multi-select as on an Obsidian canvas: a selection box on empty space (partial overlap selects), Shift/Cmd/Ctrl-click to toggle, Cmd/Ctrl+A and Escape; panning moves to Space+drag, middle-drag and scroll, zoom to Cmd/Ctrl+scroll and pinch. Dragging any selected node moves the whole selection, with the assumptions each member hosts, in one write. Arrow-key nudges (React Flow's 5 px, 20 with Shift) take the hosted assumptions along and are saved too; before, they moved nodes without saving them.
+    - A failed automatic layout no longer leaves the graph on "Laying out the graph…": it shows what is saved and an error notice naming how many notes it left out. The dev page's `?elk=fail` simulates the failure (`mountGraph`'s `autoLayout` option).
+    - The issue list's note links are buttons, reachable by keyboard. The fit after a reset is cancelled when saved positions come back (the reset couldn't be written, or a drag came first).
+  - **Decisions:** reverses the 5a decision "ELK positions are never saved": a drag pins the whole shown layout (user, 2026-10-03). Saved positions are still never changed by the layout (D19). Arrow-key nudges count as moves.
+  - **Verification:** `npm run typecheck`, `npm test` (290) and `npm run build` pass; `npm run test:e2e` (23, 3 of them `@visual`; baselines unchanged). Mutations (no pinning of unsaved nodes, no failed-layout state) each fail a test; the arrow-key save and Escape focus were found failing by their tests and fixed. **Unverified (user, local):** the selection gestures, trackpad pan/zoom and Cmd+A/Escape inside Obsidian (Obsidian's own hotkeys could take a key first).
+
+- **2026-10-04**:
+  - **Context:** the user asked for the Mac trackpad to pan the graph as it does on an Obsidian canvas (two-finger swipe).
+  - **Actions:** a swipe arrives as wheel events, which already panned since multi-select (`panOnScroll`), but at React Flow's default half speed, so the graph lagged behind the fingers. `panOnScrollSpeed` is now 1. New e2e test with a macOS Electron user agent: a diagonal swipe pans both axes 1:1, a swipe starting over a node pans too (and saves nothing), and a pinch (wheel with ctrlKey, as macOS sends it) zooms.
+  - **Decisions:** none.
+  - **Verification:** `npm run typecheck`, `npm test` (290), `npm run build`, `npm run test:e2e` (24, `@visual` baselines unchanged). **Unverified (user, local):** the feel on a real trackpad in Obsidian, momentum scrolling included.
+
+- **2026-10-04**:
+  - **Context:** Phase 5b (node and edge styling), run as a Claude Code on the web session. `canvas_rules.md` is not in the repo, so the colour roles below are chosen from the plan's table and Obsidian's palette.
+  - **Actions:**
+    - `src/ui/StrategyNode.tsx` + `graph.css`: a shape per type (bet: box; assumption: dashed box; milestone: checkpoint with a thick left edge and a diamond glyph, hollow while `open`, filled green when `reached`; fixed point: stadium; current position: neutral pill) and a colour per status through one custom property (`--gs-c`), from Obsidian's accent colours with fallbacks: bets active (accent), dormant (faded), won (green), killed (red, struck through), extended (blue); assumptions unverified (amber), confirmed (green), falsified (red), undeterminable (gray). The status pill, border and tint all derive from `--gs-c`, so both themes follow Obsidian.
+    - Smell badge on a node (count, the messages in its tooltip) from `findSmells`; `today` comes from the host (`GraphHost.today`, Obsidian's `today()`; the dev page takes `?today=`).
+    - Edges: `serves` solid, an unverified `serves` dashed, `next` dashed in the warning colour with its "on kill" label, `requires` dotted blue, assumption leaders thin dashed, `ultimately-serves` faint with long dashes, labelled "ultimately". `ultimately-serves` is hidden until the new control button toggles it, and shown at once for a bet with no `serves` chain to a fixed point (the `orphan-bet` smell).
+    - Hover: the node asks the host (`hoverNote`); the Obsidian view raises `hover-link` and the plugin registers the view as a hover-link source (page preview, Ctrl/Cmd by default).
+  - **Decisions:** "Unverified serve" (undefined in the plan) is read as: the holder of the `serves` link leans on at least one assumption that is not `confirmed`. A holder with no assumptions is solid. Arrowheads stay neutral: React Flow markers can't take theme variables. Not changed: the dashed `next` and the dashed unverified `serves` differ by colour and by the "on kill" label, not by dash pattern alone.
+  - **Golden diff (deliberate):** `modals/plugin-registrations.json` gains `hoverLinkSources` (the view registered as a hover-link source). Screenshot baselines (`@visual`) rewritten for the new look, and two new zoomed-in baselines added, because the fit-to-view ones are too small to show the styling (their 1% tolerance let the old ones match unchanged); all `@visual` runs pin `?today=2026-10-01`.
+  - **Verification:** `npm run typecheck`, `npm test` (298), `npm run build`, `npm run test:e2e` (32, 5 of them `@visual`) pass. **Unverified (user, local, needs Obsidian):** the colours against real themes, the page preview on hover, the badge tooltip.
+
+- **2026-10-04**:
+  - **Context:** Phase 6 (editing from the graph), in the same Claude Code on the web session as 5b.
+  - **Actions:**
+    - `src/core/writes.ts`: the write kinds an action can plan (`create`, `add-link`, `remove-link`, `set-field`, `append-log`, `replace-section`), the `WriteIO` they run through, and the pure text edits behind them (`appendLogLine`, `replaceSection`, `removeLinksFromField`; fenced code and CRLF are respected). `src/core/edits.ts`: the edit intents as pure planners over the graph (`set-status`, `set-date`, `set-text`, `add-relation`, `remove-relation`, `log`, `kill-activate-next`, `falsify`, `new-bet`, `new-assumption`) plus `relationCandidates`, which infers what a drag between two types means. `src/core/perform.ts` plans and performs an intent for both hosts. `src/obsidian/io.ts` (`ObsidianIO`) is `WriteIO` over `vault.create`, `processFrontMatter` and `vault.process`; `create.ts` now runs its non-create writes through it. `MemoryVault` is the same for the dev page and tests.
+    - Graph UI: the status pill is a dropdown and the deadline / verify-by a date field on the node; selecting one note opens the inspector (status, date, expected result, falsifier, relation lists with add and remove, "depended on / served / required by", "+ log entry", the note rendered through `MarkdownRenderer` in Obsidian or as text on the dev page, "Open in split"); dragging from a handle onto any part of another node makes the relation its types imply, or asks which (serves / requires / next / assumption); a link is selected by click and removed with Delete or from its right-click menu; the node menu has New sequel bet, New bet serving this, Add assumption, Kill → activate next, Mark falsified, Open note and Open in split; the creation items open a small form on the graph. Each result shows as a message on the graph. A host without `edit` (`?readonly=1` on the dev page) gets none of it.
+    - Fixed a race found on the way: after "Reset layout", the fit was asked before every node was placed and measured, so React Flow fitted nothing (or one node, at the maximum zoom) now and then, more often under load. The fit now waits until all nodes are in and measured.
+  - **Decisions:**
+    - Existing notes may now change in exactly the six ways of `writes.ts` (the CLAUDE.md rule is updated): the log append and the falsifier section are the only body edits, they go through `vault.process`, and the frontmatter block is never touched by them.
+    - The inspector edits `expected-result` (the bet's Y) and the falsifier, but not X and Z: they are words inside a sentence of `## The Bet`, and rewriting them would mean parsing prose. Open the note for those.
+    - "Kill → activate next" needs a dormant sequel; it writes the sequel first, so a failure part-way leaves two active bets (flagged by smells), never none. "Mark falsified" doesn't write to the dependents: the existing `falsified-dependency` smell flags them, and the message names the active ones.
+    - A new sequel bet inherits what the bet it follows serves, unless told otherwise; created notes are not opened (the graph stays in front). New notes get no saved position: they are placed by the layout like any unsaved node.
+    - Hover preview, rendering and edits through Obsidian are tested against fakes; the real thing is for the user to check.
+  - **Verification:** `npm run typecheck`, `npm test` (347: 49 new over writes, edits, MemoryVault, the view host), `npm run build`, `npm run test:e2e` (48, 6 of them `@visual`; one inspector baseline added) pass. **Unverified (user, local, needs Obsidian):** the status dropdown and date field inside Obsidian's styles, the inspector with real reading-view rendering, drawing a link, Delete on a selected link while the graph tab has focus, the right-click menu (Obsidian may add its own), and that edits made through `processFrontMatter` keep the user's formatting of the YAML.
+
+- **2026-10-04**:
+  - **Context:** Phase 7 (free cards, frames, promote-to-note), same session. The `.gsmap` format already held cards, frames and links since Phase 2; until now the graph kept them in the file and drew none of them.
+  - **Actions:**
+    - `src/core/gsmap.ts`: `GsOp` (`put-card`, `delete-card` with the links on it, `put-frame`, `delete-frame`, `put-link`, `delete-link`, `promote-card`) with `writeOps` (changes only the touched items; unknown keys and order survive; an op repeated is a no-op) and `applyOps` (what the view shows before the write, the same result as writing and reading back). `GsMapStore.edit` keeps the ops pending and in flight like position moves: shown at once, written with them in one `vault.process`, never dropped by a reload from disk, put back in order when a write fails. A position reset leaves cards and frames alone. `GraphSession.editMap` and `GraphHost.editMap` carry them; a link whose note end is gone is not drawn and is reported in the issues list.
+    - Graph UI: the canvas's cards (text, note reference, link), frames and lines are drawn: colour presets, `border: dashed`, `shape: diamond`, `textAlign`, line dashes, labels, sides, arrow ends, square paths. Double-click on empty space (or right-click → New card here) makes a card and starts typing in it; double-click edits a text card, opens a note-reference card (or a link card's URL); Ctrl/Cmd+Enter or leaving saves, Escape cancels, and a card left empty is deleted. Frames: right-click → New frame here, double-click the label to rename, resize by handles when selected; dragged by the label only. Cards and frames are dragged, nudged, resized and deleted (Delete) like notes, saved as their own rectangle. Dragging from a handle between a card and a note (either way) draws a free link; right-click a link → Edit link… (label, colour, line, arrows) or Delete link; right-click a card or frame → Style… (colour, border, shape). Promote to bet / assumption / milestone opens the small form filled from the card's text, creates the note through the Phase 6 intents (new `new-milestone` intent), then `promote-card` removes the card, re-ends its links on the note and gives the note the card's top-left place (unless it already has one).
+    - The test vault's canvas now shows on the dev page: 6 cards, 2 frames and 8 lines over the notes.
+  - **Decisions:**
+    - Frames are visual only (D8): dragging a frame does not move what lies on it, and a selection box never selects one (it would otherwise be dragged along with every box selection inside it).
+    - A line between two notes is still a relation (or refused); only a card on an end makes a free link. Plain annotation lines between two notes (which the migration can keep) are drawn and can be styled or deleted, but not made from the graph.
+    - Promotion carries over the card's links and place, not its meaning: the new note starts with no relations (e.g. a card linked to a fixed point does not become `serves`); add them in the inspector.
+    - Creating the note and rewriting the map are two writes. If the second fails the note exists and the card stays; the failure is reported and the card can be deleted by hand.
+    - Planner plans (and so the Phase 4 goldens) are untouched: the created note's id for a promotion is read off the created file's name in `edits.ts`.
+  - **Golden diff:** none. Screenshot baselines (`@visual`) rewritten, because the canvas's free part now shows.
+  - **Verification:** `npm run typecheck`, `npm test` (374), `npm run build`, `npm run test:e2e` (62, 6 of them `@visual`) pass. **Unverified (user, local, needs Obsidian):** all of the above inside Obsidian: typing in a card, resizing by handles, frame labels, the right-click menus, drawing links to cards, and opening a note-reference card or link.
+
+- **2026-10-04**:
+  - **Context:** Phase 8 (smell overlay + review walk), same session.
+  - **Actions:**
+    - Smells: the badge on each node (Phase 5b) is now joined by a "Smells" panel in the graph's toolbar (top-left): the count, then the smells in groups, worst first (gating violation, falsified dependency, `requires-open-milestone` (D17), overdue, orphan, unreached fixed point, dormant that is no bet's `next`); clicking a note centers the graph on it and selects it. `findSmells` is untouched; the panel and badges render its output.
+    - `src/core/review-walk.ts` (`reviewWalk`): each fixed point in id order, then outward along the `serves` chains that lead to it (D16), nearest first and by id inside a distance; a note two fixed points share is visited under the first; bets and milestones on no route come last. Each step carries the route up to its fixed point and the assumptions the note leans on. The "Review walk" button opens a step panel (Previous / Next, ← →, Escape or × to end): it centers on and selects the note, and shows its status, deadline or verify-by, expected result, route, smells and assumptions with their status. The walk follows the note by key, so an edit that reorders the steps leaves it on the note it was on. The inspector stays closed during the walk.
+    - `focusNode` (select + center) is now shared by the smells panel, the walk and "Reveal note in graph".
+  - **Decisions:** assumptions are reviewed with the note that holds them, not as steps of their own. Unrouted notes are walked, after the routes, so a review can't skip an orphan. Current position is not a step.
+  - **Golden diff:** none. Screenshot baselines (`@visual`) rewritten for the toolbar; one added (`migrated-walk`).
+  - **Verification:** `npm run typecheck`, `npm test` (382), `npm run build`, `npm run test:e2e` (68, 7 of them `@visual`) pass. **Unverified (user, local, needs Obsidian):** the toolbar and the walk panel in Obsidian's styling, and the walk's arrow keys while the graph tab has focus.
+
+- **2026-10-04**:
+  - **Context:** High-effort code review of Phases 5b–8 (end of the session); its findings were fixed.
+  - **Actions:**
+    - New bet "next" sequel is created `dormant` and inherits the source's `serves` when none is given (`edits.ts`, optional bet `status` in `content.ts`/`plan.ts`/`actions.ts`); a falsifier text with a `#` heading line is refused.
+    - Delete / Cmd+A: Cmd/Ctrl+A no longer selects frames; deleting more than 3 selected cards, frames and links at once asks first (links that merely go with a card are not counted).
+    - `.gsmap` items are validated inside `parseGsMap` (`firstBadItem`), so a hand-edited file with a malformed card, frame or link reads as unreadable instead of crashing the render; `applyOps` failures in the store are caught.
+    - `replaceSection` treats a section as the text directly under the heading up to the next heading of any level; `removeLinksFromField` matches a link exactly (no substring match); `comparable` is shared by `link-field.ts` and `writes.ts`; dates are validated (`badDateIn`).
+    - `GraphSession.settle(timeoutMs)`: the view's `edit` waits for the rebuild that follows a write before returning; `renderNote` ignores results after dispose; the store's overlay is cached per revision.
+  - **Decisions:** one review finding was deliberately **not** changed: `null` fields serialize differently in the dev page's `MemoryVault` (`key:`) and in Obsidian's `processFrontMatter` (`key: null`). Both read back as null; the real form is for the user to look at.
+  - **Golden diff:** none. No screenshot baseline changed.
+  - **Verification:** `npm run typecheck`, `npm test` (401), `npm run build`, `npm run test:e2e` (69, 7 of them `@visual`) pass. **Unverified (user, local, needs Obsidian):** the `null` form `processFrontMatter` writes, and everything listed as unverified in the Phase 5b–8 entries above.
+
+- **2026-10-04**:
+  - **Context:** before the cutover (Phase 9), the user sent a bug report on the graph after using it in Obsidian (8 items) and answered four questions: frames stay visual, as on a canvas; prerequisites are pushed only when needed; milestones and fixed points may `require`; the migration adds the implied `serves` and drops "AND" cards.
+  - **Actions:**
+    - (8) `requires` implies `serves`: `requiresImpliesServes` (`schema.ts`); the `add-relation` intent and `planBet` write the prerequisite's `serves` too, where the relation table allows it (a milestone can't serve a bet). Removing a `requires` leaves the `serves`. `RELATIONS`: a milestone or a fixed point may hold `requires` (bets or milestones).
+    - (7) Automatic "AND": every note with two or more `requires` gets a junction node (`junctionsOf`, `toFlowJunctions`, id `and:<key>`), placed just left of its holder and rebuilt from the holder's drawn position, so it follows the holder and nothing else; it carries its own size and handles, so React Flow never re-measures it. The `requires` run into it, one link runs to the holder. The `serves` twin of a `requires` is not drawn twice. It can't be added, moved or deleted.
+    - Migration: the planner writes the `serves` each `requires` implies (`derived`, "implied by …"), and an "AND" card whose `requires` are all in the notes is dropped with its lines (fate `dropped`; canvas node placed as `junction:<id>`; the parity gate checks those `requires` in the planned graph). With the answer `none` the card stays.
+    - (3) `dragCompanions` (`src/ui/model.ts`) decides what moves with a drag or arrow-key nudge: hosted assumptions (as before), and the dragged note's `requires` chain, pushed left only when the note comes closer than the gap they had at the start (at most `PREREQUISITE_GAP` = 100, ELK's column gap), never up or down; they go back if the drag goes back. Pushed notes take their assumptions and are saved with the drag.
+    - (1) Dragging a frame carries every node wholly inside it at the start (`frameContents`), nested frames and cards included; carried notes push prerequisites and take assumptions like dragged ones. Fixed points stay locked.
+    - (2) Note cards: right-click → "Add note card…" (Obsidian's note picker, `GraphHost.pickNote`) or a drop from the file explorer (`GraphHost.droppedNotes`: Obsidian's `dragManager.draggable`, else an `obsidian://open?file=` URL or a `[[link]]` in the dropped text). A strategy note is on the graph already: the view goes to it and says so.
+    - (4, 5) The style editor's border, shape, line and arrow dropdowns are icon groups (radio buttons with names as tooltips); colours unchanged.
+    - (6) A card's look (border, background, clipping, diamond `clip-path`) moved to an inner `.gs-card-box`, so its handles are whole on the edge, as on a note.
+  - **Decisions:** reverses the Phase 7 decision "dragging a frame does not move what lies on it" (user). Frames stay visual: a bet in two categories goes in its main one or in overlapping frames; nothing is written to notes. A prerequisite that was not left of its note at the start is never pushed. Links meeting in an "AND" have no arrowheads; the AND's link to the note has one.
+  - **Golden diff (deliberate):** `characterization/__golden__/plans/bet-plan-mixed.json` (B-3 gains `serves` B-9: B-9 requires it); migration goldens (B-5 gains `serves` B-4; `t-and` and links e5–e7 leave the `.gsmap`, the three edges become `dropped`; the derived-relations heading renamed). `tests/support/v2.ts`: B-5 serves B-4 too. `ANOMALIES.md` row for the "AND" diamond updated.
+  - **Playwright baselines (deliberate):** the six migrated-vault `@visual` screenshots re-taken: the canvas's "AND" card is gone and B-4's junction is drawn instead (the change was under the 1% tolerance, so they passed unchanged; re-taken so they show the graph as it is). `legacy-dark` unchanged.
+  - **Verification:** cloud session: typecheck clean, 415 unit tests, build, 73 Playwright tests (66 + 7 `@visual`), new ones for the prerequisite push, the AND junction (follows B-4 only, says what it joins, no menu, never saved), note cards by drop and by menu, and whole card handles (fails with the old clipping). **Unverified (user, local, needs Obsidian):** dropping a note from the file explorer (the drag manager is not public API, and Obsidian may handle the drop first), the note picker, frame drags, the AND junction and the icon pickers in Obsidian's styling.
+
+- **2026-10-04** (second round):
+  - **Context:** the user confirmed the first round works in Obsidian and sent two more fixes before the cutover: a frame should be made from a selection of several nodes, as on an Obsidian canvas (first read as "a selection box should select a frame"; the user asked to keep that too); a note card kept the old name after its note was renamed.
+  - **Actions:**
+    - Frames and the selection box: a box selects a frame only when it holds the whole frame (`framesInBox` in `StrategyGraph.tsx`, `holds` in `model.ts`), live while the box is drawn; a box inside a frame, or over part of it, still leaves it be. Selected that way, it drags (carrying what is inside) and deletes with the rest. A click on the label still selects it; Cmd/Ctrl+A still leaves frames out.
+    - A frame from a selection: right-clicking one of several selected nodes, or the box around a selection, opens the selection's menu ("N selected": "Create frame around selection"), as "Create group" on a canvas. The frame holds them all with room around (`frameAround`, `FRAME_PADDING`: 20 on the sides and bottom, 44 at the top for the label) and is named in place; dragging it carries them. Frames are drawn biggest first, so a frame made around another stays behind it.
+    - Note cards follow renames: a `rename-file` `GsOp` (`gsmap.ts`) moves every note card on a renamed file, or on a file under a renamed folder. With the graph open, the view passes every vault rename to `GraphSession.rename`, which writes the op only when a card is on the file. With it closed, `followRenameInMaps` (registered by the plugin) writes it into each `.gsmap` no graph tab has open, checking again on the text at write time and leaving a map it can't read alone.
+  - **Golden diff:** none. No screenshot baseline changed.
+  - **Verification:** cloud session: typecheck clean, 421 unit tests, build, 77 Playwright tests (7 of them `@visual`); the new frame-selection test fails on the previous code. **Unverified (user, local, needs Obsidian):** making a frame from a selection, renaming or moving a note (and a folder) in the file explorer with the graph open and with it closed, and box-selecting a frame in Obsidian.
+
+- **2026-10-05**:
+  - **Context:** Phase 9 rehearsal on a migrated copy of the real vault (user, local). The user lost the 2026-10-02 `resolutions.yaml` and is answering the questions again from a fresh dry run; while checking the copy in Obsidian they reported three things about the graph (a fourth item came through empty).
+  - **Actions:**
+    - A `.gsmap` link ending on a deleted note (the user deleted a killed bet, B-2, after the migration) left a warning that could not be cleared from the graph: the link isn't drawn, so it can't be selected. `GraphNotice` gains an optional `action` (`{ label, op }`); that notice offers "Remove link" (`delete-link`), which the issues list shows as a button next to the message.
+    - Fixed points (D20): `placeNodes` puts every fixed point at one x, the rightmost saved fixed point's (else the first one placed); saved ones keep their y and are stacked downward where the column makes them overlap; unsaved ones are placed in the column clear of everything. In the UI they are draggable again, vertically only: `keepColumn` (`model.ts`) pins the x of every position change for a fixed point, and the drag handlers save and move companions with that x. Their hosted assumptions follow the vertical move; frames don't carry them.
+    - Answered, no change: active bets use Obsidian's accent colour (`--interactive-accent`), so they are orange under an orange accent and purple under the default one.
+  - **Decisions:** D20 (user). Dead links are removed only by the button, never automatically (user): until then, a restored note gets its link back.
+  - **Golden diff:** none. No screenshot baseline changed (the test vault's fixed points already share x 2200).
+  - **Verification:** cloud session: typecheck clean, 427 unit tests, build, 78 Playwright tests (7 of them `@visual`). New: the dead-link notice and its button (session and e2e), the fixed-point column (four layout tests, each failing on the previous `placeNodes`), `keepColumn`, and an e2e drag of FP-1 that keeps its x during and after the drag (fails without `keepColumn`). **Unverified (user, local, needs Obsidian):** both on the migrated copy, where the fixed points carry the canvas's offsets.
+
+
+- **2026-10-05**:
+  - **Context:** the user found the review walk jumped between routes (it went outward one distance at a time) and asked for it to follow how a strategy is reviewed: from the fixed point back along each route to the current position, one route at a time. Their answers: backwards from the fixed point; branches by id; a fork shown once; a note on two routes shown on each; the current position as each route's last step, with "Route 2 of 3 · step 3 of 4"; bets and milestones on no route left out. They also reported a bug: a milestone must be able to serve a bet, since between two milestones there are bets on how to get from one to the next.
+  - **Actions:**
+    - `schema.ts`: a milestone `serves` bets too (`RELATIONS`). So `requiresImpliesServes` now holds for a bet requiring a milestone: the `add-relation` intent, `planBet` and the migration planner write "M serves B" with "B requires M". The milestone form's "Serves" picker offers bets.
+    - `review-walk.ts` rewritten depth first (D21): from each fixed point (by id), one step back is what serves the note and what it requires (so a prerequisite whose `serves` is missing is still on the route), bets and milestones only, by id; each branch to its end, then the next. A loop stops where it closes (per chain). A step carries `id` (its chain, unique), `route`/`routes` and `routeLength`; the group is `fixed-point`, `route` or `current-position`; `unrouted` is gone.
+    - The panel shows "Fixed point · 3 routes lead here" and "Route 2 of 3 to FP-1 · step 3 of 4" (with "· where you are now" on the current position). The walk follows its step by `id`; when an edit removes it, it takes the same note's first step, else the step now in its place, and selects that note.
+  - **Decisions:** D21 (user). D17 widened (user).
+  - **Golden diff (deliberate):** `plans/bet-plan-requires-milestone.json` gains the milestone's `serves` add-link; `plans/milestone-plans.json`: `servesABet` now creates the milestone, and the `servesAnAssumption` refusal lists `Strategy/Bets` too. Migration goldens unchanged (the test vault has no bet requiring a milestone). Screenshot baseline `migrated-walk` rewritten for the new panel text (within the 1% tolerance, so forced); README `smells-and-walk.png` regenerated.
+  - **Verification:** cloud session: typecheck clean, 430 unit tests, build, 78 Playwright tests (7 `@visual`). The drop-a-vault-note test (Phase 7) failed once in the full run and passes alone; it fails the same way alone on the previous commit, so it is a pre-existing flake, not this change. New: unit tests for the user's two-route example, forks, a note on two routes and two fixed points, milestone → bets → milestone, a `requires` without its `serves`, loops, no current position; e2e for the order, the route counter and an edit during the walk. **Unverified (user, local, needs Obsidian):** the walk over the real (migrated) vault, where shared notes may make it long; the milestone form's widened "Serves" picker.
+
+
+- **2026-10-06**:
+  - **Context:** the user tried the route-by-route walk and found that walking a shared note (with everything behind it) on every route made a long, looping review. They asked for each note to be walked once, as in the first version, keeping the route-by-route order.
+  - **Actions:** `reviewWalk` keeps one `walked` set over the whole walk. A note met again is skipped, with what is behind it, and listed in the step's new `joins`; a route that ends that way doesn't get the current-position step (it doesn't start from now), and a route ends on the current position only when its first note has nothing earlier. The panel shows "Also builds on B-5 (walked earlier)", and "Fixed point · its routes were walked already" for a fixed point whose routes all went under an earlier one.
+  - **Decisions:** D21 amended (user): each note once.
+  - **Golden diff:** none. Screenshot baseline `migrated-walk` rewritten (the counter reads "Route 1 of 3"; forced, within the 1% tolerance); README `smells-and-walk.png` regenerated.
+  - **Verification:** cloud session: typecheck clean, 431 unit tests, build, 78 Playwright tests (7 `@visual`). New: a second route stopping at a walked note (and the fixed point beyond it), a branch met again on the same route, `joins` over the test vault, and the "Also builds on" line in e2e. **Unverified (user, local, needs Obsidian):** the walk over the migrated copy of the real vault.
 
 ## Decisions Log
 
