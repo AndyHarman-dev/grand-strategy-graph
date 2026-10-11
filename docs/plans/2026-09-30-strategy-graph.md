@@ -41,6 +41,7 @@ plugin (plain JS, 883 lines, no build step), and a read-only survey of the real 
 | D19 | **Graph layout follows the canvas convention.** Left → right is time: the current position, then bets and milestones along their `serves`/`requires` chains, then the fixed points. Bets that follow the same bet share a column (they run in parallel). **Assumptions are never on the time axis**: each sits above the note that hosts it, or below when there is no room above. A shared assumption is hosted by its holder that comes first in time. A `next` sequel sits directly below the bet it follows; that pushes the assumptions that would go below the bet aside, to the right. Dragging a bet or milestone moves its hosted assumptions with it, and saves them too. Edges along time (`serves`, `requires`) leave and enter by the left/right sides; assumption leaders and sequels use the sides that face each other. Saved positions are never changed by the layout. (User, 2026-10-03, after the first look at the 5a graph.) |
 | D20 | **Fixed points share one column.** Left → right is time, and no fixed point is reached before another, so they are always drawn at one x (the rightmost saved fixed point's) and drag up and down only; only their y is meaningful. Replaces "fixed points are locked" (Phase 5a). (User, 2026-10-05, after the migrated copy showed canvas offsets between fixed points that could not be undone.) |
 | D21 | **The review walk goes route by route, from the goal back to now.** A strategy is reviewed the way it was broken down (goal → milestones → bets → daily work): each fixed point by id, then each route that leads to it, walked from the fixed point back to the current position before the next route starts. At a fork the branches go by id and the fork isn't shown again. Every note is walked once (2026-10-06: walking a shared note on each route made the walk loop over the same ground): a route that meets a note walked earlier stops there and names it ("Also builds on …"); a route that starts from nothing earlier ends on the current position. Bets and milestones on no route are not walked (the smells panel lists them), nor are free cards or note cards. (User, 2026-10-05; replaces the breadth-first order of 2026-10-04.) |
+| D22 | **The graph has a phone layout** (user, 2026-10-11), designed on the canvas [Strategy Graph — Phone](https://claude.ai/artifact/Sn2dSeQqzRggLQBVoAcMf8), with copies in `docs/design/phone/`. It applies when `Platform.isPhone` is true; tablets keep the desktop layout. Phone rules:<br>• A tap selects a node and docks a **peek card**.<br>• A double-tap opens a **details sheet**. It never opens the note.<br>• A long-press opens an **actions sheet**, which replaces the right-click menu.<br>• Details, smells, actions, confirms and pickers are **modal sheets**. The peek card and the review walk are **docked cards**, with no scrim.<br>• Nothing of ours sits under Obsidian's mobile navbar unless it is modal.<br>• One finger pans; dragging a node needs **Edit layout**.<br>• Orientation comes from the view's own size. Built in Phase 8b. |
 
 ### Schema v2 (target)
 
@@ -107,7 +108,11 @@ toggled, or when a bet has no `serves` chain reaching a fixed point.
 
 ### Open items
 
-None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
+O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
+
+- **O4 (Phase 8b).** Drawing links and editing free cards and frames on a phone. The phone design doesn't cover either.
+  - Proposal: on a phone, links are added and removed only from the details sheet's relation rows, so node handles stay hidden. Cards are added from ⋯ → Add card and edited in the details sheet. Frames can be moved and resized only with Edit layout on.
+- **O5 (Phase 8b).** Whether **Edit layout** is remembered. Proposal: no. It starts off each time the graph opens, so a pan can never move a node by surprise.
 
 ---
 
@@ -318,6 +323,87 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
 - **New smell (D17):** an active bet that requires a milestone still `open` (`requires-open-milestone`). Already in `src/core/smells.ts` with tests (added 2026-10-03 with the D16/D17 code); this phase only renders it.
 - **Review walk:** steps through each fixed point, then each route that leads to it (the `serves`/`requires` chains, D16), walked from the fixed point back to the current position before the next route starts (D21), in a fixed order (replaces canvas presentation mode).
 
+## Phase 8b — Phone layout (D22)
+
+**Model: Opus 5.** Like Phase 5a, the hard part doesn't fail a unit test:
+- touch gestures that fight React Flow's own handlers
+- surfaces that must clear Obsidian's mobile navbar and the notch
+- sheets that must not let the graph pan behind them
+- re-layout on rotation and when the keyboard opens
+
+The design is fixed, so the work is integration.
+
+**Comes before the cutover:** the graph is "built and tested" when the real vault is migrated (D18), and the user wants the graph on the phone.
+
+**Escalate/stop if:** Obsidian's mobile navbar can't be measured and the fallback inset puts something of ours under it, or a gesture can't be made to work without disabling one Obsidian itself needs (the back swipe, the sidebar swipe). Both are design questions for the user.
+
+- **Spec.** The phone design canvas (D22) and its copies in `docs/design/phone/`:
+  - `Rules.dc.html` is binding: gestures, surfaces, zones, insets, toolbar, sizing, React Flow props.
+  - `Portrait.dc.html` and `Landscape.dc.html` show the screens and are interactive on the canvas.
+  - The mockups' **sample data and node colours are stand-ins**. Node and edge styling stays as built in Phase 5b. Where the mockups' content disagrees with an earlier decision, the decision wins:
+    - The review walk follows D21. Assumptions are shown inside their holder's step, not as steps of their own; the mockup's walk FP-1 → B-1 → B-2 → A-2 → A-1 is illustrative only.
+    - The details sheet edits what the inspector edits (Phase 6): status, the date, `expected-result`, the falsifier, relations and the log. The mockup's editable X and Z fields stay read-only, as on desktop.
+- **Current State.** The graph renders the same on every device:
+  - Selection on drag (`selectionOnDrag`), so one finger draws a selection box instead of panning.
+  - A double-click on a note opens the note.
+  - Right-click menus, React Flow's `<Controls>` and the inspector as a top-right `Panel`.
+  - Nothing measures Obsidian's mobile navbar or the safe-area insets.
+  - `manifest.json` already says `isDesktopOnly: false`.
+- **Desired State** (when `GraphHost.phone` is true; the desktop path is unchanged):
+  - **Gestures:**
+    - One finger pans and two fingers zoom.
+    - Tap a node: select it and dock the **peek card**. Tap empty graph: deselect (does nothing during a walk).
+    - Double-tap a node: open the **details sheet**.
+    - Long-press (500 ms, less than 8 px of movement): open the **actions sheet**. The iOS callout and text selection are suppressed. `onNodeContextMenu` runs the same action, for Android.
+    - Nodes drag only with **Edit layout** (⋯ menu), and so do frames and cards. The note opens only from an Open note button.
+  - **Modal sheets:**
+    - Used for details, smells, actions, the kill-and-activate confirm, and the status and date pickers.
+    - **Portrait:** a bottom sheet, at most 78% of the view's height. **Landscape:** a full-height right sheet, 430 px including the inset.
+    - A 55% scrim. A tap on it, a swipe down (portrait) or right (landscape), or the system back gesture closes the sheet.
+    - The header and footer are fixed and the body scrolls with `overscroll-behavior: contain`. One sheet at a time.
+    - A focused field grows the sheet to full height and is scrolled above the keyboard.
+    - The details sheet reuses the inspector's sections (`Inspector.tsx`). The smells sheet reuses the smells list.
+  - **Docked cards** (no scrim, the graph still pans):
+    - The **peek card**: kind · id · status/date, title, first smell, then Details · Open note · ⋯.
+    - The **review walk** (the Phase 8 panel's content: step n of N with progress, the route line, title, assumptions with status, then Previous · Details · Next: `<id>`).
+    - **Portrait:** along the bottom above the navbar. **Landscape:** on the right, from under the header to just above the navbar.
+    - The selected or current node is panned into the free area, so a card never covers it.
+  - **Toolbar:**
+    - Portrait: a row of Fit · Smells (count) · Review walk · ⋯. Landscape: the same buttons as an icon rail on the left.
+    - ⋯ holds Ultimately serves, Add card, Edit layout and Lock positions (Reset layout too, behind its confirm).
+    - React Flow's `<Controls>` (and a minimap, if one is ever added) are hidden on a phone.
+  - **Insets:**
+    - **Bottom:** the navbar's height plus 12 px, measured from Obsidian's navbar element at runtime. If that fails: `env(safe-area-inset-bottom)` + 64 px.
+    - **Sides:** `env(safe-area-inset-left/right)` + 8 px.
+    - Measured again on resize, rotation and keyboard show/hide.
+  - **Orientation** comes from the view container's own size (`ResizeObserver`), not the screen's.
+  - **Sizing:** touch targets at least 44 px; inputs at 16 px, so iOS doesn't zoom; one field per row except date pairs; status chips scroll sideways.
+- **Solutions.**
+  - `GraphHost.phone` comes from `Platform.isPhone` in the view, and from `?phone=1` on the dev page.
+  - The view writes `--gs-inset-bottom`, `--gs-inset-left` and `--gs-inset-right` on its container, so placement lives in CSS. The `ResizeObserver` also sets `data-orientation`.
+  - New presentational components in `src/ui/`:
+    - `PhoneToolbar` (row or rail, plus the ⋯ menu)
+    - `Sheet` (modal, portrait or landscape)
+    - `DockCard`
+    - `PeekCard`
+    - `ActionSheet` (the node menu's items as rows; the kill-and-activate confirm and the creation forms open in a `Sheet`)
+  - They reuse the existing `Inspector`, smells list and walk panel bodies rather than duplicating them.
+  - The pan-into-free-area maths is a pure function in `src/ui/model.ts`: node rect, free rect and viewport in, new viewport out. It gets unit tests for both orientations, including a node that can't fit.
+  - React Flow props on a phone:
+    - `panOnDrag` (one finger), `selectionOnDrag={false}`, `zoomOnPinch`, `zoomOnDoubleClick={false}`
+    - `nodesDraggable={editLayout}`
+    - `onNodeDoubleClick` → details sheet
+    - the long-press as a pointer timer on the node wrapper
+- **Verify (cloud):**
+  - Playwright on the dev page with `?phone=1`, touch enabled, at 390×844 and 844×390:
+    - tap → peek, double-tap → details, long-press → actions, scrim tap and Escape close a sheet
+    - one-finger drag pans and doesn't move a node until Edit layout is on
+    - the peek card and walk never overlap the selected node
+    - nothing of ours intersects a fake navbar fixed at the bottom
+  - `@visual` baselines for each surface, in both orientations and both themes.
+  - Unit tests for the inset fallback and the pan maths.
+- **Unverified (user, local, needs a phone):** Obsidian's real navbar measurement, the notch in landscape, the iOS callout suppression, the system back gesture closing a sheet, the keyboard pushing a field into view, and that Obsidian's own edge swipes (sidebars) still work over the graph.
+
 ## Phase 9 — Cutover: migrate the real vault, release, retire `The Map.canvas`
 
 **Model: Sonnet 5.** Mostly user steps, run locally, once, at the very end (D18). The graph is built and tested by now, so the real vault goes straight from the legacy format to the finished plugin.
@@ -327,11 +413,11 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
 2. **Fresh dry run.** Copy the real vault to a new folder and run `npm run migrate -- --vault <copy> --resolutions <file>`. Reuse the old `resolutions.yaml`: answers are keyed by note path, link and canvas edge id, so the ones still valid carry over, and answers to questions no longer asked are kept under `stale`. Answer whatever is new, until exit 0 and the parity gate passes.
 3. **Apply.** Close Obsidian (or pause Sync), then run the same command on the real vault with `--apply`. It backs up to `~/strategy-backups/` and refuses if anything changed since the dry run; if it refuses, repeat step 2.
 4. **Release.** Bump the version, push a tag; BRAT installs the release in Main Vault. This is the first release the real vault gets (D18).
-5. **Verify in Obsidian:** a few migrated notes show their relations in the Properties panel, the Dataview "dependents" block renders, the graph opens with the canvas positions, and the creation commands write notes the graph accepts.
+5. **Verify in Obsidian:** a few migrated notes show their relations in the Properties panel, the Dataview "dependents" block renders, the graph opens with the canvas positions, and the creation commands write notes the graph accepts. On the phone (D22): the graph opens in the phone layout over the real vault.
 6. **Canvas parity gate:** re-run the Phase 2 oracle against `The Map.canvas` and the live graph. Every canvas edge must be present as a relation or free-card link, or explicitly dropped in the report. Every canvas node must have a position, card or frame.
 7. Then the **user** moves the canvas into an archive folder. It is never deleted by tooling.
 
-**Routing:** Phases 0, 1, 3, 4, 5b, 6, 7, 8, 9 → Sonnet 5 · Phases 2, 5a → Opus 5
+**Routing:** Phases 0, 1, 3, 4, 5b, 6, 7, 8, 9 → Sonnet 5 · Phases 2, 5a, 8b → Opus 5
 
 ---
 
@@ -674,6 +760,21 @@ None. O1→D13, O2→D12, O3→D13 (resolved 2026-09-30).
   - **Decisions:** D21 amended (user): each note once.
   - **Golden diff:** none. Screenshot baseline `migrated-walk` rewritten (the counter reads "Route 1 of 3"; forced, within the 1% tolerance); README `smells-and-walk.png` regenerated.
   - **Verification:** cloud session: typecheck clean, 431 unit tests, build, 78 Playwright tests (7 `@visual`). New: a second route stopping at a walked note (and the fixed point beyond it), a branch met again on the same route, `joins` over the test vault, and the "Also builds on" line in e2e. **Unverified (user, local, needs Obsidian):** the walk over the migrated copy of the real vault.
+
+- **2026-10-11**:
+  - **Context:** the user designed a phone layout for the graph on the design canvas [Strategy Graph — Phone](https://claude.ai/artifact/Sn2dSeQqzRggLQBVoAcMf8) (portrait, landscape and interaction rules) and asked for it to be copied into the repo and folded into the plan.
+  - **Actions:**
+    - Copied the three artboards to `docs/design/phone/` (`Main.dc.html` saved as `Portrait.dc.html`), byte-identical to the published canvas, with `docs/design/README.md`.
+    - Added D22, O4 and O5, and **Phase 8b — Phone layout** before the cutover.
+    - Phase 9's in-Obsidian check now includes the phone.
+    - Routing: 8b → Opus 5.
+  - **Decisions:**
+    - D22 (user, via the design).
+    - Phase 8b goes before Phase 9, so the cutover still comes last (D18).
+    - Where the mockups' sample content disagrees with D21 (the walk's steps) or Phase 6 (which bet fields are editable), the earlier decisions win. The mockups' node colours are stand-ins for the Phase 5b styling.
+    - Proposed, not decided: O4 (links and cards on a phone), O5 (Edit layout not remembered).
+  - **Golden diff:** none. No code changed.
+  - **Verification:** none to run (docs only). Copies checked by SHA-256 against the canvas's published files.
 
 ## Decisions Log
 
