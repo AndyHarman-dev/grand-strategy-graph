@@ -1081,19 +1081,43 @@ function Flow({
   const selectOnly = useCallback((id: string) => {
     setNodes((current) => current.map((n) => (n.selected === (n.id === id) ? n : { ...n, selected: n.id === id })));
   }, []);
-  /** What a card's text field holds while the details sheet is open: saved (or the card deleted, when empty) on close. */
+  /**
+   * What a card's text (or a frame's label) field holds while its details sheet is open: saved when
+   * that sheet goes, however it goes (closed, or replaced by another sheet), since the field's blur
+   * may never come (iOS, an unmounted field). A text card left empty is deleted, as in place.
+   */
   const draft = useRef<string | null>(null);
+  const sheetRef = useRef(sheet);
+  sheetRef.current = sheet;
+  /** Open a sheet (or none), replacing the one open; a details sheet that goes saves its draft first. */
+  const showSheet = useCallback(
+    (next: PhoneSheet | null) => {
+      const open = sheetRef.current;
+      const text = draft.current;
+      draft.current = null;
+      if (open?.kind === 'details' && text !== null && !(next?.kind === 'details' && next.id === open.id)) {
+        const card = cards.find((c) => cardNodeId(c.id) === open.id);
+        const frame = frames.find((f) => frameNodeId(f.id) === open.id);
+        if (card?.kind === 'text') {
+          if (!text.trim()) mapOp({ op: 'delete-card', id: card.id });
+          else if (text !== card.text) mapOp({ op: 'put-card', card: { ...card, text } });
+        } else if (frame && text.trim() !== frame.label) mapOp({ op: 'put-frame', frame: { ...frame, label: text.trim() } });
+      } else if (open?.kind === 'details' && next?.kind === 'details' && next.id === open.id) draft.current = text;
+      sheetRef.current = next;
+      setSheet(next);
+    },
+    [cards, frames, mapOp]
+  );
   const openDetails = useCallback(
     (id: string) => {
       const target = nodesRef.current.find((n) => n.id === id);
       if (!target || !(isStrategyNode(target) || isCardNode(target) || isFrameNode(target))) return;
       selectOnly(id);
-      draft.current = null;
       setCreate(null);
       setEditor(null);
-      setSheet((open) => (open?.kind === 'details' && open.id === id ? open : { kind: 'details', id }));
+      if (sheetRef.current?.kind !== 'details' || sheetRef.current.id !== id) showSheet({ kind: 'details', id });
     },
-    [selectOnly]
+    [selectOnly, showSheet]
   );
   openDetailsRef.current = openDetails;
   /** A long-press (or a context menu on Android): the node's actions sheet, the right-click menu's items as rows. */
@@ -1113,53 +1137,46 @@ function Flow({
       else if (isFrameNode(target)) [title, items] = [peekOf(target)!.title, [details, ...frameMenu(target.data.frame, true)]];
       else return;
       selectOnly(id);
-      setSheet({ kind: 'actions', title, items: items.map(confirmFirst) });
+      showSheet({ kind: 'actions', title, items: items.map(confirmFirst) });
     },
-    [perform, noteMenu, cardMenu, frameMenu, openDetails, selectOnly]
+    [perform, noteMenu, cardMenu, frameMenu, openDetails, selectOnly, showSheet]
   );
   openActionsRef.current = openActions;
   /** An item that asks first (`confirm`) opens the confirm sheet instead of running. */
   const confirmFirst = (item: MenuItem): MenuItem =>
-    item.confirm ? { ...item, run: () => setSheet({ kind: 'confirm', question: item.confirm!, label: item.label, run: item.run }) } : item;
-  const closeSheet = useCallback(() => {
-    setSheet((open) => {
-      // A card's text is saved as the sheet closes too (a tap on the scrim may come before the field's blur is handled).
-      if (open?.kind === 'details' && open.id.startsWith('card:') && draft.current !== null) {
-        const card = cards.find((c) => cardNodeId(c.id) === open.id);
-        if (card?.kind === 'text') {
-          if (!draft.current.trim()) mapOp({ op: 'delete-card', id: card.id });
-          else if (draft.current !== card.text) mapOp({ op: 'put-card', card: { ...card, text: draft.current } });
-        }
-      }
-      draft.current = null;
-      return null;
-    });
-  }, [cards, mapOp]);
+    item.confirm ? { ...item, run: () => showSheet({ kind: 'confirm', question: item.confirm!, label: item.label, run: item.run }) } : item;
+  const closeSheet = useCallback(() => showSheet(null), [showSheet]);
   useTouchGestures(box, phone, { longPress: openActions, doubleTap: openDetails });
 
   /** The selected node, on a phone: the peek card shows it, and it is kept out from under the docked cards. */
   const selectedNode = phone && selectedKey !== null ? nodes.find((n) => n.id === selectedKey && !n.hidden) ?? null : null;
   const anySheet = sheet !== null || create !== null || editor !== null;
   const peek = selectedNode && walkKey === null && !anySheet ? peekOf(selectedNode) : null;
-  const docked = phone && !anySheet && (walkKey !== null || peek !== null) ? selectedKey : null;
+  // During the walk, its step's note (a tap on another note doesn't take the view away from it); else the selection.
+  const docked = !phone || anySheet ? null : walkKey !== null ? walkKey.split('\n')[0] : peek !== null ? selectedKey : null;
   useEffect(() => {
     if (docked === null) return;
     // After the docked card has been drawn, so the free area is measured with it.
     const id = requestAnimationFrame(() => {
+      // A drag (Edit layout) selects what it starts on: the view must not move under the finger.
+      if (nodesRef.current.some((n) => n.dragging)) return;
       revealInFree(docked, revealZoom.current);
       revealZoom.current = undefined;
     });
     return () => cancelAnimationFrame(id);
   }, [docked, revealAsked, revealInFree]);
 
-  /** A tap during the review walk goes to that note's step, if it has one. */
+  /** A tap during the review walk goes to that note's step, if it has one: its next one after the step the walk is on (the current position is on every route). */
+  const walkSteps = useMemo(() => (phone ? reviewWalk(graph) : []), [phone, graph]);
   const onPhoneNodeClick = useCallback(
     (_event: ReactMouseEvent, flowNode: GraphFlowNode) => {
       if (walkKey === null) return;
-      const step = reviewWalk(graph).find((s) => s.node === flowNode.id);
-      if (step) stepWalk(step);
+      const at = walkSteps.findIndex((s) => s.id === walkKey);
+      const mine = walkSteps.filter((s) => s.node === flowNode.id);
+      const step = mine.find((s) => walkSteps.indexOf(s) > at) ?? mine[0];
+      if (step && step.id !== walkKey) stepWalk(step);
     },
-    [walkKey, graph, stepWalk]
+    [walkKey, walkSteps, stepWalk]
   );
   /** Phone: ⋯ → Add card puts a card in the middle of the free area, and opens it in the details sheet. */
   const addCard = useCallback(() => {
@@ -1177,11 +1194,11 @@ function Flow({
     });
   }, [freeArea, box, flow, freshId, mapOp, openDetails]);
   const openMore = () =>
-    setSheet({
+    showSheet({
       kind: 'actions',
       title: 'Graph',
       items: [
-        ...(notices?.length ? [{ label: `${notices.length} ${notices.length === 1 ? 'issue' : 'issues'} on the graph…`, run: () => setSheet({ kind: 'issues' }) }] : []),
+        ...(notices?.length ? [{ label: `${notices.length} ${notices.length === 1 ? 'issue' : 'issues'} on the graph…`, run: () => showSheet({ kind: 'issues' }) }] : []),
         { label: showUltimate ? 'Hide ultimately-serves links' : 'Show ultimately-serves links', run: () => setShowUltimate(!showUltimate) },
         ...(canEditMap ? [{ label: 'Add card', run: addCard }] : []),
         ...(editable ? [{ label: editLayout ? 'Stop editing layout' : 'Edit layout', run: () => setEditLayout(!editLayout) }] : []),
@@ -1388,9 +1405,10 @@ function Flow({
           onOpenNote={onOpenNote}
           mapOp={mapOp}
           draft={draft}
+          freshId={freshId}
           selectedKey={selectedKey}
           onCloseSheet={closeSheet}
-          onSheet={setSheet}
+          onSheet={showSheet}
           onDetails={openDetails}
           onActions={openActions}
           onFocus={focusNode}
@@ -1447,8 +1465,6 @@ function UltimateIcon() {
 
 const preventDefault = (event: { preventDefault(): void }) => event.preventDefault();
 
-const KIND_OF_FLOW = (node: GraphFlowNode) => peekOf(node)?.kind ?? '';
-
 /**
  * The phone's surfaces around the graph (D22): the toolbar (a row, or a rail in landscape), the
  * docked peek card or review walk, and the modal sheet that is open: details, smells, issues, actions
@@ -1472,6 +1488,7 @@ function PhoneChrome(props: {
   onOpenNote?: StrategyGraphProps['onOpenNote'];
   mapOp: (op: GsOp) => boolean;
   draft: { current: string | null };
+  freshId: () => string;
   selectedKey: string | null;
   onCloseSheet: () => void;
   onSheet: (sheet: PhoneSheet | null) => void;
@@ -1495,12 +1512,18 @@ function PhoneChrome(props: {
   };
   const openNote = (id: string) => {
     const path = pathOf(id);
-    return path && onOpenNote ? () => onOpenNote(path, false) : undefined;
+    // The note opens in another tab: the sheet (on the body, over everything) goes first.
+    return path && onOpenNote
+      ? () => {
+          onCloseSheet();
+          onOpenNote(path, false);
+        }
+      : undefined;
   };
+  const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const nameOf = (id: string) => {
-    const n = nodes.find((x) => x.id === id);
-    if (!n) return id;
-    const peek = peekOf(n);
+    const n = byId.get(id);
+    const peek = n && peekOf(n);
     return peek ? (peek.id ? `${peek.id} ${peek.title}` : peek.title) : id;
   };
   return (
@@ -1543,7 +1566,7 @@ function PhoneChrome(props: {
             head={
               <>
                 <span className="gs-sheet-kind">
-                  <span className={`gs-pill ${peek?.tone ?? ''}`}>{KIND_OF_FLOW(target)}</span>
+                  <span className={`gs-pill ${peek?.tone ?? ''}`}>{peek?.kind}</span>
                   {peek?.id && <span className="gs-peek-id">{peek.id}</span>}
                 </span>
                 <h2 className="gs-sheet-title">{peek?.title}</h2>
@@ -1583,6 +1606,7 @@ function PhoneChrome(props: {
                 onOp={props.mapOp}
                 draft={props.draft}
                 editable={props.canEditMap}
+                freshId={props.freshId}
               />
             ) : null}
           </Sheet>

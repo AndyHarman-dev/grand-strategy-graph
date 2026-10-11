@@ -23,6 +23,8 @@ export interface PhoneFrame {
   viewHeight: number;
   /** Where modal sheets go: the body of the graph's document. */
   body: HTMLElement | null;
+  /** The graph's box is on screen. A hidden tab's sheets are not drawn: they sit on the body, over every other view. */
+  shown: boolean;
 }
 
 /**
@@ -31,7 +33,7 @@ export interface PhoneFrame {
  * when the navbar can't be measured). Measured again on resize, rotation and keyboard show or hide.
  */
 export function usePhoneFrame(ref: RefObject<HTMLElement | null>, on: boolean): PhoneFrame {
-  const [frame, setFrame] = useState<PhoneFrame>({ orientation: 'portrait', viewHeight: 0, body: null });
+  const [frame, setFrame] = useState<PhoneFrame>({ orientation: 'portrait', viewHeight: 0, body: null, shown: false });
   useEffect(() => {
     const el = ref.current;
     if (!on || !el) return;
@@ -40,7 +42,10 @@ export function usePhoneFrame(ref: RefObject<HTMLElement | null>, on: boolean): 
     const measure = () => {
       const box = el.getBoundingClientRect();
       const orientation: Orientation = box.width > box.height ? 'landscape' : 'portrait';
-      setFrame((f) => (f.orientation === orientation && f.viewHeight === box.height && f.body === doc.body ? f : { orientation, viewHeight: box.height, body: doc.body }));
+      const shown = box.width > 0 && box.height > 0;
+      setFrame((f) =>
+        f.orientation === orientation && f.viewHeight === box.height && f.body === doc.body && f.shown === shown ? f : { orientation, viewHeight: box.height, body: doc.body, shown }
+      );
       el.dataset.orientation = orientation;
       const inset = bottomInset(box, doc.querySelector(NAVBAR_SELECTOR)?.getBoundingClientRect() ?? null);
       if (inset === null) el.style.removeProperty('--gs-inset-bottom');
@@ -158,17 +163,18 @@ export function useTouchGestures(
     // The iOS callout and text selection a long-press would bring up.
     const noSelect = (event: Event) => nodeId(event.target) && event.preventDefault();
     el.addEventListener('pointerdown', down, true);
-    el.addEventListener('pointermove', move, true);
-    el.addEventListener('pointerup', up, true);
-    el.addEventListener('pointercancel', cancelled, true);
+    // On the document: the lift must be heard even when the pressed node was redrawn under the finger.
+    doc.addEventListener('pointermove', move, true);
+    doc.addEventListener('pointerup', up, true);
+    doc.addEventListener('pointercancel', cancelled, true);
     doc.addEventListener('click', click, true);
     el.addEventListener('selectstart', noSelect, true);
     return () => {
       cancel();
       el.removeEventListener('pointerdown', down, true);
-      el.removeEventListener('pointermove', move, true);
-      el.removeEventListener('pointerup', up, true);
-      el.removeEventListener('pointercancel', cancelled, true);
+      doc.removeEventListener('pointermove', move, true);
+      doc.removeEventListener('pointerup', up, true);
+      doc.removeEventListener('pointercancel', cancelled, true);
       doc.removeEventListener('click', click, true);
       el.removeEventListener('selectstart', noSelect, true);
     };
@@ -184,7 +190,8 @@ function useEscape(doc: Document | null | undefined, onClose: () => void) {
     if (!doc) return;
     const key = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      event.stopPropagation();
+      // One Escape closes one sheet, even if a form's sheet is open over another one.
+      event.stopImmediatePropagation();
       onClose();
     };
     doc.addEventListener('keydown', key, true);
@@ -194,7 +201,7 @@ function useEscape(doc: Document | null | undefined, onClose: () => void) {
 
 /** The layer modal surfaces live in: on the body, above Obsidian's navbar, with the graph's classes (its CSS applies). */
 function Layer({ frame, children }: { frame: PhoneFrame; children: ReactNode }) {
-  if (!frame.body) return null;
+  if (!frame.body || !frame.shown) return null;
   const style = { '--gs-view-height': `${frame.viewHeight}px` } as CSSProperties;
   return createPortal(
     <div className="gs-graph gs-phone-layer" data-orientation={frame.orientation} style={style}>
@@ -448,6 +455,7 @@ export function FreeItemDetails({
   onOp,
   draft,
   editable,
+  freshId,
 }: {
   item: { kind: 'card'; card: GsCard } | { kind: 'frame'; frame: GsFrame };
   links: readonly GsLink[];
@@ -459,6 +467,8 @@ export function FreeItemDetails({
   /** Where the field's text is kept while it is typed. */
   draft: { current: string | null };
   editable: boolean;
+  /** An id no card, frame or link of the map has. */
+  freshId: () => string;
 }) {
   if (item.kind === 'frame') {
     const { frame } = item;
@@ -528,7 +538,7 @@ export function FreeItemDetails({
               const to = event.target.value;
               if (!to) return;
               const end = to.startsWith('card:') ? { card: to.slice('card:'.length) } : { note: to };
-              onOp({ op: 'put-link', link: { id: freshLinkId(links), from: { card: card.id }, to: end } });
+              onOp({ op: 'put-link', link: { id: freshId(), from: { card: card.id }, to: end } });
             }}
           >
             <option value="">+ link to…</option>
@@ -542,14 +552,6 @@ export function FreeItemDetails({
       </section>
     </>
   );
-}
-
-function freshLinkId(links: readonly GsLink[]): string {
-  const taken = new Set(links.map((l) => l.id));
-  for (;;) {
-    const id = Math.random().toString(16).slice(2, 10).padEnd(8, '0');
-    if (!taken.has(id)) return id;
-  }
 }
 
 const ICONS: Record<string, ReactNode> = {

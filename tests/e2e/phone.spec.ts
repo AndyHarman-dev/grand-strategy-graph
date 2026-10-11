@@ -202,13 +202,18 @@ test('one finger pans, even from a node, and moves no node until Edit layout is 
   await page.getByRole('button', { name: 'More graph options' }).tap();
   await page.getByRole('menuitem', { name: 'Edit layout' }).tap();
   await expect(page.getByRole('button', { name: 'Done editing layout' })).toBeVisible();
+  // Not selected: the drag selects it, and the peek card that comes up must not pan the view under the finger.
+  await press(page, await emptyPoint(page), 40);
+  await expect(peek(page)).toHaveCount(0);
   const from = await centre(page, 'B-1');
   const other = await centre(page, 'B-3');
   await swipe(page, from, 0, 60);
   await expect.poll(async () => (await positions(page))['B-1']?.y).not.toBe(before['B-1']?.y);
   // Only the dragged note (and what goes with it) moved on screen; B-3 stayed.
+  await page.waitForTimeout(500);
   const otherAfter = await centre(page, 'B-3');
   expect(Math.round(otherAfter.y)).toBe(Math.round(other.y));
+  expect(Math.round(otherAfter.x)).toBe(Math.round(other.x));
   await page.getByRole('button', { name: 'Done editing layout' }).tap();
   await expect(page.getByRole('button', { name: 'Done editing layout' })).toHaveCount(0);
 });
@@ -263,6 +268,61 @@ test('⋯ → Add card makes a card and opens it in the details sheet; left empt
   await page.keyboard.press('Escape');
   await expect(page.locator('.react-flow__node-card')).toHaveCount(cards + 1);
   await expect(page.locator('.react-flow__node-card').filter({ hasText: 'Ask about the lease' })).toHaveCount(1);
+});
+
+test('a card or frame sheet keeps what was typed, however it goes: closed, or replaced by the actions sheet', async ({ page }) => {
+  const cards = await page.locator('.react-flow__node-card').count();
+  // A new card, left empty and swapped for the actions sheet, still goes away again.
+  await page.getByRole('button', { name: 'More graph options' }).tap();
+  await page.getByRole('menuitem', { name: 'Add card' }).tap();
+  const sheet = page.getByRole('dialog', { name: /^Details for / });
+  await expect(sheet.getByLabel('Text')).toBeFocused();
+  await sheet.getByRole('button', { name: 'More actions' }).tap();
+  await page.getByRole('button', { name: 'Cancel' }).tap();
+  await expect(page.locator('.react-flow__node-card')).toHaveCount(cards);
+  // Text typed and never blurred is kept when the actions sheet replaces the details sheet.
+  await page.getByRole('button', { name: 'More graph options' }).tap();
+  await page.getByRole('menuitem', { name: 'Add card' }).tap();
+  await sheet.getByLabel('Text').fill('Call the landlord');
+  await sheet.getByRole('button', { name: 'More actions' }).tap();
+  await page.getByRole('button', { name: 'Cancel' }).tap();
+  await expect(page.locator('.react-flow__node-card').filter({ hasText: 'Call the landlord' })).toHaveCount(1);
+
+  // A frame's label, typed and closed with Escape (no blur), is saved.
+  await page.getByRole('button', { name: 'Fit view' }).tap();
+  await page.waitForTimeout(400);
+  const label = (await page.locator('[data-id="frame:g-studio"] .gs-frame-label').boundingBox())!;
+  await press(page, { x: label.x + label.width / 2, y: label.y + label.height / 2 }, 700);
+  await page.getByRole('menuitem', { name: 'Show details' }).tap();
+  await page.getByRole('dialog', { name: /^Details for / }).getByLabel('Label').fill('Studio, renamed');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.gsDev.gsmap()).frames.find((f: { id: string }) => f.id === 'g-studio')?.label)).toBe('Studio, renamed');
+});
+
+test('Open note from a sheet closes the sheet first', async ({ page }) => {
+  await reveal(page, 'B-1');
+  await peek(page).getByRole('button', { name: 'Details', exact: true }).tap();
+  await page.getByRole('dialog', { name: 'Details for B-1' }).getByRole('button', { name: 'Open note' }).tap();
+  expect(await page.evaluate(() => window.gsDev.opened())).toEqual([expect.stringContaining('B-1')]);
+  await expect(page.locator('.gs-phone-layer')).toHaveCount(0);
+});
+
+test('during the walk, a tap on a note with no step of its own leaves the walk and its note where they are', async ({ page }) => {
+  await page.getByRole('button', { name: 'Review walk' }).tap();
+  await page.waitForTimeout(500);
+  const before = await walk(page).locator('h3').textContent();
+  const fixed = (await page.locator('.react-flow__node.selected').getAttribute('data-id'))!;
+  const at = await centre(page, fixed);
+  // A free card has no step.
+  const card = page.locator('.react-flow__node-card').first();
+  const box = await card.boundingBox();
+  test.skip(!box || box.y < 60 || box.y > 600, 'no free card on screen at the first step');
+  await press(page, { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 }, 40);
+  await page.waitForTimeout(500);
+  await expect(walk(page).locator('h3')).toHaveText(before!);
+  const now = await centre(page, fixed);
+  expect(Math.round(now.x)).toBe(Math.round(at.x));
+  expect(Math.round(now.y)).toBe(Math.round(at.y));
 });
 
 test.describe('landscape', () => {

@@ -792,7 +792,8 @@ The design is fixed, so the work is integration.
     - Kill → activate asks first on a phone (`MenuItem.confirm`); the desktop menu still runs it at once.
     - **Not built:** the system back gesture closing a sheet (Obsidian gives a plugin no clean hook for it). Swipe, scrim tap, × and Escape close sheets.
   - **Golden diff:** none. No `@visual` baseline added or changed: the two new `@visual` phone screenshots need a Linux cloud run (`npx playwright test -g @visual --update-snapshots`).
-  - **Verification:** local (macOS): typecheck clean, 443 unit tests, build, 84 Playwright tests (71 desktop unchanged, 13 phone with CDP touch events at 390×844 and 844×390). **Unverified (user, local, needs a phone):** Obsidian's real navbar measurement (`.mobile-navbar`), the notch in landscape, iOS callout suppression, the system back gesture (not built), the keyboard pushing a field into view, double-tap on iOS, and that Obsidian's own edge swipes still work over the graph.
+  - **Code review** (`/code-review medium`, findings only): 10 findings, all fixed. A frame label or card text left unsaved when its sheet closed or was replaced, saving from inside a state updater, a pan under the finger while dragging in Edit layout, sheets staying over other tabs (and over Open note), one Escape closing two sheets, a lost lift swallowing taps, walk taps, a duplicated id helper, and quadratic lookups. Pinned by three new phone tests.
+  - **Verification:** local (macOS): typecheck clean, 443 unit tests, build, 87 Playwright tests (71 desktop unchanged, 16 phone with CDP touch events at 390×844 and 844×390). **Unverified (user, local, needs a phone):** Obsidian's real navbar measurement (`.mobile-navbar`), the notch in landscape, iOS callout suppression, the system back gesture (not built), the keyboard pushing a field into view, double-tap on iOS, and that Obsidian's own edge swipes still work over the graph.
 
 ## Decisions Log
 
