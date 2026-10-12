@@ -1073,3 +1073,657 @@
   background: color-mix(in srgb, var(--interactive-accent) 15%, var(--background-primary));
   color: var(--interactive-accent);
 }
+
+/* ---- Phone layout (Phase 8b, D22; docs/design/phone/) ----
+ * `.gs-graph--phone` is the graph's box on a phone; `usePhoneFrame` sets `data-orientation` and
+ * `--gs-inset-bottom` (the navbar's overlap + 12 px) on it. Without a measured navbar the fallback
+ * below applies. Modal sheets live in `.gs-phone-layer`, on the body, above Obsidian's navbar.
+ */
+.gs-graph--phone,
+.gs-phone-layer {
+  --gs-inset-bottom: calc(env(safe-area-inset-bottom, 0px) + 64px);
+  --gs-inset-left: calc(env(safe-area-inset-left, 0px) + 8px);
+  --gs-inset-right: calc(env(safe-area-inset-right, 0px) + 8px);
+  --gs-touch: 44px;
+}
+
+/* Status colours outside the nodes: the peek card's pill, the status chips. */
+.gs-graph .gs-status--active,
+.gs-graph .gs-status--confirmed,
+.gs-graph .gs-status--reached {
+  --gs-c: var(--gs-ok);
+}
+.gs-graph .gs-status--unverified,
+.gs-graph .gs-status--extended {
+  --gs-c: var(--gs-wait);
+}
+.gs-graph .gs-status--killed,
+.gs-graph .gs-status--falsified {
+  --gs-c: var(--gs-bad);
+}
+.gs-graph .gs-status--won {
+  --gs-c: var(--gs-info);
+}
+.gs-graph .gs-status--dormant,
+.gs-graph .gs-status--undeterminable,
+.gs-graph .gs-status--open,
+.gs-graph .gs-kind--card,
+.gs-graph .gs-kind--frame,
+.gs-graph .gs-kind--current-position {
+  --gs-c: var(--gs-quiet);
+}
+.gs-graph .gs-kind--fixed-point {
+  --gs-c: var(--gs-accent);
+}
+
+/* No hover, no handles, no text selection or iOS callout on a long-press. */
+.gs-graph--phone .react-flow__node {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.gs-graph--phone .react-flow__handle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gs-graph .gs-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+/* Buttons on phone surfaces: 44 px touch targets. */
+.gs-graph--phone button.gs-tool,
+.gs-phone-layer button,
+.gs-graph--phone .gs-dock button {
+  min-height: var(--gs-touch);
+  font-size: 15px;
+}
+
+/* The toolbar: a row along the top in portrait, an icon rail on the left in landscape. */
+.gs-phone-toolbar {
+  position: absolute;
+  z-index: 6;
+  top: 12px;
+  left: var(--gs-inset-left);
+  right: var(--gs-inset-right);
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+}
+.gs-phone-toolbar > * {
+  pointer-events: auto;
+}
+.gs-graph button.gs-tool {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: var(--gs-touch);
+  height: var(--gs-touch);
+  padding: 0 12px;
+  border-radius: 22px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary-alt, var(--background-secondary));
+  color: var(--text-normal);
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.gs-graph button.gs-tool[aria-label='Fit view'],
+.gs-graph button.gs-tool[aria-label='More graph options'] {
+  width: var(--gs-touch);
+  padding: 0;
+}
+.gs-graph button.gs-tool--go {
+  border-color: transparent;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, #fff);
+}
+.gs-graph button.gs-tool[aria-pressed='true'],
+.gs-graph button.gs-tool--editing {
+  border-color: color-mix(in srgb, var(--interactive-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--interactive-accent) 18%, var(--background-secondary));
+  color: var(--text-accent, var(--interactive-accent));
+}
+.gs-graph .gs-tool--smells .gs-icon {
+  color: var(--text-warning, #ec7500);
+}
+.gs-graph .gs-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--text-warning, #ec7500);
+  color: #1e1e1e;
+  font-size: 12px;
+  font-weight: 700;
+}
+.gs-graph--phone[data-orientation='landscape'] .gs-phone-toolbar {
+  top: 12px;
+  bottom: var(--gs-inset-bottom);
+  right: auto;
+  flex-direction: column;
+  overflow: visible;
+}
+.gs-graph--phone[data-orientation='landscape'] button.gs-tool {
+  position: relative;
+  width: var(--gs-touch);
+  padding: 0;
+}
+.gs-graph--phone[data-orientation='landscape'] .gs-tool-label {
+  display: none;
+}
+.gs-graph--phone[data-orientation='landscape'] .gs-tool .gs-count {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+}
+
+/* Docked cards: along the bottom above the navbar (portrait), on the right (landscape). No scrim. */
+.gs-dock {
+  position: absolute;
+  z-index: 6;
+  left: calc(var(--gs-inset-left) + 4px);
+  right: calc(var(--gs-inset-right) + 4px);
+  bottom: var(--gs-inset-bottom);
+  max-height: 55%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+.gs-graph--phone[data-orientation='landscape'] .gs-dock {
+  left: auto;
+  top: 12px;
+  width: 300px;
+  max-height: calc(100% - 12px - var(--gs-inset-bottom));
+}
+.gs-graph .gs-peek-body {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 14px 10px;
+  cursor: pointer;
+}
+.gs-dock-grab,
+.gs-sheet-grab {
+  display: flex;
+  justify-content: center;
+  padding: 7px 0 3px;
+}
+.gs-dock-grab span,
+.gs-sheet-grab span {
+  width: 38px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--background-modifier-border-hover, var(--background-modifier-border));
+}
+.gs-graph--phone[data-orientation='landscape'] .gs-dock-grab {
+  display: none;
+}
+.gs-peek-row,
+.gs-sheet-kind {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.gs-graph .gs-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--gs-c, var(--text-muted));
+  background: color-mix(in srgb, var(--gs-c, var(--text-muted)) 15%, transparent);
+}
+.gs-peek-id {
+  flex: none;
+  font-family: var(--font-monospace, monospace);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.gs-peek-meta {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
+  color: var(--text-faint);
+}
+.gs-peek-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+}
+.gs-peek-smell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-warning, #ec7500);
+}
+.gs-dock-buttons {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 12px;
+}
+.gs-dock-buttons > button {
+  flex: 1;
+  border-radius: 10px;
+}
+.gs-graph button.gs-icon-button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--gs-touch);
+  min-width: var(--gs-touch);
+  height: var(--gs-touch);
+  padding: 0;
+  border-radius: 10px;
+}
+
+/* The review walk, docked. */
+.gs-graph .gs-dock--walk .gs-walk {
+  width: auto;
+  max-width: none;
+  padding: 8px 4px 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 13px;
+}
+.gs-dock--walk .gs-walk header {
+  gap: 10px;
+  padding: 0 12px 0 16px;
+}
+.gs-dock--walk .gs-walk-progress {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.gs-walk-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--background-modifier-border);
+}
+.gs-walk-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--interactive-accent);
+  transition: width 0.2s;
+}
+.gs-dock--walk .gs-walk > :not(header):not(.gs-dock-buttons) {
+  margin-left: 16px;
+  margin-right: 16px;
+}
+.gs-dock--walk .gs-walk h3 {
+  font-size: 17px;
+  line-height: 22px;
+}
+.gs-dock--walk .gs-dock-buttons {
+  margin-top: 10px;
+}
+.gs-dock--walk .gs-dock-buttons .gs-icon-button {
+  flex: none;
+}
+.gs-dock--walk .gs-dock-buttons .mod-cta {
+  flex: 2;
+}
+
+/* Modal sheets: a 55% scrim; a bottom sheet (portrait, at most 78% of the view) or a right sheet (landscape). */
+.gs-graph.gs-phone-layer {
+  position: fixed;
+  inset: 0;
+  width: auto;
+  height: auto;
+  z-index: var(--layer-modal, 50);
+  color: var(--text-normal);
+  font-size: 13px;
+}
+.gs-graph .gs-scrim {
+  all: unset;
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+.gs-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(var(--gs-view-height, 100vh) * 0.78);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  border-radius: 20px 20px 0 0;
+  background: var(--background-secondary);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.4);
+}
+.gs-sheet.is-full {
+  top: env(safe-area-inset-top, 0px);
+  max-height: none;
+}
+.gs-phone-layer[data-orientation='landscape'] .gs-sheet {
+  left: auto;
+  top: 0;
+  width: 430px;
+  max-width: 100%;
+  max-height: none;
+  padding-left: 0;
+  border-radius: 20px 0 0 20px;
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.4);
+}
+.gs-phone-layer[data-orientation='landscape'] .gs-sheet-grab {
+  display: none;
+}
+.gs-sheet-grip {
+  flex: none;
+  touch-action: none;
+}
+.gs-sheet-head {
+  padding: 0 12px 12px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.gs-phone-layer[data-orientation='landscape'] .gs-sheet-head {
+  padding-top: 10px;
+}
+.gs-sheet-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: var(--gs-touch);
+}
+.gs-sheet-heading {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--gs-touch);
+}
+.gs-graph .gs-sheet-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 21px;
+  line-height: 26px;
+  font-weight: 700;
+}
+.gs-sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px 16px 20px;
+  -webkit-overflow-scrolling: touch;
+}
+.gs-sheet-foot {
+  flex: none;
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--background-modifier-border);
+}
+.gs-graph button.gs-sheet-wide {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 10px;
+}
+.gs-confirm-question {
+  margin: 0;
+  font-size: 16px;
+  line-height: 22px;
+}
+
+/* Inside sheets: 16 px inputs (no iOS zoom on focus), one field per row, 44 px rows. */
+.gs-phone-layer input,
+.gs-phone-layer textarea,
+.gs-phone-layer select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--gs-touch);
+  font-size: 16px;
+}
+.gs-phone-layer .gs-inspector--sheet {
+  width: auto;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  font-size: 14px;
+}
+.gs-phone-layer .gs-inspector-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.gs-phone-layer .gs-inspector-relation li {
+  min-height: var(--gs-touch);
+  align-items: center;
+}
+.gs-phone-layer .gs-quick-create,
+.gs-phone-layer .gs-item-editor {
+  width: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.gs-phone-layer .gs-quick-create h3,
+.gs-phone-layer .gs-item-editor h3 {
+  display: none;
+}
+.gs-phone-layer .gs-quick-create label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.gs-status-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 -16px 14px;
+  padding: 0 16px;
+  scrollbar-width: none;
+}
+.gs-graph button.gs-status-chip {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 20px;
+  border: 1px solid var(--background-modifier-border);
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+.gs-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gs-c);
+}
+.gs-graph button.gs-status-chip[aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--gs-c) 60%, transparent);
+  background: color-mix(in srgb, var(--gs-c) 15%, transparent);
+  color: var(--gs-c);
+}
+
+/* The smells sheet: each smell a row that says what is wrong. */
+.gs-graph .gs-smells-list--sheet {
+  position: static;
+  width: auto;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 15px;
+}
+.gs-graph .gs-smells-list--sheet .gs-smells-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 56px;
+  padding: 10px 4px;
+  border-top: 1px solid var(--background-modifier-border);
+  border-radius: 0;
+  font-weight: 600;
+}
+.gs-smells-message {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* The actions sheet: rows, and a Cancel; at the bottom (portrait) or on the right (landscape). */
+.gs-acts {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 8px);
+  right: calc(env(safe-area-inset-right, 0px) + 8px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gs-phone-layer[data-orientation='landscape'] .gs-acts {
+  left: auto;
+  width: 400px;
+  max-width: calc(100% - 16px);
+}
+.gs-acts-group {
+  flex: none;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--background-secondary);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+}
+.gs-acts-head {
+  padding: 12px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+.gs-graph button.gs-act {
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 54px;
+  padding: 6px 18px;
+  border-top: 1px solid var(--background-modifier-border);
+  font-size: 17px;
+  color: var(--text-normal);
+  cursor: pointer;
+}
+.gs-graph .gs-acts-head + button.gs-act {
+  border-top: 0;
+}
+.gs-graph button.gs-act.is-danger {
+  color: var(--text-error, var(--gs-bad));
+}
+.gs-graph button.gs-act:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+.gs-act-why {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+.gs-graph button.gs-act--cancel {
+  align-items: center;
+  border-top: 0;
+  font-weight: 700;
+}
+
+/* The toast clears the docked cards and the navbar. */
+.gs-graph--phone .gs-toast {
+  bottom: calc(var(--gs-inset-bottom) + 8px);
+  max-width: calc(100% - 32px);
+}
+
+/* Measures the bottom inset as resolved (env() included), for the free area a node is panned into. */
+.gs-inset-probe {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 0;
+  height: var(--gs-inset-bottom);
+  visibility: hidden;
+  pointer-events: none;
+}
+.gs-graph button.gs-tool--more {
+  position: relative;
+}
+.gs-graph .gs-tool .gs-count--issues {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  background: var(--text-muted);
+}
+.gs-phone-layer .gs-inspector-relation li button {
+  min-width: var(--gs-touch);
+}
+
+/* A narrow phone: Smells shows its icon and count only, so the row still fits. */
+@media (max-width: 380px) {
+  .gs-graph--phone .gs-tool--smells .gs-tool-label {
+    display: none;
+  }
+}

@@ -15,6 +15,8 @@ export interface InspectorProps {
   renderNote?: (el: HTMLElement, path: string) => () => void;
   onOpenNote?: (path: string, newTab: boolean) => void;
   onClose: () => void;
+  /** `sheet`: the phone's details sheet (D22), which has its own header and Open note: no header here, and the status as chips. */
+  variant?: 'panel' | 'sheet';
 }
 
 const FIELD_LABEL: Record<string, string> = {
@@ -41,8 +43,9 @@ const idOf = (n: GraphNode) => n.id ?? n.basename;
  * remove, a log entry, the note itself, and a way to open it in a split. Every change is an
  * intent for the host (`perform`); the panel holds no copy of the note, so it always shows the graph.
  */
-export function Inspector({ graph, node, perform, readNote, renderNote, onOpenNote, onClose }: InspectorProps) {
+export function Inspector({ graph, node, perform, readNote, renderNote, onOpenNote, onClose, variant = 'panel' }: InspectorProps) {
   const editable = perform !== null;
+  const sheet = variant === 'sheet';
   const statuses = statusesFor(node.type);
   const [bodyVersion, setBodyVersion] = useState(0);
   const run = async (intent: Intent) => {
@@ -54,21 +57,41 @@ export function Inspector({ graph, node, perform, readNote, renderNote, onOpenNo
   const nodeOf = (key: string) => graph.nodes.find((n) => n.key === key);
 
   return (
-    <aside className="gs-inspector nowheel nopan nodrag" aria-label={`Inspector: ${idOf(node)}`} data-node-key={node.key}>
-      <header className="gs-inspector-head">
-        <div>
-          <div className="gs-inspector-id">
-            {idOf(node)} <span className="gs-inspector-type">{node.type}</span>
+    <aside className={`gs-inspector nowheel nopan nodrag${sheet ? ' gs-inspector--sheet' : ''}`} aria-label={`Inspector: ${idOf(node)}`} data-node-key={node.key}>
+      {!sheet && (
+        <header className="gs-inspector-head">
+          <div>
+            <div className="gs-inspector-id">
+              {idOf(node)} <span className="gs-inspector-type">{node.type}</span>
+            </div>
+            <div className="gs-inspector-title">{titleOf(node)}</div>
           </div>
-          <div className="gs-inspector-title">{titleOf(node)}</div>
+          <button className="gs-inspector-close" onClick={onClose} aria-label="Close inspector" title="Close">
+            ×
+          </button>
+        </header>
+      )}
+
+      {sheet && statuses && (
+        <div className="gs-status-chips" role="group" aria-label="Status">
+          {(node.status === null || statuses.includes(node.status) ? statuses : [node.status, ...statuses]).map((status) => (
+            <button
+              key={status}
+              type="button"
+              className={`gs-status-chip gs-status--${status}`}
+              aria-pressed={status === node.status}
+              disabled={!editable}
+              onClick={() => status !== node.status && void run({ kind: 'set-status', key: node.key, status })}
+            >
+              <span className="gs-status-dot" aria-hidden="true" />
+              {status}
+            </button>
+          ))}
         </div>
-        <button className="gs-inspector-close" onClick={onClose} aria-label="Close inspector" title="Close">
-          ×
-        </button>
-      </header>
+      )}
 
       <div className="gs-inspector-fields">
-        {statuses && (
+        {statuses && !sheet && (
           <label>
             Status
             <select
@@ -165,7 +188,7 @@ export function Inspector({ graph, node, perform, readNote, renderNote, onOpenNo
       <section className="gs-inspector-note">
         <h4>
           Note
-          {onOpenNote && (
+          {onOpenNote && !sheet && (
             <button className="gs-inspector-open" onClick={() => onOpenNote(node.path, true)}>
               Open in split
             </button>

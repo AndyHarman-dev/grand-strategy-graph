@@ -410,6 +410,59 @@ export function localToday(): string {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
+// ------------------------------------------------------------------ phone layout (Phase 8b, D22)
+
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface Viewport {
+  x: number;
+  y: number;
+  zoom: number;
+}
+
+/** The gap kept between a node panned into the free area and the area's edges. */
+export const FREE_MARGIN = 16;
+
+/**
+ * The viewport that shows `node` (graph coordinates) inside `free` (pixels of the graph's box), so a
+ * docked card never covers it: the smallest pan that does, or none when it is in already. A node too
+ * big for the area, or a new `zoom`, is centred in it instead.
+ */
+export function panIntoFree(node: Rect, free: Rect, viewport: Viewport, zoom = viewport.zoom, margin = FREE_MARGIN): Viewport {
+  const axis = (start: number, size: number, freeStart: number, freeSize: number, offset: number) => {
+    const [low, high] = [freeStart + margin, freeStart + freeSize - margin];
+    const width = size * zoom;
+    if (zoom !== viewport.zoom || width > high - low) return freeStart + freeSize / 2 - (start + size / 2) * zoom;
+    const at = start * zoom + offset;
+    if (at < low) return offset + low - at;
+    if (at + width > high) return offset - (at + width - high);
+    return offset;
+  };
+  return {
+    x: axis(node.x, node.width, free.x, free.width, viewport.x),
+    y: axis(node.y, node.height, free.y, free.height, viewport.y),
+    zoom,
+  };
+}
+
+/** The gap kept above Obsidian's mobile navbar. */
+export const NAVBAR_GAP = 12;
+
+/**
+ * How far from the bottom of the graph's box our docked cards must stay to clear Obsidian's mobile
+ * navbar: the part of the box the navbar covers, plus a gap. Null when the navbar can't be measured
+ * (none, or not laid out): the CSS fallback, `env(safe-area-inset-bottom) + 64px`, applies then.
+ */
+export function bottomInset(container: { bottom: number }, navbar: { top: number; height: number } | null, gap = NAVBAR_GAP): number | null {
+  if (!navbar || !(navbar.height > 0)) return null;
+  return Math.max(0, container.bottom - navbar.top) + gap;
+}
+
 
 // ------------------------------------------------------------------ free cards, frames, links (Phase 7)
 
@@ -561,4 +614,53 @@ export const SMELL_GROUPS: readonly { code: SmellCode; title: string }[] = [
 /** The smells in the panel's groups, each group in the smells' own order (by node). Empty groups are left out. */
 export function groupSmellsForPanel(smells: readonly Smell[]): { code: SmellCode; title: string; smells: Smell[] }[] {
   return SMELL_GROUPS.map((group) => ({ ...group, smells: smells.filter((s) => s.code === group.code) })).filter((group) => group.smells.length > 0);
+}
+
+// ------------------------------------------------------------------ the phone's peek card (Phase 8b)
+
+/** What the peek card shows of the selected node. */
+export interface Peek {
+  kind: string;
+  /** The note's id; empty for a card or frame. */
+  id: string;
+  /** Status and date, joined. */
+  meta: string;
+  title: string;
+  /** The first smell, and how many more ("+1"). */
+  smell: string | null;
+  /** The class (`gs-status--…`, `gs-kind--…`) that colours the kind pill. */
+  tone: string;
+}
+
+const KIND_LABEL: Record<string, string> = {
+  bet: 'Bet',
+  assumption: 'Assumption',
+  milestone: 'Milestone',
+  'fixed-point': 'Fixed point',
+  'current-position': 'Current position',
+};
+
+/** The peek card of a node: a note, a free card or a frame. Null for what has none (an "AND" junction). */
+export function peekOf(node: GraphFlowNode): Peek | null {
+  if (isStrategyNode(node)) {
+    const n = node.data.node;
+    const date = n.type === 'bet' ? n.deadline && `Due ${n.deadline.slice(0, 10)}` : n.type === 'assumption' ? n.verifyBy && `Verify by ${n.verifyBy.slice(0, 10)}` : null;
+    const smells = node.data.smells;
+    const first = smells[0] && (SMELL_GROUPS.find((g) => g.code === smells[0].code)?.title ?? smells[0].message);
+    return {
+      kind: KIND_LABEL[n.type] ?? n.type,
+      id: n.id ?? n.basename,
+      meta: [n.status, date].filter(Boolean).join(' · '),
+      title: node.data.title,
+      smell: first ? `${first}${smells.length > 1 ? ` +${smells.length - 1}` : ''}` : null,
+      tone: n.status ? `gs-status--${n.status}` : `gs-kind--${n.type}`,
+    };
+  }
+  if (isCardNode(node)) {
+    const card = node.data.card;
+    const title = card.kind === 'text' ? card.text.trim().split(/\r?\n/)[0] || '(empty card)' : card.kind === 'note-ref' ? card.file.replace(/^.*\//, '').replace(/\.md$/, '') : card.url;
+    return { kind: card.kind === 'text' ? 'Card' : card.kind === 'note-ref' ? 'Note card' : 'Link card', id: '', meta: '', title, smell: null, tone: 'gs-kind--card' };
+  }
+  if (isFrameNode(node)) return { kind: 'Frame', id: '', meta: '', title: node.data.frame.label || '(no label)', smell: null, tone: 'gs-kind--frame' };
+  return null;
 }

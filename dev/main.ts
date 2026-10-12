@@ -31,7 +31,17 @@ const opened: string[] = [];
 const hovered: string[] = [];
 
 const status = document.getElementById('status')!;
+// ?phone=1: the phone layout (D22), as `Platform.isPhone` asks for it in Obsidian, over a stand-in navbar.
+const phone = params.get('phone') === '1';
+if (phone) {
+  document.body.classList.add('is-phone');
+  const navbar = document.body.appendChild(document.createElement('nav'));
+  navbar.className = 'mobile-navbar';
+  navbar.setAttribute('aria-label', 'Obsidian navigation');
+  navbar.textContent = '‹  ›  ⌕  +  ☰';
+}
 const mounted = mountGraph(document.getElementById('content')!, {
+  phone,
   move: (updates) => session.move(updates),
   resetPositions: () => session.resetPositions(),
   editMap: (op) => session.editMap(op),

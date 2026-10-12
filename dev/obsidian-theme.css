@@ -62,3 +62,33 @@ body.theme-dark {
 #content {
   height: calc(100vh - 41px);
 }
+
+/* ?phone=1: a stand-in for Obsidian's floating mobile navbar, fixed at the bottom (D22). The dev
+ * bar stands for the view header and wraps on a narrow screen. */
+body.is-phone .dev-bar {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 40px;
+  overflow: hidden;
+  max-height: 40px;
+}
+body.is-phone .dev-bar label {
+  display: none;
+}
+.mobile-navbar {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  bottom: 28px;
+  width: 290px;
+  max-width: calc(100vw - 32px);
+  height: 48px;
+  transform: translateX(-50%);
+  border-radius: 24px;
+  background: rgba(62, 62, 62, 0.86);
+  color: #e8e8e8;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  font-size: 13px;
+}

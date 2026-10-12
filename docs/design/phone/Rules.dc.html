@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Phone interaction rules</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#eda15a}a:hover{color:#f3bd85}
+.gs{--font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,ui-sans-serif,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-family:var(--font-ui);color:var(--text-normal);background:var(--board-bg);-webkit-font-smoothing:antialiased}
+.theme-dark{--board-bg:#161616;--card:#222222;--line:#363636;--text-normal:#dadada;--text-muted:#a8a8a8;--text-faint:#8f8f8f;--acc:#e9973f;--acc-rgb:233,151,63;--zone:#2c2c2c;--nav:#4a4a4a}
+.theme-light{--board-bg:#f1f1f1;--card:#ffffff;--line:#e0e0e0;--text-normal:#222222;--text-muted:#5c5c5c;--text-faint:#767676;--acc:#c46a0c;--acc-rgb:236,117,0;--zone:#ececec;--nav:#c4c4c4}
+.mono{font-family:var(--font-mono);font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+.h{margin:0;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+.tbl{display:grid;grid-template-columns:150px minmax(0,1fr);column-gap:16px;row-gap:0}
+.tbl > span{padding:9px 0;border-top:1px solid var(--line);font-size:14px;line-height:20px}
+.tbl > .k{font-weight:600}
+.tbl > .v{color:var(--text-muted)}
+.ul{margin:0;padding:0 0 0 18px;display:flex;flex-direction:column;gap:7px;font-size:14px;line-height:20px;color:var(--text-muted)}
+.ul b{color:var(--text-normal);font-weight:600}
+.sub{font-size:15px;font-weight:700}
+.dev{position:relative;box-sizing:border-box;border:2px solid var(--text-faint);border-radius:18px;overflow:hidden;background:var(--board-bg)}
+.z{position:absolute;box-sizing:border-box;border-radius:6px;font-size:10.5px;font-weight:600;display:flex;align-items:center;justify-content:center;text-align:center;line-height:13px;padding:2px}
+.z-free{background:var(--zone);color:var(--text-faint)}
+.z-dock{background:rgba(var(--acc-rgb),.22);border:1.5px solid var(--acc);color:var(--acc)}
+.z-tool{background:var(--card);border:1px solid var(--line);color:var(--text-muted)}
+.z-nav{background:var(--nav);color:var(--text-normal);border-radius:10px}
+.z-keep{border:1.5px dashed var(--text-faint);color:var(--text-faint);background:transparent}
+</style>
+</helmet>
+<div class="gs theme-{{theme}}" style="width: 1100px; height: 1360px; box-sizing: border-box; padding: 56px; display: flex; flex-direction: column; gap: 28px">
+  <div style="display: flex; flex-direction: column; gap: 8px">
+    <h1 style="margin: 0; font-size: 30px; font-weight: 700">Phone interaction rules</h1>
+    <p style="margin: 0; font-size: 16px; line-height: 24px; color: var(--text-muted)">These apply when <span class="mono">Platform.isPhone</span> is true. Tablets keep the desktop layout. Orientation comes from the view's own size, not the screen's.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start">
+    <div style="display: flex; flex-direction: column; gap: 24px">
+      <section class="card">
+        <h2 class="h">Gestures</h2>
+        <div class="tbl">
+          <span class="k">Tap a node</span><span class="v">Selects it and shows the peek card.</span>
+          <span class="k">Double-tap a node</span><span class="v">Opens the details sheet. It never opens the note.</span>
+          <span class="k">Long-press</span><span class="v">After 500 ms, if the finger moved less than 8 px, opens the actions sheet. It suppresses the iOS callout and the text selection.</span>
+          <span class="k">Tap empty graph</span><span class="v">Deselects the node and closes the peek card. During a review walk, it does nothing.</span>
+          <span class="k">Drag / pinch</span><span class="v">One finger pans and two fingers zoom. The zoom buttons and the minimap are hidden.</span>
+          <span class="k">Drag a node</span><span class="v">Off by default, so panning never moves a node by mistake. Turn on <b>Edit layout</b> under ⋯ to drag nodes.</span>
+          <span class="k">Open note</span><span class="v">Only from the Open note button, in the peek card, a sheet or the actions sheet.</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="h">Two kinds of surface</h2>
+        <span class="sub">Modal sheet</span>
+        <ul class="ul">
+          <li><b>Used for:</b> details, smells, actions, the kill-and-activate confirm, and the status and date pickers.</li>
+          <li>A 55% scrim. A tap on the scrim, a swipe down (portrait), a swipe right (landscape) or the system back gesture closes the sheet.</li>
+          <li><b>Portrait:</b> a bottom sheet, at most 78% of the view's height. <b>Landscape:</b> a full-height sheet on the right, 430 px wide including the inset.</li>
+          <li>The header and the footer stay fixed and the body scrolls. Overscroll is contained, so the graph behind it never pans.</li>
+          <li>It covers the toolbar and Obsidian's navbar. Only one sheet is open at a time: opening another replaces it.</li>
+          <li>When a field gets focus, the sheet grows to full height and scrolls that field above the keyboard.</li>
+        </ul>
+        <span class="sub" style="margin-top: 4px">Docked card</span>
+        <ul class="ul">
+          <li><b>Used for:</b> the peek card and the review walk.</li>
+          <li>It has no scrim, so you can still pan, zoom and tap the graph.</li>
+          <li><b>Portrait:</b> along the bottom, above the navbar. <b>Landscape:</b> on the right, from under the header down to just above the navbar.</li>
+          <li>Its node is panned into the free area so the card never covers it.</li>
+        </ul>
+      </section>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 24px">
+      <section class="card">
+        <h2 class="h">Zones</h2>
+        <div style="display: flex; gap: 28px; align-items: flex-start">
+          <div class="dev" style="width: 150px; height: 324px; flex: none" role="img" aria-label="Portrait zones: toolbar row at the top, docked card at the bottom above the navbar">
+            <div class="z z-tool" style="left: 8px; right: 8px; top: 8px; height: 24px">View header</div>
+            <div class="z z-tool" style="left: 8px; width: 96px; top: 38px; height: 18px">Toolbar</div>
+            <div class="z z-free" style="left: 8px; right: 8px; top: 62px; height: 132px">Free area</div>
+            <div class="z z-dock" style="left: 8px; right: 8px; top: 200px; height: 68px">Peek or walk</div>
+            <div class="z z-keep" style="left: 4px; right: 4px; top: 274px; height: 44px"></div>
+            <div class="z z-nav" style="left: 22px; right: 22px; top: 282px; height: 20px">Navbar</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 16px">
+            <div class="dev" style="width: 300px; height: 140px" role="img" aria-label="Landscape zones: toolbar rail on the left, docked card on the right, navbar centred at the bottom">
+              <div class="z z-tool" style="left: 22px; right: 22px; top: 6px; height: 18px">View header</div>
+              <div class="z z-tool" style="left: 22px; width: 18px; top: 30px; height: 64px">Rail</div>
+              <div class="z z-free" style="left: 46px; width: 128px; top: 30px; bottom: 8px">Free area</div>
+              <div class="z z-dock" style="right: 22px; width: 98px; top: 30px; height: 76px">Peek or walk</div>
+              <div class="z z-keep" style="left: 92px; width: 116px; bottom: 3px; height: 28px"></div>
+              <div class="z z-nav" style="left: 100px; width: 100px; bottom: 7px; height: 18px">Navbar</div>
+            </div>
+            <ul class="ul" style="font-size: 13px; line-height: 18px">
+              <li><span style="color: var(--acc); font-weight: 700">Orange</span>: docked cards.</li>
+              <li>Dashed: the navbar keep-out. Nothing of ours goes in it unless it is modal.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="h">Insets</h2>
+        <ul class="ul">
+          <li><b>Bottom:</b> the height of Obsidian's mobile navbar plus a 12 px gap. Measure it from the navbar element at runtime. If that fails, fall back to <span class="mono">env(safe-area-inset-bottom)</span> + 64 px.</li>
+          <li><b>Sides:</b> <span class="mono">env(safe-area-inset-left / right)</span>, plus 8 px. This is what clears the notch in landscape.</li>
+          <li>Measure again on resize, on orientation change and when the keyboard opens or closes.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2 class="h">Toolbar and sizing</h2>
+        <ul class="ul">
+          <li><b>Portrait:</b> a row of Fit · Smells (with the count) · Review walk · ⋯. <b>Landscape:</b> the same buttons, icon-only, in a rail on the left.</li>
+          <li>⋯ holds Ultimately serves, Add card, Edit layout and Lock positions.</li>
+          <li>Touch targets are at least 44 px. Inputs use a 16 px font so iOS doesn't zoom in on focus.</li>
+          <li>Fields go one per row. Only date pairs share a row. Status chips scroll sideways.</li>
+        </ul>
+      </section>
+
+      <section class="card">
+        <h2 class="h">React Flow props</h2>
+        <ul class="ul">
+          <li><span class="mono">zoomOnDoubleClick={false}</span> and <span class="mono">onNodeDoubleClick</span> open the details sheet.</li>
+          <li><span class="mono">nodesDraggable={editLayout}</span>, <span class="mono">panOnDrag</span>, <span class="mono">zoomOnPinch</span>.</li>
+          <li>Long-press comes from a pointer timer on the node wrapper. <span class="mono">onNodeContextMenu</span> runs the same action for Android.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1100,"height":1360}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? 'dark' };
+  }
+}
+</script>
+</body>
+</html>

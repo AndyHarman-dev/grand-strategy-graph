@@ -7,6 +7,10 @@ export interface MenuItem {
   label: string;
   /** Why the item can't be used now (shown as its tooltip, and the item is off). */
   disabled?: string;
+  /** It can't be undone (killing a bet): shown in red on a phone. */
+  danger?: boolean;
+  /** Ask first, with this question (on a phone, in a sheet); the desktop menu runs it at once. */
+  confirm?: string;
   run: () => void;
 }
 

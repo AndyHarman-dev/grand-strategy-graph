@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Strategy graph on a phone, landscape</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#eda15a}a:hover{color:#f3bd85}
+.gs{--font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,ui-sans-serif,sans-serif;--font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-family:var(--font-ui);font-size:13px;color:var(--text-normal);background:var(--board-bg);-webkit-font-smoothing:antialiased}
+.theme-dark{color-scheme:dark;--board-bg:#161616;--background-primary:#1e1e1e;--background-secondary:#262626;--background-secondary-alt:#2e2e2e;--background-modifier-border:#363636;--background-modifier-border-hover:#4d4d4d;--background-modifier-hover:rgba(255,255,255,.06);--background-modifier-form-field:#1b1b1b;--text-normal:#dadada;--text-muted:#a8a8a8;--text-faint:#8f8f8f;--node-bg:#272727;--node-bg-alt:#222222;--edge:#8c8c8c;--canvas-dot:#383838;--frame-bg:rgba(255,255,255,.022);--frame-border:#333333;--shadow:0 10px 28px rgba(0,0,0,.5);--nav-bg:rgba(62,62,62,.86);--nav-fg:#e8e8e8;--red-rgb:251,70,76;--orange-rgb:233,151,63;--yellow-rgb:224,222,113;--green-rgb:68,207,110;--cyan-rgb:83,223,221;--purple-rgb:168,130,255;--gray-rgb:150,150,150;--red-text:#fb6b70;--orange-text:#eda15a;--yellow-text:#e0de71;--green-text:#5ad47f;--cyan-text:#53dfdd;--purple-text:#b597ff;--gray-text:#b0b0b0}
+.theme-light{color-scheme:light;--board-bg:#f1f1f1;--background-primary:#ffffff;--background-secondary:#f6f6f6;--background-secondary-alt:#eeeeee;--background-modifier-border:#e0e0e0;--background-modifier-border-hover:#c8c8c8;--background-modifier-hover:rgba(0,0,0,.05);--background-modifier-form-field:#ffffff;--text-normal:#222222;--text-muted:#5c5c5c;--text-faint:#767676;--node-bg:#ffffff;--node-bg-alt:#fbfbfb;--edge:#8f8f8f;--canvas-dot:#d4d4d4;--frame-bg:rgba(0,0,0,.022);--frame-border:#e3e3e3;--shadow:0 10px 28px rgba(0,0,0,.14);--nav-bg:rgba(236,236,236,.92);--nav-fg:#222222;--red-rgb:233,49,71;--orange-rgb:236,117,0;--yellow-rgb:224,172,0;--green-rgb:8,185,78;--cyan-rgb:0,191,188;--purple-rgb:120,82,238;--gray-rgb:130,130,130;--red-text:#b8202f;--orange-text:#9c4f00;--yellow-text:#7d6100;--green-text:#0a7535;--cyan-text:#00706e;--purple-text:#5b3bd1;--gray-text:#5c5c5c}
+.theme-dark.acc-orange{--acc-rgb:233,151,63;--interactive-accent:#e9973f;--text-accent:#eda15a;--text-on-accent:#1e1e1e}
+.theme-light.acc-orange{--acc-rgb:236,117,0;--interactive-accent:#e07b12;--text-accent:#9c4f00;--text-on-accent:#1e1e1e}
+.theme-dark.acc-purple{--acc-rgb:168,130,255;--interactive-accent:#7c5ce6;--text-accent:#a993f7;--text-on-accent:#ffffff}
+.theme-light.acc-purple{--acc-rgb:120,82,238;--interactive-accent:#6c4ee0;--text-accent:#6240d8;--text-on-accent:#ffffff}
+.st-red{--st-rgb:var(--red-rgb);--st-text:var(--red-text)}.st-orange{--st-rgb:var(--orange-rgb);--st-text:var(--orange-text)}.st-yellow{--st-rgb:var(--yellow-rgb);--st-text:var(--yellow-text)}.st-green{--st-rgb:var(--green-rgb);--st-text:var(--green-text)}.st-cyan{--st-rgb:var(--cyan-rgb);--st-text:var(--cyan-text)}.st-purple{--st-rgb:var(--purple-rgb);--st-text:var(--purple-text)}.st-gray{--st-rgb:var(--gray-rgb);--st-text:var(--gray-text)}.st-acc{--st-rgb:var(--acc-rgb);--st-text:var(--text-accent)}
+.mono{font-family:var(--font-mono)}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic-sm{width:13px;height:13px}
+.btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:44px;padding:0 16px;border-radius:10px;font-family:var(--font-ui);font-size:15px;font-weight:600;color:var(--text-normal);cursor:pointer;white-space:nowrap}
+.btn:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:1px}
+.btn-icon{width:44px;padding:0}
+.btn-primary{background:var(--interactive-accent);color:var(--text-on-accent)}
+.btn-line{border:1px solid var(--background-modifier-border);background:var(--background-primary)}
+.btn-danger{border:1px solid rgba(var(--red-rgb),.5);color:var(--red-text)}
+.btn-ghost{color:var(--text-muted)}
+.pill{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:10px;font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--st-text);background:rgba(var(--st-rgb),.15);white-space:nowrap;flex:none}
+.canvas-bg{background-color:var(--background-primary);background-image:radial-gradient(var(--canvas-dot) 1.1px,transparent 1.3px);background-size:18px 18px}
+.frame{position:absolute;box-sizing:border-box;border:1px solid var(--frame-border);background:var(--frame-bg);border-radius:14px}
+.frame-label{position:absolute;top:8px;left:14px;font-size:13px;font-weight:600;color:var(--text-muted)}
+.node{all:unset;box-sizing:border-box;position:absolute;cursor:pointer;display:flex;flex-direction:column;gap:5px;padding:9px 11px;background:var(--node-bg);border:1px solid rgba(var(--st-rgb),.5);border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.18);color:var(--text-normal);font-family:var(--font-ui);-webkit-touch-callout:none;user-select:none;touch-action:manipulation}
+.node[aria-pressed="true"]{box-shadow:0 0 0 2px var(--background-primary),0 0 0 4px var(--interactive-accent)}
+.row1{display:flex;align-items:center;gap:6px;height:18px;min-width:0}
+.nid{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--text-muted);flex:none}
+.ndate{flex:1;min-width:0;font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ntitle{font-size:13px;line-height:16px;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.node .pill{height:17px;font-size:10px;padding:0 6px}
+.k-asm{border-radius:4px;padding:7px 10px;gap:3px;background:var(--node-bg-alt)}
+.k-asm .ntitle{font-size:12px;line-height:15px;font-weight:500;-webkit-line-clamp:1;white-space:nowrap;text-overflow:ellipsis;display:block}
+.k-fp{border:2px solid rgb(var(--acc-rgb));border-radius:22px;background:rgba(var(--acc-rgb),.12);padding:12px 16px;gap:4px;justify-content:center}
+.k-fp[aria-pressed="true"]{box-shadow:0 0 0 4px var(--background-primary),0 0 0 6px var(--interactive-accent)}
+.k-fp .ntitle{font-size:15px;line-height:19px}
+.fp-tag{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text-accent)}
+.k-card{background:rgba(var(--st-rgb),.12);border-color:rgba(var(--st-rgb),.55);border-radius:6px;align-items:center;justify-content:center;text-align:center;padding:6px 10px;font-size:12.5px;font-weight:500}
+.badge{position:absolute;top:-9px;right:-9px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:10px;background:rgb(var(--orange-rgb));color:#1e1e1e;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 2px var(--background-primary)}
+.e{fill:none;stroke-width:1.6}
+.e-serves{stroke:var(--edge)}
+.e-next{stroke:rgb(var(--orange-rgb));stroke-dasharray:7 5}
+.e-leader{stroke:var(--text-faint);stroke-width:1.1;stroke-dasharray:3 4}
+.e-free{stroke:var(--text-faint);stroke-width:1.3;stroke-dasharray:6 4}
+.ah-serves{fill:var(--edge)}.ah-next{fill:rgb(var(--orange-rgb))}.ah-free{fill:var(--text-faint)}
+.elabel{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:9px;background:var(--background-primary);border:1px solid rgba(var(--orange-rgb),.5);color:var(--orange-text)}
+.phone{position:relative;flex:none;width:844px;height:390px;border-radius:50px;overflow:hidden;background:var(--background-primary);box-shadow:0 0 0 9px #0c0c0c,0 0 0 10px #3c3c3c,0 30px 60px rgba(0,0,0,.28)}
+.layer{position:absolute;left:0;top:0;width:844px;height:390px;transition:transform .28s ease}
+.ob-head{position:absolute;left:0;right:0;top:0;height:56px;box-sizing:border-box;padding:6px 56px 0;display:flex;align-items:center;gap:8px;background:var(--background-primary);z-index:2}
+.ob-circ{all:unset;box-sizing:border-box;width:44px;height:44px;border-radius:22px;background:var(--background-secondary-alt);display:flex;align-items:center;justify-content:center;color:var(--text-normal);flex:none}
+.ob-title{flex:1;text-align:center;font-size:16px;color:var(--text-muted)}
+.ob-title b{color:var(--text-normal)}
+.ob-nav{position:absolute;left:277px;top:334px;width:290px;height:44px;box-sizing:border-box;border-radius:22px;background:var(--nav-bg);color:var(--nav-fg);display:flex;align-items:center;justify-content:space-around;padding:0 8px;z-index:4;box-shadow:0 6px 18px rgba(0,0,0,.3)}
+.ob-nav .tabs{font-size:11px;font-weight:700;border:1.8px solid currentColor;border-radius:5px;padding:1px 4px}
+.home{position:absolute;left:50%;bottom:5px;width:150px;height:5px;margin-left:-75px;border-radius:3px;background:var(--text-normal);opacity:.75;z-index:9}
+.tools{position:absolute;left:56px;top:66px;display:flex;flex-direction:column;gap:8px;z-index:3}
+.tchip{all:unset;box-sizing:border-box;position:relative;height:44px;width:44px;border-radius:22px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-normal);background:var(--background-secondary-alt);border:1px solid var(--background-modifier-border);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+.tchip.go{background:var(--interactive-accent);color:var(--text-on-accent);border-color:transparent}
+.tchip[aria-pressed="true"]{background:rgba(var(--acc-rgb),.18);color:var(--text-accent);border-color:rgba(var(--acc-rgb),.55)}
+.tchip .badge{top:-5px;right:-7px}
+.cnt{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:10px;background:rgb(var(--orange-rgb));color:#1e1e1e;font-size:12px;font-weight:700}
+.dockcard{position:absolute;right:56px;top:66px;width:300px;z-index:3;box-sizing:border-box;border-radius:18px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);box-shadow:var(--shadow);display:flex;flex-direction:column}
+.peek-body{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:6px;padding:12px 14px 10px;min-width:0}
+.peek-t{font-size:17px;line-height:22px;font-weight:700;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.peek-s{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--orange-text);font-weight:600}
+.peek-s .ic{width:15px;height:15px}
+.brow{display:flex;gap:8px;padding:0 12px 12px}
+.prog{flex:1;height:4px;border-radius:2px;background:var(--background-modifier-border);overflow:hidden}
+.prog span{display:block;height:100%;border-radius:2px;background:var(--interactive-accent);transition:width .2s}
+.wl{display:flex;align-items:center;gap:7px;min-width:0;font-size:13px;line-height:18px}
+.wl .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scrim{all:unset;position:absolute;left:0;top:0;right:0;bottom:0;background:rgba(0,0,0,.55);z-index:6;cursor:pointer}
+.sheet{position:absolute;right:0;top:0;bottom:0;width:430px;z-index:7;box-sizing:border-box;padding-right:44px;display:flex;flex-direction:column;background:var(--background-secondary);border-radius:20px 0 0 20px;box-shadow:-12px 0 40px rgba(0,0,0,.4)}
+.sh-head{flex:none;padding:10px 4px 10px 16px;display:flex;flex-direction:column;gap:4px;border-bottom:1px solid var(--background-modifier-border)}
+.sh-top{display:flex;align-items:center;gap:8px;min-height:44px}
+.sh-title{margin:0;font-size:19px;line-height:24px;font-weight:700}
+.sh-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:12px 4px 16px 16px;display:flex;flex-direction:column;gap:14px}
+.sh-foot{flex:none;display:flex;gap:8px;padding:10px 4px 16px 16px;border-top:1px solid var(--background-modifier-border)}
+.segrow{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none}
+.seg{all:unset;box-sizing:border-box;flex:none;display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 14px;border-radius:20px;font-size:14px;font-weight:600;color:var(--text-muted);border:1px solid var(--background-modifier-border);cursor:pointer}
+.seg .dot{width:8px;height:8px;border-radius:50%;background:rgb(var(--st-rgb))}
+.seg[aria-pressed="true"]{color:var(--st-text);background:rgba(var(--st-rgb),.15);border-color:rgba(var(--st-rgb),.6)}
+.callout{display:flex;gap:10px;padding:11px 12px;border-radius:10px;background:rgba(var(--orange-rgb),.12)}
+.callout .ic{color:var(--orange-text);margin-top:1px;width:16px;height:16px}
+.sec{display:flex;flex-direction:column;gap:10px}
+.sec-h{font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-muted)}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0;grid-column:span 2}
+.fld.half{grid-column:span 1}
+.fld label{font-size:13px;color:var(--text-muted)}
+.fld input{box-sizing:border-box;width:100%;height:44px;padding:0 12px;border-radius:9px;border:1px solid var(--background-modifier-border);background:var(--background-modifier-form-field);color:var(--text-normal);font-family:var(--font-ui);font-size:16px}
+.fld input:focus{outline:none;border-color:var(--interactive-accent)}
+.fld.need input{border-color:rgba(var(--orange-rgb),.7)}
+.rel{display:flex;flex-direction:column;gap:7px}
+.rel-h{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);min-height:24px}
+.tag{font-size:10.5px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--background-modifier-hover);color:var(--text-faint)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{all:unset;box-sizing:border-box;cursor:pointer;display:inline-flex;align-items:center;gap:7px;height:36px;max-width:100%;padding:0 12px;border-radius:18px;background:var(--background-primary);border:1px solid var(--background-modifier-border);font-size:13.5px}
+.chip-dot{width:8px;height:8px;border-radius:50%;background:rgb(var(--st-rgb));flex:none}
+.chip-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.add{all:unset;cursor:pointer;margin-left:auto;font-size:13px;font-weight:600;color:var(--text-accent);padding:6px 4px}
+.none{font-size:13px;color:var(--text-faint);font-style:italic}
+.logl{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.logl li{font-size:14px;line-height:19px}
+.logl .d{font-family:var(--font-mono);font-size:12px;color:var(--text-muted)}
+.smell{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;min-height:60px;padding:9px 4px 9px 16px;border-top:1px solid var(--background-modifier-border);cursor:pointer}
+.smell-k{font-size:12px;font-weight:700;letter-spacing:.03em;color:var(--orange-text)}
+.smell-k.issue{color:var(--text-muted)}
+.smell-t{font-size:15px;font-weight:600}
+.smell-d{font-size:13px;line-height:18px;color:var(--text-muted)}
+.act{all:unset;box-sizing:border-box;width:100%;display:flex;align-items:center;gap:14px;min-height:50px;padding:0 16px;font-size:16px;color:var(--text-normal);border-top:1px solid var(--background-modifier-border);cursor:pointer}
+.act .ic{color:var(--text-muted)}
+.act.danger,.act.danger .ic{color:var(--red-text)}
+.cap-n{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:13px;background:var(--interactive-accent);color:var(--text-on-accent);font-size:13px;font-weight:700;flex:none}
+</style>
+</helmet>
+<div class="gs theme-{{theme}} acc-{{accent}}" style="width: 1920px; height: 1360px; box-sizing: border-box; padding: 56px 64px; display: flex; flex-direction: column; gap: 40px">
+  <div style="display: flex; flex-direction: column; gap: 10px; max-width: 1180px">
+    <h1 style="margin: 0; font-size: 34px; font-weight: 700">Strategy graph on a phone · landscape</h1>
+    <p style="margin: 0; font-size: 17px; line-height: 26px; color: var(--text-muted)">Height is what runs out, so everything moves to the sides. The toolbar becomes an icon rail on the left. The peek card, the review walk and every sheet sit on the right and use the full height. The gestures don't change. Content stays inside the notch and home-indicator insets, and nothing sits under the navbar.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 96px; row-gap: 64px">
+    <sc-for list="{{phones}}" as="ph" hint-placeholder-count="4">
+      <div style="display: flex; flex-direction: column; gap: 22px">
+        <div style="display: flex; flex-direction: column; gap: 8px; min-height: 76px; max-width: 780px">
+          <div style="display: flex; align-items: center; gap: 10px"><span class="cap-n">{{ph.n}}</span><span style="font-size: 19px; font-weight: 700">{{ph.title}}</span></div>
+          <span style="font-size: 14px; line-height: 20px; color: var(--text-muted)">{{ph.text}}</span>
+        </div>
+
+        <div class="phone">
+          <div class="canvas-bg" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden" onClick="{{ph.bgTap}}">
+            <div class="layer" style="transform: translate({{ph.panX}}px, 0px)">
+              <div class="frame" style="left: 118px; top: 60px; width: 640px; height: 262px"><span class="frame-label">Visa route</span></div>
+              <svg width="844" height="390" viewBox="0 0 844 390" style="position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none" aria-hidden="true">
+                <path class="e e-leader" d="M282,113 C298,113 298,122 314,122"></path>
+                <path class="e e-leader" d="M282,177 C298,177 298,150 314,150"></path>
+                <path class="e e-free" d="M282,244 C294,244 294,250 306,250"></path><path class="ah-free" d="M314,250 L305,245.5 L305,254.5 Z"></path>
+                <path class="e e-next" d="M398,174 L398,213"></path><path class="ah-next" d="M398,222 L393.5,213 L402.5,213 Z"></path>
+                <path class="e e-serves" d="M482,128 C512,128 512,178 532,178"></path><path class="ah-serves" d="M540,178 L531,173.5 L531,182.5 Z"></path>
+                <path class="e e-serves" d="M482,262 C514,262 514,202 532,202"></path><path class="ah-serves" d="M540,202 L531,197.5 L531,206.5 Z"></path>
+              </svg>
+              <span class="elabel" style="left: 398px; top: 196px">on kill</span>
+              <sc-for list="{{ph.nodes}}" as="n" hint-placeholder-count="6">
+                <button type="button" class="node {{n.cls}}" style="left: {{n.x}}px; top: {{n.y}}px; width: {{n.w}}px; height: {{n.h}}px" aria-label="{{n.aria}}" aria-pressed="{{n.sel}}" onClick="{{n.tap}}" onDoubleClick="{{n.dbl}}" onPointerDown="{{n.down}}" onPointerUp="{{n.up}}" onPointerLeave="{{n.up}}" onContextMenu="{{n.ctx}}">
+                  <sc-if value="{{n.isBet}}" hint-placeholder-val="{{true}}">
+                    <span class="row1"><span class="nid">{{n.id}}</span><span class="ndate">{{n.date}}</span><span class="pill {{n.tone}}">{{n.status}}</span></span>
+                    <span class="ntitle">{{n.title}}</span>
+                  </sc-if>
+                  <sc-if value="{{n.isAsm}}" hint-placeholder-val="{{false}}">
+                    <span class="row1"><span class="nid">{{n.id}}</span><span class="ndate"></span><span class="pill {{n.tone}}">{{n.status}}</span></span>
+                    <span class="ntitle">{{n.title}}</span>
+                  </sc-if>
+                  <sc-if value="{{n.isFp}}" hint-placeholder-val="{{false}}">
+                    <span class="fp-tag"><svg class="ic ic-sm" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>FIXED POINT · {{n.id}}</span>
+                    <span class="ntitle">{{n.title}}</span>
+                  </sc-if>
+                  <sc-if value="{{n.isCard}}" hint-placeholder-val="{{false}}"><span>{{n.title}}</span></sc-if>
+                  <sc-if value="{{n.smell}}" hint-placeholder-val="{{false}}"><span class="badge">{{n.smellCount}}</span></sc-if>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+
+          <header class="ob-head">
+            <button type="button" class="ob-circ" aria-label="Open sidebar"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"></rect><path d="M9 4v16"></path></svg></button>
+            <div class="ob-title">Strategy <span style="color: var(--text-faint)">/</span> <b>Strategy</b></div>
+            <button type="button" class="ob-circ" aria-label="More options"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"></circle><circle cx="12" cy="12" r="1.2"></circle><circle cx="19" cy="12" r="1.2"></circle></svg></button>
+          </header>
+
+          <div class="tools">
+            <button type="button" class="tchip" aria-label="Fit view"><svg class="ic" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path></svg></button>
+            <button type="button" class="tchip" aria-label="Smells, 4" onClick="{{ph.openSmells}}"><svg class="ic" viewBox="0 0 24 24" style="color: var(--orange-text)"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg><span class="badge">4</span></button>
+            <sc-if value="{{ph.notWalk}}" hint-placeholder-val="{{true}}">
+              <button type="button" class="tchip go" aria-label="Start review walk" onClick="{{ph.toggleWalk}}"><svg class="ic" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"></circle><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"></path><circle cx="18" cy="5" r="3"></circle></svg></button>
+            </sc-if>
+            <sc-if value="{{ph.walk}}" hint-placeholder-val="{{false}}">
+              <button type="button" class="tchip" aria-pressed="true" aria-label="End review walk" onClick="{{ph.toggleWalk}}"><svg class="ic" viewBox="0 0 24 24"><circle cx="6" cy="19" r="3"></circle><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"></path><circle cx="18" cy="5" r="3"></circle></svg></button>
+            </sc-if>
+            <button type="button" class="tchip" aria-label="More graph options"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"></circle><circle cx="12" cy="12" r="1.2"></circle><circle cx="19" cy="12" r="1.2"></circle></svg></button>
+          </div>
+
+          <sc-if value="{{ph.showPeek}}" hint-placeholder-val="{{false}}">
+            <div class="dockcard" role="region" aria-label="Selected node">
+              <button type="button" class="peek-body" onClick="{{ph.openDetails}}" aria-label="Show details for {{ph.pk.id}}">
+                <span class="row1" style="height: 22px"><span class="pill {{ph.pk.tone}}" style="text-transform: uppercase; letter-spacing: .06em">{{ph.pk.kind}}</span><span class="nid" style="font-size: 12px">{{ph.pk.id}}</span><span class="ndate" style="font-size: 12.5px">{{ph.pk.meta}}</span></span>
+                <span class="peek-t">{{ph.pk.title}}</span>
+                <sc-if value="{{ph.pk.hasSmell}}" hint-placeholder-val="{{false}}"><span class="peek-s"><svg class="ic" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>{{ph.pk.smell}}</span></sc-if>
+              </button>
+              <div class="brow">
+                <button type="button" class="btn btn-primary" style="flex: 1" onClick="{{ph.openDetails}}">Details</button>
+                <button type="button" class="btn btn-line" style="flex: 1">Open note</button>
+                <button type="button" class="btn btn-line btn-icon" aria-label="More actions" onClick="{{ph.openActions}}"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"></circle><circle cx="12" cy="12" r="1.2"></circle><circle cx="19" cy="12" r="1.2"></circle></svg></button>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ph.walk}}" hint-placeholder-val="{{false}}">
+            <div class="dockcard" role="region" aria-label="Review walk" style="bottom: 64px; padding: 6px 12px 12px; gap: 6px">
+              <div style="display: flex; align-items: center; gap: 10px; padding-left: 4px">
+                <span style="font-size: 12px; font-weight: 700; letter-spacing: .07em; color: var(--text-muted); white-space: nowrap">STEP {{ph.wk.n}} OF {{ph.wk.total}}</span>
+                <span class="prog"><span style="width: {{ph.wk.pct}}%"></span></span>
+                <button type="button" class="btn btn-icon btn-ghost" aria-label="End review walk" onClick="{{ph.toggleWalk}}"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 3px; padding: 0 4px">
+                <span style="font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ph.wk.line}}</span>
+                <span style="font-size: 17px; line-height: 22px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span class="mono" style="font-size: 13px; color: var(--text-muted)">{{ph.wk.id}}</span> {{ph.wk.title}}</span>
+              </div>
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; padding: 0 4px; min-height: 0; overflow: hidden">
+                <sc-for list="{{ph.wk.items}}" as="w" hint-placeholder-count="2">
+                  <span class="wl"><span class="chip-dot {{w.tone}}"></span><span class="mono" style="font-size: 12px; color: var(--text-muted)">{{w.id}}</span><span class="t">{{w.title}}</span><span class="pill {{w.tone}}">{{w.status}}</span></span>
+                </sc-for>
+                <sc-if value="{{ph.wk.empty}}" hint-placeholder-val="{{false}}"><span class="none">{{ph.wk.emptyText}}</span></sc-if>
+              </div>
+              <div style="display: flex; gap: 8px">
+                <button type="button" class="btn btn-line btn-icon" aria-label="Previous step" onClick="{{ph.prev}}"><svg class="ic" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"></path></svg></button>
+                <button type="button" class="btn btn-line" onClick="{{ph.openDetails}}">Details</button>
+                <button type="button" class="btn btn-primary" style="flex: 1" onClick="{{ph.next}}">{{ph.wk.nextLabel}}<svg class="ic" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></button>
+              </div>
+            </div>
+          </sc-if>
+
+          <nav class="ob-nav" aria-label="Obsidian navigation">
+            <svg class="ic" viewBox="0 0 24 24" style="opacity: .45"><path d="m15 18-6-6 6-6"></path></svg>
+            <svg class="ic" viewBox="0 0 24 24" style="opacity: .45"><path d="m9 18 6-6-6-6"></path></svg>
+            <svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+            <svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>
+            <span class="tabs">13</span>
+            <svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+          </nav>
+
+          <sc-if value="{{ph.anySheet}}" hint-placeholder-val="{{false}}">
+            <button type="button" class="scrim" aria-label="Close" onClick="{{ph.close}}"></button>
+          </sc-if>
+
+          <sc-if value="{{ph.showDetails}}" hint-placeholder-val="{{false}}">
+            <section class="sheet" role="dialog" aria-modal="true" aria-label="Details for {{ph.d.id}}">
+              <div class="sh-head">
+                <div class="sh-top">
+                  <span class="pill {{ph.d.tone}}" style="text-transform: uppercase; letter-spacing: .07em">{{ph.d.kind}}</span>
+                  <span class="mono" style="font-size: 13px; color: var(--text-muted)">{{ph.d.id}}</span>
+                  <span style="flex: 1"></span>
+                  <button type="button" class="btn btn-icon btn-ghost" aria-label="Close details" onClick="{{ph.close}}"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+                </div>
+                <h2 class="sh-title">{{ph.d.title}}</h2>
+              </div>
+              <div class="sh-body">
+                <sc-if value="{{ph.d.hasStatus}}" hint-placeholder-val="{{true}}">
+                  <div class="segrow" role="group" aria-label="Status">
+                    <sc-for list="{{ph.d.statuses}}" as="s" hint-placeholder-count="5">
+                      <button type="button" class="seg {{s.tone}}" aria-pressed="{{s.on}}" onClick="{{s.pick}}"><span class="dot"></span>{{s.label}}</button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-for list="{{ph.d.smells}}" as="s" hint-placeholder-count="1">
+                  <div class="callout">
+                    <svg class="ic" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path><path d="M12 9v4M12 17h.01"></path></svg>
+                    <span style="display: flex; flex-direction: column; gap: 3px"><span style="font-size: 13px; font-weight: 700">{{s.kind}}</span><span style="font-size: 13.5px; line-height: 19px; color: var(--text-muted)">{{s.text}}</span></span>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ph.d.canKill}}" hint-placeholder-val="{{false}}">
+                  <button type="button" class="btn btn-danger"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg>Kill and activate {{ph.d.next}}</button>
+                </sc-if>
+                <div class="sec">
+                  <span class="sec-h">{{ph.d.fieldsHeading}}</span>
+                  <div class="fields">
+                    <sc-for list="{{ph.d.fields}}" as="f" hint-placeholder-count="6">
+                      <div class="fld {{f.cls}}">
+                        <label for="{{f.fid}}">{{f.label}}</label>
+                        <input id="{{f.fid}}" type="{{f.type}}" value="{{f.value}}" onChange="{{f.change}}">
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+                <div class="sec">
+                  <span class="sec-h">Relations</span>
+                  <sc-for list="{{ph.d.rels}}" as="r" hint-placeholder-count="3">
+                    <div class="rel">
+                      <div class="rel-h"><span>{{r.label}}</span><sc-if value="{{r.computed}}" hint-placeholder-val="{{false}}"><span class="tag">computed</span></sc-if><sc-if value="{{r.addable}}" hint-placeholder-val="{{true}}"><button type="button" class="add" aria-label="{{r.addAria}}">+ Add</button></sc-if></div>
+                      <div class="chips">
+                        <sc-for list="{{r.chips}}" as="c" hint-placeholder-count="1">
+                          <button type="button" class="chip {{c.tone}}" onClick="{{c.go}}"><span class="chip-dot"></span><span class="mono" style="font-size: 12px; color: var(--text-muted)">{{c.id}}</span><span class="chip-t">{{c.title}}</span></button>
+                        </sc-for>
+                        <sc-if value="{{r.empty}}" hint-placeholder-val="{{false}}"><span class="none">None</span></sc-if>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ph.d.hasLog}}" hint-placeholder-val="{{true}}">
+                  <div class="sec">
+                    <span class="sec-h">Log</span>
+                    <ul class="logl">
+                      <sc-for list="{{ph.d.log}}" as="g" hint-placeholder-count="1"><li><span class="d">{{g.date}}</span> {{g.text}}</li></sc-for>
+                    </ul>
+                    <div class="fld"><label for="{{ph.logId}}">New log entry</label><input id="{{ph.logId}}" type="text" placeholder="On track / off track / signal observed"></div>
+                  </div>
+                </sc-if>
+              </div>
+              <div class="sh-foot">
+                <button type="button" class="btn btn-line btn-icon" aria-label="More actions" onClick="{{ph.openActions}}"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2"></circle><circle cx="12" cy="12" r="1.2"></circle><circle cx="19" cy="12" r="1.2"></circle></svg></button>
+                <button type="button" class="btn btn-line" style="flex: 1"><svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Open note</button>
+              </div>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{ph.showSmells}}" hint-placeholder-val="{{false}}">
+            <section class="sheet" role="dialog" aria-modal="true" aria-label="Smells">
+              <div class="sh-top" style="padding: 8px 4px 6px 16px; border-bottom: 1px solid var(--background-modifier-border)">
+                <span style="font-size: 19px; font-weight: 700">Smells</span><span class="cnt">4</span>
+                <span style="flex: 1"></span>
+                <button type="button" class="btn btn-icon btn-ghost" aria-label="Close smells" onClick="{{ph.close}}"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+              </div>
+              <div style="flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 16px">
+                <sc-for list="{{ph.smells}}" as="s" hint-placeholder-count="4">
+                  <button type="button" class="smell" onClick="{{s.go}}">
+                    <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+                      <span class="smell-k {{s.kcls}}">{{s.kind}}</span>
+                      <span class="smell-t"><span class="mono" style="font-size: 12.5px; color: var(--text-muted)">{{s.id}}</span> {{s.title}}</span>
+                      <span class="smell-d">{{s.text}}</span>
+                    </span>
+                    <svg class="ic" viewBox="0 0 24 24" style="color: var(--text-faint)"><path d="m9 18 6-6-6-6"></path></svg>
+                  </button>
+                </sc-for>
+              </div>
+            </section>
+          </sc-if>
+
+          <sc-if value="{{ph.showActions}}" hint-placeholder-val="{{false}}">
+            <section class="sheet" role="dialog" aria-modal="true" aria-label="Actions for {{ph.a.id}}" style="width: 380px">
+              <div class="sh-top" style="padding: 8px 4px 6px 16px; border-bottom: 1px solid var(--background-modifier-border)">
+                <span style="font-size: 15px; font-weight: 700; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"><span class="mono" style="font-size: 12.5px; color: var(--text-muted)">{{ph.a.id}}</span> {{ph.a.title}}</span>
+                <button type="button" class="btn btn-icon btn-ghost" aria-label="Close actions" onClick="{{ph.close}}"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+              </div>
+              <div style="flex: 1; min-height: 0; overflow-y: auto">
+                <button type="button" class="act" style="border-top: 0" onClick="{{ph.openDetails}}"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h12"></path></svg>Show details</button>
+                <button type="button" class="act" onClick="{{ph.close}}"><svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path></svg>Open note</button>
+                <button type="button" class="act" onClick="{{ph.openDetails}}"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Change status or dates</button>
+                <button type="button" class="act" onClick="{{ph.close}}"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add assumption</button>
+                <sc-if value="{{ph.a.canKill}}" hint-placeholder-val="{{true}}">
+                  <button type="button" class="act danger" onClick="{{ph.close}}"><svg class="ic" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"></path></svg>Kill and activate {{ph.a.next}}</button>
+                </sc-if>
+              </div>
+            </section>
+          </sc-if>
+
+          <span class="home" aria-hidden="true"></span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"accent":{"editor":"enum","options":["orange","purple"],"default":"orange"},"$preview":{"width":1920,"height":1360}}'>
+const N = {
+  'A-1': { kind: 'asm', title: 'D7 accepts freelance income', status: 'confirmed', x: 132, y: 88, w: 150, h: 50 },
+  'A-2': { kind: 'asm', title: 'Rent in Lisbon stays under 1200', status: 'unverified', x: 132, y: 152, w: 150, h: 50 },
+  'GHOST': { kind: 'card', title: 'Golden visa path?', tone: 'st-orange', x: 132, y: 230, w: 150, h: 40 },
+  'B-1': { kind: 'bet', title: 'Get a D7 visa', status: 'active', date: 'Due 1 Dec 2026', x: 314, y: 94, w: 168, h: 80, next: 'B-2' },
+  'B-2': { kind: 'bet', title: 'Apply for a digital nomad visa', status: 'dormant', date: 'No deadline', x: 314, y: 222, w: 168, h: 80 },
+  'FP-1': { kind: 'fp', title: 'Live in Portugal', x: 540, y: 150, w: 190, h: 80 },
+  'A-3': { kind: 'asm', title: 'Weekend market stalls are available', status: 'falsified' },
+  'B-3': { kind: 'bet', title: 'Sell pottery at weekend markets', status: 'active', date: 'Due 15 Oct 2026' },
+  'B-7': { kind: 'bet', title: 'Part-time barista job', status: 'active', date: 'No deadline' },
+  'B-6': { kind: 'bet', title: 'Online ceramics course', status: 'killed', date: 'Ended 1 Aug 2026' },
+  'A-6': { kind: 'asm', title: 'Portugal stays open to non-EU residents', status: 'unverified' },
+  'B-5': { kind: 'bet', title: 'Learn Portuguese to B1', status: 'won' },
+  'B-4': { kind: 'bet', title: 'Save 20000 for kiln and lease', status: 'active' }
+};
+const VISIBLE = ['A-1', 'A-2', 'GHOST', 'B-1', 'B-2', 'FP-1'];
+const SMELLS = {
+  'B-1': [{ kind: 'Gating violation', text: 'Relies on A-2, which is unverified and has no verify-by date.' }],
+  'B-3': [{ kind: 'Falsified dependency', text: 'Relies on A-3, which is falsified. Re-examine at the next review.' }],
+  'B-7': [{ kind: 'Orphan bet', text: 'No serves chain reaches a fixed point.' }],
+  'B-6': [{ kind: 'Phantom target', text: 'Serves an untyped stray note at the vault root.', issue: true }],
+  'A-2': [{ kind: 'Gates 1 active bet', text: 'B-1 relies on this and it has no verify-by date. Set one to clear the gating violation.' }]
+};
+const SMELL_ORDER = ['B-1', 'B-3', 'B-7', 'B-6'];
+const DETAIL = {
+  'B-1': { fields: [['x', 'I believe continuing', 'applying for the D7 visa'], ['y', 'will produce', 'an approved visa'], ['z', 'within', 'five months'], ['exp', 'Expected result', 'D7 visa approved'], ['st', 'Started', '2026-07-05', 'date', 'half'], ['dl', 'Deadline', '2026-12-01', 'date', 'half']], rels: [['Serves', ['FP-1']], ['Requires', []], ['Next (on kill)', ['B-2']], ['Assumptions', ['A-1', 'A-2']]], log: [['2026-07-05', 'created']] },
+  'B-2': { fields: [['x', 'I believe continuing', 'applying for the nomad visa'], ['y', 'will produce', 'an approved visa'], ['z', 'within', 'four months'], ['exp', 'Expected result', 'Digital nomad visa approved'], ['st', 'Started', '2026-07-05', 'date', 'half'], ['dl', 'Deadline', '', 'date', 'half']], rels: [['Serves', ['FP-1']], ['Assumptions', []], ['Activated by (on kill)', ['B-1'], true]], log: [['2026-07-05', 'created']] },
+  'B-3': { fields: [['x', 'I believe continuing', 'selling at weekend markets'], ['y', 'will produce', '500 EUR a month'], ['z', 'within', 'ten weeks'], ['st', 'Started', '2026-08-01', 'date', 'half'], ['dl', 'Deadline', '2026-10-15', 'date', 'half']], rels: [['Serves', ['B-4']], ['Assumptions', ['A-3']]], log: [['2026-08-01', 'created']] },
+  'B-7': { fields: [['x', 'I believe continuing', 'working part-time'], ['y', 'will produce', 'a side income'], ['z', 'within', 'ongoing']], rels: [['Serves', []]], log: [['2026-08-15', 'created']] },
+  'B-6': { fields: [['x', 'I believe continuing', 'taking an online course'], ['y', 'will produce', 'throwing skills']], rels: [['Serves', []]], log: [['2026-07-01', 'created'], ['2026-07-20', 'cancelled']] },
+  'A-1': { fields: [['s', 'Statement', 'The D7 visa accepts freelance income.'], ['f', "How I'd know it's false", 'Consulate rejects freelance income.'], ['c', 'Created', '2026-07-05', 'date', 'half'], ['v', 'Verify by', '2026-07-20', 'date', 'half']], rels: [['Depended on by', ['B-1'], true]], log: [['2026-08-01', 'Created']] },
+  'A-2': { fields: [['s', 'Statement', 'Rent in Lisbon stays under 1200 EUR.'], ['f', "How I'd know it's false", 'Listings median above 1200.'], ['c', 'Created', '2026-07-05', 'date', 'half'], ['v', 'Verify by', '', 'date', 'half need']], rels: [['Depended on by', ['B-1'], true]], log: [['2026-08-01', 'Created']] },
+  'FP-1': { fields: [['s', 'Statement', 'I live in Portugal long-term with legal residency.'], ['e', 'Established', '2026-07-01', 'date', 'half']], rels: [['Served by', ['B-1', 'B-2', 'B-5'], true], ['Assumptions', ['A-6']]], log: [] },
+  'GHOST': { fields: [['t', 'Text', 'Golden visa path?']], rels: [['Links', ['B-2']]], log: [] }
+};
+const STEPS = ['FP-1', 'B-1', 'B-2', 'A-2', 'A-1'];
+const WALK = {
+  'FP-1': { line: 'Fixed point · 3 bets serve it', items: ['A-6'] },
+  'B-1': { line: 'Bet · active · due 1 Dec 2026', items: ['A-1', 'A-2'] },
+  'B-2': { line: 'Bet · dormant · activates when B-1 is killed', items: [], empty: 'No assumptions yet' },
+  'A-2': { line: 'Assumption · gates B-1', items: [], empty: 'Set a verify-by date to clear the gating violation' },
+  'A-1': { line: 'Assumption · confirmed 20 Jul 2026', items: [], empty: 'Nothing to check' }
+};
+const TONE = { active: 'st-green', dormant: 'st-gray', won: 'st-cyan', killed: 'st-red', extended: 'st-yellow', unverified: 'st-orange', confirmed: 'st-green', falsified: 'st-red', undeterminable: 'st-gray' };
+const BET_ST = ['active', 'dormant', 'won', 'killed', 'extended'];
+const ASM_ST = ['unverified', 'confirmed', 'falsified', 'undeterminable'];
+const KIND = { bet: 'Bet', asm: 'Assumption', fp: 'Fixed point', card: 'Free card' };
+const SCREENS = [
+  { n: 1, title: 'Tap a node: peek on the right', text: 'The peek card sits top-right, clear of the navbar. If the selected node would end up under it, the graph pans left.', init: { sel: 'B-1' } },
+  { n: 2, title: 'Details: side sheet', text: 'A full-height sheet from the right, padded past the notch inset. A tap on the dimmed graph or a swipe right closes it. The body scrolls under a fixed header and footer.', init: { sel: 'B-1', sheet: 'details' } },
+  { n: 3, title: 'Smells: same side sheet', text: 'Tap a smell to close the sheet, pan to the node and show its peek card.', init: { sheet: 'smells' } },
+  { n: 4, title: 'Review walk: right rail', text: 'Docked and not modal. It ends above the navbar, and each step pans its node into the free space on the left.', init: { walk: true, step: 0, sel: 'FP-1' } }
+];
+const RAIL_RIGHT = 116, FREE_RIGHT = 844 - 56 - 300 - 16;
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { ph: SCREENS.map((s) => Object.assign({ sel: null, sheet: null, walk: false, step: 0 }, s.init)), status: {}, edits: {} };
+  }
+  upd(i, patch) { this.setState((st) => { const ph = st.ph.slice(); ph[i] = Object.assign({}, ph[i], patch); return { ph: ph }; }); }
+  stat(id) { return this.state.status[id] || (N[id] && N[id].status); }
+  tone(id) { const n = N[id]; if (!n) return 'st-gray'; if (n.kind === 'fp') return 'st-acc'; if (n.kind === 'card') return n.tone; return TONE[this.stat(id)] || 'st-gray'; }
+  smellsOf(id) { const s = SMELLS[id] || []; if ((id === 'B-1' || id === 'A-2') && this.state.edits['A-2.v']) return []; return s; }
+  goTo(i, id) { this.upd(i, { sel: id, sheet: null, walk: false }); }
+  details(i, s) {
+    const id = s.sel; const n = N[id]; const d = DETAIL[id] || { fields: [], rels: [], log: [] };
+    const sts = n.kind === 'bet' ? BET_ST : n.kind === 'asm' ? ASM_ST : null;
+    return {
+      id: n.kind === 'card' ? '' : id, title: n.title, kind: KIND[n.kind], tone: this.tone(id),
+      hasStatus: !!sts,
+      statuses: (sts || []).map((v) => ({ label: v, tone: TONE[v], on: v === this.stat(id), pick: () => this.setState((st) => ({ status: Object.assign({}, st.status, { [id]: v }) })) })),
+      smells: this.smellsOf(id),
+      canKill: !!n.next && this.stat(id) === 'active', next: n.next || '',
+      fieldsHeading: n.kind === 'bet' ? 'The bet' : n.kind === 'asm' ? 'The assumption' : n.kind === 'fp' ? 'The fixed point' : 'Card',
+      fields: d.fields.map((f) => {
+        const k = id + '.' + f[0]; const v = this.state.edits[k] !== undefined ? this.state.edits[k] : f[2];
+        let cls = f[4] || ''; if (cls.indexOf('need') >= 0 && v) cls = 'half';
+        return { fid: 'l' + i + '-' + id + '-' + f[0], label: f[1], type: f[3] || 'text', cls: cls, value: v, change: (e) => { const val = e.target.value; this.setState((st) => ({ edits: Object.assign({}, st.edits, { [k]: val }) })); } };
+      }),
+      rels: d.rels.map((r) => ({ label: r[0], computed: !!r[2], addable: !r[2], addAria: 'Add ' + r[0].toLowerCase(), empty: r[1].length === 0, chips: r[1].map((c) => ({ id: c, title: N[c] ? N[c].title : c, tone: this.tone(c), go: () => this.goTo(i, c) })) })),
+      hasLog: d.log.length > 0, log: d.log.map((g) => ({ date: g[0], text: g[1] }))
+    };
+  }
+  phone(s, i) {
+    const sc = SCREENS[i];
+    const sel = s.sel;
+    const showPeek = !s.walk && !!sel && !s.sheet;
+    let panX = 0; const sn = sel && N[sel];
+    if (sn && sn.x !== undefined && (s.walk || showPeek)) { const r = sn.x + sn.w; if (r > FREE_RIGHT) panX = FREE_RIGHT - r; if (sn.x + panX < RAIL_RIGHT) panX = RAIL_RIGHT - sn.x; }
+    const nodes = VISIBLE.map((id) => {
+      const n = N[id]; const sm = this.smellsOf(id).filter((x) => !x.issue && n.kind === 'bet');
+      return {
+        id: id, title: n.title, x: n.x, y: n.y, w: n.w, h: n.h, date: n.date || '', status: this.stat(id) || '',
+        tone: TONE[this.stat(id)] || '', cls: 'k-' + n.kind + ' ' + this.tone(id), sel: id === sel,
+        isBet: n.kind === 'bet', isAsm: n.kind === 'asm', isFp: n.kind === 'fp', isCard: n.kind === 'card',
+        smell: sm.length > 0, smellCount: sm.length,
+        aria: KIND[n.kind] + ' ' + n.title + (this.stat(id) ? ', ' + this.stat(id) : '') + (sm.length ? ', ' + sm.length + ' smell' : ''),
+        tap: (e) => { e.stopPropagation(); if (this.lpFired) { this.lpFired = false; return; } if (s.walk) { const k = STEPS.indexOf(id); if (k >= 0) this.upd(i, { step: k, sel: id }); return; } this.upd(i, { sel: id, sheet: null }); },
+        dbl: (e) => { e.stopPropagation(); this.upd(i, { sel: id, sheet: 'details' }); },
+        down: () => { this.lpFired = false; clearTimeout(this.lp); this.lp = setTimeout(() => { this.lpFired = true; this.upd(i, { sel: id, sheet: 'actions' }); }, 500); },
+        up: () => { clearTimeout(this.lp); },
+        ctx: (e) => { e.preventDefault(); }
+      };
+    });
+    const pn = sel && N[sel];
+    const psm = sel ? this.smellsOf(sel) : [];
+    const pk = pn ? { id: pn.kind === 'card' ? '' : sel, kind: KIND[pn.kind], tone: this.tone(sel), title: pn.title, meta: [this.stat(sel), pn.date].filter(Boolean).join(' · '), hasSmell: psm.length > 0, smell: psm.length ? psm[0].kind + (psm.length > 1 ? ' +' + (psm.length - 1) : '') : '' } : {};
+    const wid = STEPS[s.step]; const wn = N[wid]; const wd = WALK[wid];
+    const wk = { n: s.step + 1, total: STEPS.length, pct: Math.round((s.step + 1) / STEPS.length * 100), id: wid, title: wn.title, line: wd.line, items: wd.items.map((a) => ({ id: a, title: N[a].title, status: this.stat(a), tone: TONE[this.stat(a)] })), empty: wd.items.length === 0, emptyText: wd.empty || '', nextLabel: s.step < STEPS.length - 1 ? 'Next: ' + STEPS[s.step + 1] : 'Finish' };
+    return {
+      n: sc.n, title: sc.title, text: sc.text, logId: 'llog-' + i,
+      nodes: nodes, panX: panX,
+      walk: s.walk, notWalk: !s.walk, showPeek: showPeek, pk: pk, wk: wk,
+      anySheet: !!s.sheet, showDetails: s.sheet === 'details' && !!sel, showSmells: s.sheet === 'smells', showActions: s.sheet === 'actions' && !!sel,
+      d: s.sheet === 'details' && sel ? this.details(i, s) : {},
+      a: pn ? { id: pn.kind === 'card' ? '' : sel, title: pn.title, canKill: !!pn.next && this.stat(sel) === 'active', next: pn.next || '' } : {},
+      smells: SMELL_ORDER.map((id) => { const x = SMELLS[id][0]; return { id: id, title: N[id].title, kind: x.kind, text: x.text, kcls: x.issue ? 'issue' : '', go: () => this.goTo(i, id) }; }),
+      bgTap: () => { if (!s.walk && !s.sheet) this.upd(i, { sel: null }); },
+      close: () => this.upd(i, { sheet: null }),
+      openDetails: () => this.upd(i, { sheet: 'details' }),
+      openActions: () => this.upd(i, { sheet: 'actions' }),
+      openSmells: () => this.upd(i, { sheet: 'smells' }),
+      toggleWalk: () => s.walk ? this.upd(i, { walk: false, sheet: null }) : this.upd(i, { walk: true, step: 0, sel: STEPS[0], sheet: null }),
+      prev: () => { const k = Math.max(0, s.step - 1); this.upd(i, { step: k, sel: STEPS[k] }); },
+      next: () => { if (s.step >= STEPS.length - 1) { this.upd(i, { walk: false, sel: null }); return; } const k = s.step + 1; this.upd(i, { step: k, sel: STEPS[k] }); }
+    };
+  }
+  renderVals() {
+    return { theme: this.props.theme ?? 'dark', accent: this.props.accent ?? 'orange', phones: this.state.ph.map((s, i) => this.phone(s, i)) };
+  }
+}
+</script>
+</body>
+</html>

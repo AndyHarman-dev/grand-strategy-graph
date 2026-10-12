@@ -3,7 +3,7 @@ import { GSMAP_PATH, parseGsMap, serializeGsMap, emptyGsMap } from '../../src/co
 import { followRenameInMaps, isGraphNote, openStrategyGraph, revealInStrategyGraph } from '../../src/obsidian/graph-commands';
 import { StrategyGraphView } from '../../src/obsidian/graph-view';
 import { plannedTestVault } from '../../tools/test-vault';
-import { notices, openedModals, rendered, resetObsidianMock } from '../mocks/obsidian';
+import { notices, openedModals, Platform, rendered, resetObsidianMock } from '../mocks/obsidian';
 import { FakeWorkspaceApp, type MountRecord } from '../support/fake-workspace';
 import { md } from '../support/v2';
 
@@ -47,6 +47,18 @@ describe('opening Strategy.gsmap', () => {
     expect(state.mapError).toBeNull();
     // The phantom FP-2 link, kept as is by the migration (D13), is listed as a warning.
     expect(state.notices.map((n) => n.severity)).toEqual(['warning']);
+  });
+
+  it('asks for the desktop layout off a phone (tablets included)', async () => {
+    Platform.isMobile = true;
+    Platform.isTablet = true;
+    expect((await open()).mount.host.phone).toBe(false);
+  });
+
+  it('asks for the phone layout on a phone (D22)', async () => {
+    Platform.isPhone = true;
+    Platform.isMobile = true;
+    expect((await open()).mount.host.phone).toBe(true);
   });
 
   it('creates an empty Strategy.gsmap when the vault has none', async () => {
