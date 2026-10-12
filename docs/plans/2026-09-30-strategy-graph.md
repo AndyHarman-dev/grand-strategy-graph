@@ -1,5 +1,5 @@
 ---
-status: In Progress
+status: Done
 ---
 
 # Strategy Graph — data-driven, Obsidian-native graph for the Grand Strategy
@@ -794,6 +794,12 @@ The design is fixed, so the work is integration.
   - **Golden diff:** none. No `@visual` baseline added or changed: the two new `@visual` phone screenshots need a Linux cloud run (`npx playwright test -g @visual --update-snapshots`).
   - **Code review** (`/code-review medium`, findings only): 10 findings, all fixed. A frame label or card text left unsaved when its sheet closed or was replaced, saving from inside a state updater, a pan under the finger while dragging in Edit layout, sheets staying over other tabs (and over Open note), one Escape closing two sheets, a lost lift swallowing taps, walk taps, a duplicated id helper, and quadratic lookups. Pinned by three new phone tests.
   - **Verification:** local (macOS): typecheck clean, 443 unit tests, build, 87 Playwright tests (71 desktop unchanged, 16 phone with CDP touch events at 390×844 and 844×390). **Unverified (user, local, needs a phone):** Obsidian's real navbar measurement (`.mobile-navbar`), the notch in landscape, iOS callout suppression, the system back gesture (not built), the keyboard pushing a field into view, double-tap on iOS, and that Obsidian's own edge swipes still work over the graph.
+
+- **2026-10-11** (Phase 8b shipped, release 2.1.0; plan closed):
+  - **Context:** release the phone layout through BRAT and close the plan.
+  - **Actions:** PR #8 (`feat/phone-layout`) merged into `main`; PR #9 bumped `manifest.json`, `package.json` and `package-lock.json` to 2.1.0; tag `2.1.0` pushed, and `release.yml` published `main.js`, `manifest.json` and `styles.css`. The merged branches `feat/phone-layout` and `chore/release-2.1.0` were deleted (local and remote). Plan status set to Done (user).
+  - **Decisions:** none new. A local e2e run first hit an unrelated Vite server on port 5173 (`reuseExistingServer`); the user stopped it.
+  - **Verification:** before the push: typecheck, 443 unit tests, build; 86/87 Playwright (`--grep-invert @visual`), the one failure (`graph.spec.ts:1057`, Phase 7 promotion) passed 5/5 alone, so a parallel-load flake. **Verified (user):** 2.1.0 installed through BRAT works on the phone. The individual phone items listed as unverified above were not checked one by one.
 
 ## Decisions Log
 
