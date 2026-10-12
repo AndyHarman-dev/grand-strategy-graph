@@ -795,6 +795,12 @@ The design is fixed, so the work is integration.
   - **Code review** (`/code-review medium`, findings only): 10 findings, all fixed. A frame label or card text left unsaved when its sheet closed or was replaced, saving from inside a state updater, a pan under the finger while dragging in Edit layout, sheets staying over other tabs (and over Open note), one Escape closing two sheets, a lost lift swallowing taps, walk taps, a duplicated id helper, and quadratic lookups. Pinned by three new phone tests.
   - **Verification:** local (macOS): typecheck clean, 443 unit tests, build, 87 Playwright tests (71 desktop unchanged, 16 phone with CDP touch events at 390×844 and 844×390). **Unverified (user, local, needs a phone):** Obsidian's real navbar measurement (`.mobile-navbar`), the notch in landscape, iOS callout suppression, the system back gesture (not built), the keyboard pushing a field into view, double-tap on iOS, and that Obsidian's own edge swipes still work over the graph.
 
+- **2026-10-11** (Phase 9 — cutover, recorded after the fact):
+  - **Context:** the cutover ran outside a logged session; recorded here on the user's word.
+  - **Actions (user, local):** the real vault was migrated and `The Map.canvas` was retired. Release 2.0.0 (PR #7) was the first release the real vault got (D18).
+  - **Decisions:** none recorded.
+  - **Verification:** reported done by the user; the dry-run, apply and canvas-parity outputs stay on the user's machine (never committed).
+
 - **2026-10-11** (Phase 8b shipped, release 2.1.0; plan closed):
   - **Context:** release the phone layout through BRAT and close the plan.
   - **Actions:** PR #8 (`feat/phone-layout`) merged into `main`; PR #9 bumped `manifest.json`, `package.json` and `package-lock.json` to 2.1.0; tag `2.1.0` pushed, and `release.yml` published `main.js`, `manifest.json` and `styles.css`. The merged branches `feat/phone-layout` and `chore/release-2.1.0` were deleted (local and remote). Plan status set to Done (user).
