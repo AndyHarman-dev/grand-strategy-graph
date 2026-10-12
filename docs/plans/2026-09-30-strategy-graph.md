@@ -797,7 +797,7 @@ The design is fixed, so the work is integration.
 
 - **2026-10-11** (Phase 9 — cutover, recorded after the fact):
   - **Context:** the cutover ran outside a logged session; recorded here on the user's word.
-  - **Actions (user, local):** the real vault was migrated and `The Map.canvas` was retired. Release 2.0.0 (PR #7) was the first release the real vault got (D18).
+  - **Actions (user, local):** the real vault was migrated and `The Map.canvas` was retired.
   - **Decisions:** none recorded.
   - **Verification:** reported done by the user; the dry-run, apply and canvas-parity outputs stay on the user's machine (never committed).
 
